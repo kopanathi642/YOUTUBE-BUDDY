@@ -214,3 +214,49 @@ async def studio_history(
             for g in generations
         ]
     }
+
+
+@router.get("/providers")
+async def get_providers_status() -> dict:
+    """Return health and availability of all AI generation providers."""
+    providers = {
+        "openai": {
+            "name": "OpenAI",
+            "available": bool(settings.OPENAI_API_KEY),
+            "model": settings.OPENAI_MODEL,
+            "image_model": settings.OPENAI_IMAGE_MODEL,
+            "transcription_model": settings.OPENAI_TRANSCRIPTION_MODEL,
+        },
+        "gemini": {
+            "name": "Google Gemini",
+            "available": bool(settings.GEMINI_API_KEY),
+            "model": settings.GEMINI_MODEL,
+            "free_tier": True,
+            "info": "Free 15 RPM / 1M tokens/day via Google AI Studio",
+        },
+        "huggingface": {
+            "name": "Hugging Face",
+            "available": bool(settings.HUGGINGFACE_API_KEY),
+            "model": settings.HUGGINGFACE_MODEL,
+        },
+        "ollama": {
+            "name": "Ollama (Local)",
+            "available": True,
+            "base_url": settings.OLLAMA_BASE_URL,
+            "model": settings.OLLAMA_MODEL,
+        },
+    }
+
+    if settings.OPENAI_API_KEY:
+        active = "openai"
+    elif settings.GEMINI_API_KEY:
+        active = "gemini"
+    elif settings.HUGGINGFACE_API_KEY:
+        active = "huggingface"
+    else:
+        active = "ollama"
+
+    return {
+        "active_default": active,
+        "providers": providers,
+    }

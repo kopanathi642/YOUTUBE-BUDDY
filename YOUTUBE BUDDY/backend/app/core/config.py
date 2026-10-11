@@ -46,12 +46,28 @@ class Settings(BaseModel):
     GEMINI_API_KEY: str | None = os.getenv("GEMINI_API_KEY")
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
-    # Security
+    # Security & CORS
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET", "super_secret_key_change_in_production")
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
     DEMO_LOGIN_EMAIL: str = os.getenv("DEMO_LOGIN_EMAIL", "demo@youtubebuddy.local")
     DEMO_LOGIN_PASSWORD: str = os.getenv("DEMO_LOGIN_PASSWORD", "Demo@12345")
+    ALLOWED_ORIGINS: str = os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000",
+    )
+
+    def get_allowed_origins(self) -> list[str]:
+        """Return parsed list of CORS allowed origins."""
+        return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+
+    def validate_production_security(self) -> None:
+        """Enforce strict security parameters when running in production."""
+        if self.ENVIRONMENT.lower() == "production":
+            if "change_in_production" in self.JWT_SECRET_KEY or len(self.JWT_SECRET_KEY) < 32:
+                raise ValueError(
+                    "FATAL SECURITY RISK: Production deployment requires a secure JWT_SECRET of at least 32 characters."
+                )
 
     # Storage
     STORAGE_PROVIDER: str = os.getenv("STORAGE_PROVIDER", "local")

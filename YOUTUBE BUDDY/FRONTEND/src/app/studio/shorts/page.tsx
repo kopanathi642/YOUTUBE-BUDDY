@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/Card';
 import type { AspectRatio } from '@/types';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { LiveChainGraph } from '@/components/studio/LiveChainGraph';
 
 const ASPECT_RATIOS: { label: string; value: AspectRatio }[] = [
   { label: 'Landscape', value: '16:9' },
@@ -176,6 +177,19 @@ export default function ShortsStudioPage() {
                   )}
                 </Card>
               </div>
+            </div>
+
+            {/* Live Interactive Transformation Chain Graph */}
+            <div className="mt-8">
+              <LiveChainGraph
+                videoId={videoId}
+                aspectRatio={selectedRatio}
+                captionsEnabled={captions}
+                onPipelineComplete={() => {
+                  setLastShortStatus('completed');
+                  toast.success('Pipeline finished! Video ready for export.');
+                }}
+              />
             </div>
           </div>
         </main>

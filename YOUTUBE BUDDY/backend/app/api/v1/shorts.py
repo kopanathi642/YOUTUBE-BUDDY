@@ -1,12 +1,13 @@
+import logging
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.database import get_session
+from app.core.database import AsyncSessionLocal, get_session
 from app.core.security import get_current_user
 from app.models.render_job import RenderJob
 from app.models.short import Short
@@ -15,12 +16,56 @@ from app.schemas.user import UserProfile
 from app.services.ownership import require_upload, require_user
 from app.services.video_processing import RATIO_DIMENSIONS, create_short_clip
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/generate", response_model=ShortResponse)
+async def _process_short_render_job(
+    short_id: int,
+    job_id: int,
+    source_path: str,
+    start: int,
+    end: int,
+    ratio: str,
+    output_path: str,
+) -> None:
+    """Asynchronous background worker that renders the short clip and updates status."""
+    async with AsyncSessionLocal() as session:
+        try:
+            job = await session.get(RenderJob, job_id)
+            if job:
+                job.progress = 20
+                await session.commit()
+
+            await create_short_clip(source_path, start, end, ratio, output_path)
+
+            short = await session.get(Short, short_id)
+            job = await session.get(RenderJob, job_id)
+            if short:
+                short.status = "completed"
+            if job:
+                job.status = "completed"
+                job.progress = 100
+                job.result_path = output_path
+            await session.commit()
+            logger.info("Short #%d rendered successfully -> %s", short_id, output_path)
+        except Exception as exc:
+            logger.exception("Background render failed for Short #%d: %s", short_id, exc)
+            short = await session.get(Short, short_id)
+            job = await session.get(RenderJob, job_id)
+            if short:
+                short.status = "failed"
+            if job:
+                job.status = "failed"
+                job.progress = 100
+                job.error_message = str(exc)
+            await session.commit()
+
+
+@router.post("/generate", response_model=ShortResponse, status_code=status.HTTP_202_ACCEPTED)
 async def generate_short(
     request: ShortRequest,
+    background_tasks: BackgroundTasks,
     current_user: UserProfile = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> Short:
@@ -61,23 +106,20 @@ async def generate_short(
     )
     session.add(render_job)
     await session.commit()
-
-    try:
-        await create_short_clip(upload.storage_path, short.clip_start, short.clip_end, request.ratio, output_path)
-    except Exception as exc:
-        short.status = "failed"
-        render_job.status = "failed"
-        render_job.error_message = str(exc)
-        render_job.progress = 100
-        await session.commit()
-        await session.refresh(short)
-        return short
-
-    short.status = "completed"
-    render_job.status = "completed"
-    render_job.progress = 100
-    await session.commit()
     await session.refresh(short)
+
+    # Dispatch to background task without blocking the HTTP request
+    background_tasks.add_task(
+        _process_short_render_job,
+        short.id,
+        render_job.id,
+        upload.storage_path,
+        short.clip_start,
+        short.clip_end,
+        request.ratio,
+        output_path,
+    )
+
     return short
 
 

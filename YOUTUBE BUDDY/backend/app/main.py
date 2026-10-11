@@ -36,7 +36,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.get_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -74,6 +74,7 @@ app.include_router(render_queue.router, prefix=f"{settings.API_PREFIX}/render-qu
 @app.on_event("startup")
 async def startup_event():
     setup_logging()
+    settings.validate_production_security()
     await init_db()
     await init_cache()
 
