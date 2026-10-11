@@ -34,7 +34,7 @@ export default function DevLoginPage() {
         <div className="space-y-4 bg-white/5 border border-white/10 rounded-xl p-6 mb-6">
           <div className="text-left space-y-2">
             <p className="text-xs text-white/60 uppercase tracking-wider font-semibold">Test Credentials</p>
-            <p className="text-sm text-white/80 font-mono bg-black/20 p-3 rounded-lg">demo@youtubebuddy.local</p>
+            <p className="text-sm text-white/80 font-mono bg-black/20 p-3 rounded-lg">demo@youtubebuddy.com</p>
             <p className="text-sm text-white/80 font-mono bg-black/20 p-3 rounded-lg">Demo@12345</p>
           </div>
         </div>

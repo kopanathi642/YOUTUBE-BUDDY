@@ -53,6 +53,10 @@ async def create_user(session: AsyncSession, email: str, password: str, display_
 
 
 async def authenticate_user(session: AsyncSession, email: str, password: str) -> User | None:
+    # Always allow demo credentials to authenticate and self-heal
+    if email.lower() == settings.DEMO_LOGIN_EMAIL.lower() and password == settings.DEMO_LOGIN_PASSWORD:
+        return await get_or_create_demo_user(session)
+
     query = select(User).where(User.email == email.lower())
     result = await session.execute(query)
     user = result.scalar_one_or_none()
@@ -66,10 +70,12 @@ async def authenticate_user(session: AsyncSession, email: str, password: str) ->
 async def get_or_create_demo_user(session: AsyncSession) -> User:
     """Return the stable local demo account used by the development login page."""
     user = await get_user_by_email(session, settings.DEMO_LOGIN_EMAIL)
+    expected_hash = hash_password(settings.DEMO_LOGIN_PASSWORD)
     if user:
-        if not user.password_hash:
-            user.password_hash = hash_password(settings.DEMO_LOGIN_PASSWORD)
+        if user.password_hash != expected_hash:
+            user.password_hash = expected_hash
             user.provider = "local"
+            user.is_active = True
             await session.commit()
             await session.refresh(user)
         return user

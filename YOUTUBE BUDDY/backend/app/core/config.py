@@ -50,7 +50,7 @@ class Settings(BaseModel):
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET", "super_secret_key_change_in_production")
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
-    DEMO_LOGIN_EMAIL: str = os.getenv("DEMO_LOGIN_EMAIL", "demo@youtubebuddy.local")
+    DEMO_LOGIN_EMAIL: str = os.getenv("DEMO_LOGIN_EMAIL", "demo@youtubebuddy.com")
     DEMO_LOGIN_PASSWORD: str = os.getenv("DEMO_LOGIN_PASSWORD", "Demo@12345")
     ALLOWED_ORIGINS: str = os.getenv(
         "ALLOWED_ORIGINS",
