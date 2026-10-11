@@ -93,8 +93,8 @@ async def generate_tool(
     if request.upload_id is not None:
         await require_upload(session, request.upload_id, user)
     if not prompt_text and request.upload_id is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="prompt or upload_id is required")
-    if not prompt_text:
+        prompt_text = f"Professional studio generation for {request.tool_id}."
+    elif not prompt_text:
         prompt_text = f"Run {request.tool_id} on uploaded media #{request.upload_id}."
 
     preview_url: str | None = None

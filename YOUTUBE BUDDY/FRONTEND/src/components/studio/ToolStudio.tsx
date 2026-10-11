@@ -74,7 +74,7 @@ export function ToolStudio({ toolId, category }: { toolId: string; category: Too
   const [prompt, setPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
   const [style, setStyle] = useState('Realistic');
-  const [provider, setProvider] = useState<'openai' | 'huggingface' | 'ollama'>('openai');
+  const [provider, setProvider] = useState<'gemini' | 'openai' | 'huggingface' | 'ollama'>('gemini');
   const [generatedResult, setGeneratedResult] = useState<string | null>(null);
   const [generatedText, setGeneratedText] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -123,14 +123,7 @@ export function ToolStudio({ toolId, category }: { toolId: string; category: Too
   };
 
   const handleGenerate = async () => {
-    if (config.requiresPrompt && !prompt.trim()) {
-      toast.error('Please enter an idea first!');
-      return;
-    }
-    if (config.requiresUpload && !uploadId) {
-      toast.error('Please upload a file first.');
-      return;
-    }
+    const effectivePrompt = prompt.trim() || `High quality cinematic ${config.name} artwork and composition`;
 
     setGenerating(true);
     setGeneratedResult(null);
@@ -139,12 +132,12 @@ export function ToolStudio({ toolId, category }: { toolId: string; category: Too
     try {
       const response = await api.studio.generate({
         tool_id: config.id,
-        prompt,
+        prompt: effectivePrompt,
         style,
         aspect_ratio: isVideo || isImage ? '9:16' : undefined,
         duration: isVideo ? 6 : undefined,
         provider,
-        upload_id: uploadId,
+        upload_id: uploadId || undefined,
       });
 
       setGeneratedResult(response.data.preview_url || null);
@@ -152,14 +145,14 @@ export function ToolStudio({ toolId, category }: { toolId: string; category: Too
 
       const newEntry = {
         id: String(response.data.id || Date.now()),
-        prompt: prompt.slice(0, 40) + '...',
+        prompt: effectivePrompt.slice(0, 40) + '...',
         status: 'completed' as const,
         createdAt: 'Just now',
       };
       setHistory([newEntry, ...history]);
       toast.success('Generated successfully!');
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Generation failed.';
+    } catch (error: any) {
+      const message = error?.response?.data?.detail || (error instanceof Error ? error.message : 'Generation failed.');
       toast.error(message);
     } finally {
       setGenerating(false);
@@ -275,13 +268,14 @@ export function ToolStudio({ toolId, category }: { toolId: string; category: Too
                   </div>
                   <div className="grid grid-cols-1 gap-2">
                     {[
+                      { id: 'gemini', label: 'Google Gemini (Free Tier)' },
                       { id: 'openai', label: 'OpenAI (Cloud)' },
                       { id: 'huggingface', label: 'Hugging Face (Cloud)' },
                       { id: 'ollama', label: 'Ollama (Local AI)' },
                     ].map((option) => (
                       <button
                         key={option.id}
-                        onClick={() => setProvider(option.id as 'openai' | 'huggingface' | 'ollama')}
+                        onClick={() => setProvider(option.id as 'gemini' | 'openai' | 'huggingface' | 'ollama')}
                         className={`p-2.5 rounded-lg border text-xs font-medium transition-all ${
                           provider === option.id
                             ? `border-${themeColor}/40 bg-${themeColor}/10 text-${themeColor}`
@@ -375,11 +369,10 @@ export function ToolStudio({ toolId, category }: { toolId: string; category: Too
                             className="max-h-full rounded-lg shadow-2xl border border-white/10"
                           />
                         ) : isImage ? (
-                          <Image 
+                          <img 
                             src={generatedResult} 
                             alt="Generated AI" 
-                            fill
-                            className="max-h-full rounded-lg shadow-2xl border border-white/10 object-contain"
+                            className="max-h-full max-w-full rounded-lg shadow-2xl border border-white/10 object-contain"
                           />
                         ) : (
                           <div className="flex flex-col items-center gap-4">

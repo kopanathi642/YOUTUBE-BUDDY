@@ -59,13 +59,15 @@ async def generate_scene(
     )
 
     try:
-        if request.preset == "huggingface":
-            generated_text = generate_text(prompt)
-        else:
-            response = create_completion(prompt)
-            generated_text = response["choices"][0]["message"]["content"].strip()
-    except RuntimeError as exc:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+        from app.services.ai_generation import _call_text_provider
+        generated_text = _call_text_provider(
+            prompt,
+            provider=request.preset or "openai",
+            system="You are a senior cinematic director and production supervisor.",
+            tool_id="cinematic",
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 
     generation = AIGeneration(
         user_id=user.id,
