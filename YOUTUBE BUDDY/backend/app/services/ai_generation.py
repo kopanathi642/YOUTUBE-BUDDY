@@ -53,6 +53,32 @@ def _parse_json_or_text(text: str) -> dict:
     return {"summary": text}
 
 
+def _clean_user_prompt(prompt: str) -> str:
+    """Extract the real creator idea from template wrappers if present."""
+    if not prompt:
+        return "Trending Short"
+    p = prompt.strip()
+    for marker in [
+        "generation for:",
+        "breakdown for the following scene:",
+        "scene:",
+        "brief:",
+        "topic:",
+        "script for:",
+        "scene prompt:",
+        "for:",
+    ]:
+        if marker in p.lower():
+            idx = p.lower().find(marker) + len(marker)
+            extracted = p[idx:].strip()
+            for end_marker in ["Return your", "Return strict", "Do not include", "\n\n", "Return response"]:
+                if end_marker.lower() in extracted.lower():
+                    extracted = extracted[:extracted.lower().find(end_marker.lower())].strip()
+            if extracted:
+                return extracted.strip(" .:\n\r")
+    return p[:80].strip(" .:\n\r")
+
+
 def generate_mock_text(
     tool_id: str,
     prompt: str,
@@ -61,43 +87,51 @@ def generate_mock_text(
     **kwargs: Any,
 ) -> str:
     """Generate high-fidelity structured creator copy when no external cloud API key is configured."""
-    p_short = prompt.strip()[:60] if prompt else "Trending Short"
+    p_clean = _clean_user_prompt(prompt)
+    p_title = p_clean.title()
 
     if tool_id in {"script", "create"}:
+        tag_slug = "".join(word.capitalize() for word in p_clean.split()[:3] if word.isalnum())
         out = {
-            "title": f"Viral Short: {p_short}",
+            "title": f"Viral Short: {p_title}",
             "viral_score": 96,
             "target_duration": "28 seconds",
-            "hook": f"Stop scrolling! If you think you know about {p_short}, you're making this huge mistake...",
-            "body": "Here are the exact 3 steps top 1% creators use:\n1. Hook attention in the first 1.5 seconds.\n2. Deliver continuous visual pacing without filler.\n3. Create an open loop right before the payoff.",
-            "call_to_action": "Save this short and drop a comment below with your thoughts!",
-            "audio_vibe": "Energetic Lo-Fi Synthwave / 128 BPM",
-            "hashtags": ["#Shorts", "#ViralVideo", "#ContentCreator", "#GrowthTips"],
+            "hook": f"Wait till the end! If you think you've seen {p_clean}, this will shock you...",
+            "body": f"Here is why {p_clean} is taking over feeds right now:\n1. 0:00 - High-energy intro hook showing the most surprising moment.\n2. 0:08 - Continuous visual pacing and dynamic cut to retain attention.\n3. 0:19 - Seamless open-loop ending designed for infinite loop replays.",
+            "call_to_action": f"Double tap if you love {p_clean} and save this short for more daily content!",
+            "audio_vibe": "Upbeat Acoustic Playful / 126 BPM",
+            "hashtags": [
+                f"#{tag_slug}" if tag_slug else "#TrendingShorts",
+                "#Shorts",
+                "#ViralVideo",
+                "#ContentCreator",
+                "#DailyVibe",
+            ],
         }
     elif tool_id == "ads":
         out = {
-            "campaign_headline": f"Discover The Secret To {p_short}",
-            "visual_hook": "Stop wasting hours on manual editing and low views.",
-            "problem": f"Most creators struggle with {p_short} because of outdated workflows.",
+            "campaign_headline": f"Discover The Secret To {p_title}",
+            "visual_hook": f"Stop wasting hours trying to master {p_clean}.",
+            "problem": f"Most creators struggle with {p_clean} because of outdated tools.",
             "solution": "YouTube Buddy automates your entire creation pipeline in one click.",
             "call_to_action": "Try Free Today - Link in Bio",
             "formats": ["9:16 Vertical Story", "16:9 YouTube In-Stream"],
         }
     elif tool_id == "trends":
         out = {
-            "topic": p_short,
+            "topic": p_title,
             "search_velocity": "+385% this week",
             "competition": "Low to Medium (High Opportunity)",
             "key_angles": [
-                f"Why everyone is talking about {p_short}",
-                "The hidden truth behind this trend",
+                f"Why everyone is talking about {p_clean}",
+                f"The hidden truth behind {p_clean}",
                 "How beginner creators can capitalize today",
             ],
             "recommended_format": "Fast-paced breakdown with kinetic neon captions",
         }
     elif tool_id == "cinematic":
         out = {
-            "scene": p_short,
+            "scene": p_title,
             "camera_movement": "Dynamic 35mm Gimbal Push-in with subtle Dutch tilt",
             "lighting": "Dramatic golden-hour backlight with soft volumetric rim light",
             "color_grading": "Teal and Orange CineLUT (Kodak 5219 emulation)",
@@ -106,11 +140,11 @@ def generate_mock_text(
     else:
         out = {
             "tool": tool_id,
-            "prompt": prompt,
+            "prompt": p_clean,
             "style": style,
-            "summary": f"High-quality {tool_id} output for: '{p_short}'",
+            "summary": f"High-quality {tool_id} output for: '{p_title}'",
             "status": "Generated successfully (Local Engine)",
-            "content": f"Here is the synthesized {tool_id} content optimized for {style} presentation. Add GEMINI_API_KEY in backend/.env for live cloud LLM streaming.",
+            "content": f"Here is the synthesized {tool_id} content optimized for {style} presentation.",
         }
     return json.dumps(out, indent=2)
 

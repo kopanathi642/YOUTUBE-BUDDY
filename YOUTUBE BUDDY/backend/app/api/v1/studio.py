@@ -137,6 +137,21 @@ async def generate_tool(
             generated_text = result.get("raw", "")
             model_output = result.get("parsed", generated_text)
 
+            # For video-centric tools, also generate a visual poster/thumbnail card
+            try:
+                from app.services.ai_generation import generate_mock_image, _clean_user_prompt
+                poster_result = generate_mock_image(
+                    tool_id=request.tool_id,
+                    prompt=_clean_user_prompt(prompt_text),
+                    aspect_ratio="9:16",
+                    style=request.style or "Cinematic",
+                )
+                filename = f"{request.tool_id}_{uuid4().hex[:8]}.png"
+                save_generated_image(poster_result, filename)
+                preview_url = f"{settings.BACKEND_HOST}/rendered/{filename}"
+            except Exception:
+                pass
+
     except RuntimeError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 

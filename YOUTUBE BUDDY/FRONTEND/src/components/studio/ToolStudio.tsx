@@ -1,15 +1,16 @@
 'use client';
-import { ChangeEvent, useRef, useState } from 'react';
+import { ChangeEvent, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import {
-  Play, Download, RotateCcw, Clock, Sparkles, Loader2, Image as ImageIcon,
-  Video, Mic, Wand2, Upload, AlignLeft, Settings2, SlidersHorizontal
+  Play, Pause, Download, RotateCcw, Clock, Sparkles, Loader2, Image as ImageIcon,
+  Video, Mic, Wand2, Upload, AlignLeft, Settings2, SlidersHorizontal,
+  Copy, Check, ExternalLink, Music, Flame, Film, Code, Share2
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
-import Image from 'next/image';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -77,6 +78,10 @@ export function ToolStudio({ toolId, category }: { toolId: string; category: Too
   const [provider, setProvider] = useState<'gemini' | 'openai' | 'huggingface' | 'ollama'>('gemini');
   const [generatedResult, setGeneratedResult] = useState<string | null>(null);
   const [generatedText, setGeneratedText] = useState<string | null>(null);
+  const [modelOutput, setModelOutput] = useState<any | null>(null);
+  const [isPlaying, setIsPlaying] = useState<boolean>(true);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'script' | 'seo' | 'raw'>('script');
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [uploadId, setUploadId] = useState<number | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
@@ -142,6 +147,10 @@ export function ToolStudio({ toolId, category }: { toolId: string; category: Too
 
       setGeneratedResult(response.data.preview_url || null);
       setGeneratedText(response.data.generated_text || null);
+      const parsed = typeof response.data.model_output === 'object' && response.data.model_output !== null
+        ? response.data.model_output
+        : null;
+      setModelOutput(parsed);
 
       const newEntry = {
         id: String(response.data.id || Date.now()),
@@ -157,6 +166,26 @@ export function ToolStudio({ toolId, category }: { toolId: string; category: Too
     } finally {
       setGenerating(false);
     }
+  };
+
+  const parsedData = useMemo(() => {
+    if (modelOutput && typeof modelOutput === 'object') return modelOutput;
+    if (!generatedText) return null;
+    try {
+      const stripped = generatedText.trim().replace(/^```(?:json)?\n?/, '').replace(/```$/, '');
+      const obj = JSON.parse(stripped);
+      if (typeof obj === 'object') return obj;
+    } catch {
+      // not JSON
+    }
+    return null;
+  }, [modelOutput, generatedText]);
+
+  const copyToClipboard = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    toast.success('Copied to clipboard!');
+    setTimeout(() => setCopiedKey(null), 2000);
   };
 
   const Icon = isVideo ? Video : isImage ? ImageIcon : Mic;
@@ -357,31 +386,233 @@ export function ToolStudio({ toolId, category }: { toolId: string; category: Too
                           <p className="text-xs text-white/40">Synthesizing frames and applying {style} style.</p>
                         </div>
                       </div>
+                    ) : isVideo && (parsedData || generatedResult) ? (
+                      <div className="absolute inset-0 flex flex-col p-4 overflow-y-auto scrollbar-thin">
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-5 w-full items-start">
+                          {/* 9:16 Vertical Video Simulator */}
+                          <div className="md:col-span-5 flex flex-col items-center">
+                            <div className="w-full max-w-[260px] aspect-[9/16] bg-black rounded-2xl border-2 border-neon-cyan/40 shadow-2xl shadow-neon-cyan/10 relative overflow-hidden flex flex-col justify-between p-3.5 group">
+                              {/* Background Scene Poster / Visual */}
+                              {generatedResult ? (
+                                <img 
+                                  src={generatedResult} 
+                                  alt="Generated Scene" 
+                                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                />
+                              ) : (
+                                <div className="absolute inset-0 bg-gradient-to-b from-indigo-950 via-slate-950 to-black flex items-center justify-center">
+                                  <Film className="w-12 h-12 text-white/15" />
+                                </div>
+                              )}
+
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-black/60 pointer-events-none" />
+
+                              {/* Top Bar Badges */}
+                              <div className="relative z-10 flex items-center justify-between">
+                                <span className="text-[9px] font-black tracking-widest px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-neon-cyan border border-neon-cyan/30">
+                                  9:16 SHORTS
+                                </span>
+                                <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white/80 border border-white/10">
+                                  {parsedData?.target_duration || '28s'}
+                                </span>
+                              </div>
+
+                              {/* Play / Pause Toggle Button */}
+                              <button
+                                type="button"
+                                onClick={() => setIsPlaying(!isPlaying)}
+                                className="absolute inset-0 m-auto w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/30 flex items-center justify-center text-white hover:scale-110 transition-all z-10 shadow-lg cursor-pointer"
+                              >
+                                {isPlaying ? <Pause className="w-5 h-5 text-neon-cyan" /> : <Play className="w-5 h-5 text-neon-cyan ml-0.5" />}
+                              </button>
+
+                              {/* Bottom Dynamic Subtitle & Audio Deck */}
+                              <div className="relative z-10 space-y-2.5">
+                                {/* Dynamic Kinetic Caption Overlay */}
+                                <div className="bg-black/85 backdrop-blur-md border border-yellow-400/50 rounded-xl p-2.5 shadow-xl text-center">
+                                  <span className="text-[8px] font-black text-yellow-400 uppercase tracking-widest block mb-0.5">Viral Hook (0-3s)</span>
+                                  <p className="text-[11px] font-black text-white leading-tight drop-shadow-md">
+                                    &ldquo;{parsedData?.hook || 'Stop scrolling! Wait till you see this...'}&rdquo;
+                                  </p>
+                                </div>
+
+                                {/* Audio Pill */}
+                                <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-white/10 backdrop-blur-md border border-white/10 text-[9px] text-white/90">
+                                  <Music className={`w-3 h-3 text-neon-cyan ${isPlaying ? 'animate-pulse' : ''}`} />
+                                  <span className="truncate flex-1">{parsedData?.audio_vibe || 'Energetic Lo-Fi Synthwave / 128 BPM'}</span>
+                                </div>
+
+                                {/* Timeline Scrubber */}
+                                <div className="space-y-1">
+                                  <div className="h-1 bg-white/20 rounded-full overflow-hidden">
+                                    <div className={`h-full bg-neon-cyan rounded-full transition-all duration-300 ${isPlaying ? 'w-2/3' : 'w-1/4'}`} />
+                                  </div>
+                                  <div className="flex justify-between text-[8px] text-white/60 font-mono">
+                                    <span>{isPlaying ? '00:19' : '00:00'}</span>
+                                    <span>{parsedData?.target_duration || '00:28'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <Link 
+                              href="/studio/shorts"
+                              className="mt-3 w-full max-w-[260px] inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-neon-cyan text-black font-bold text-xs hover:bg-neon-cyan/90 transition-all shadow-lg shadow-neon-cyan/20"
+                            >
+                              Open in Shorts Editor <ExternalLink className="w-3.5 h-3.5" />
+                            </Link>
+                          </div>
+
+                          {/* Storyboard & Creator Deck */}
+                          <div className="md:col-span-7 flex flex-col space-y-3 min-w-0">
+                            {/* Deck Tabs */}
+                            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                              <div className="flex gap-1.5">
+                                {[
+                                  { id: 'script', label: '🎬 Script & Hook' },
+                                  { id: 'seo', label: '🏷️ Tags & SEO' },
+                                  { id: 'raw', label: '⚙️ Raw JSON' },
+                                ].map((tab) => (
+                                  <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => setActiveTab(tab.id as any)}
+                                    className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-all ${
+                                      activeTab === tab.id
+                                        ? 'bg-white/15 text-white border border-white/20'
+                                        : 'text-white/40 hover:text-white/80'
+                                    }`}
+                                  >
+                                    {tab.label}
+                                  </button>
+                                ))}
+                              </div>
+
+                              {parsedData?.viral_score && (
+                                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold">
+                                  <Flame className="w-3 h-3" />
+                                  {parsedData.viral_score}/100 Viral Score
+                                </div>
+                              )}
+                            </div>
+
+                            {activeTab === 'script' && (
+                              <div className="space-y-3">
+                                {/* Title Card */}
+                                <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-start justify-between gap-2">
+                                  <div>
+                                    <span className="text-[9px] font-bold uppercase tracking-wider text-neon-cyan">Short Title</span>
+                                    <h4 className="text-xs font-bold text-white mt-0.5">{parsedData?.title || 'Viral Short'}</h4>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => copyToClipboard(parsedData?.title || '', 'title')}
+                                    className="p-1 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
+                                    title="Copy Title"
+                                  >
+                                    {copiedKey === 'title' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                                  </button>
+                                </div>
+
+                                {/* Hook Card */}
+                                <div className="p-3 rounded-xl bg-gradient-to-r from-neon-cyan/10 to-transparent border border-neon-cyan/30 flex items-start justify-between gap-2">
+                                  <div>
+                                    <span className="text-[9px] font-bold uppercase tracking-wider text-neon-cyan flex items-center gap-1">
+                                      <Flame className="w-3 h-3" /> First 3-Second Hook
+                                    </span>
+                                    <p className="text-xs text-white/90 mt-1 font-medium leading-relaxed">
+                                      &ldquo;{parsedData?.hook}&rdquo;
+                                    </p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => copyToClipboard(parsedData?.hook || '', 'hook')}
+                                    className="p-1 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
+                                    title="Copy Hook"
+                                  >
+                                    {copiedKey === 'hook' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                                  </button>
+                                </div>
+
+                                {/* Pacing & Retention Beats */}
+                                <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                                  <span className="text-[9px] font-bold uppercase tracking-wider text-white/50">Scene Flow & Retention Beats</span>
+                                  <div className="text-xs text-white/80 mt-1.5 whitespace-pre-line leading-relaxed font-sans">
+                                    {parsedData?.body}
+                                  </div>
+                                </div>
+
+                                {/* Call To Action */}
+                                {parsedData?.call_to_action && (
+                                  <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between gap-2">
+                                    <div>
+                                      <span className="text-[9px] font-bold uppercase tracking-wider text-white/40">Call To Action</span>
+                                      <p className="text-xs text-white/80 mt-0.5">{parsedData.call_to_action}</p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => copyToClipboard(parsedData.call_to_action, 'cta')}
+                                      className="p-1 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
+                                    >
+                                      {copiedKey === 'cta' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {activeTab === 'seo' && (
+                              <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-bold text-white">Recommended Hashtags</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => copyToClipboard((parsedData?.hashtags || []).join(' '), 'all_tags')}
+                                    className="text-xs text-neon-cyan hover:underline flex items-center gap-1 font-semibold cursor-pointer"
+                                  >
+                                    {copiedKey === 'all_tags' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                    Copy All
+                                  </button>
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {(parsedData?.hashtags || ['#Shorts', '#ViralVideo', '#YouTubeBuddy']).map((tag: string, i: number) => (
+                                    <button
+                                      key={i}
+                                      type="button"
+                                      onClick={() => copyToClipboard(tag, `tag_${i}`)}
+                                      className="px-2.5 py-1 rounded-lg bg-white/8 hover:bg-white/15 border border-white/10 text-xs text-white/90 transition-all font-mono cursor-pointer"
+                                    >
+                                      {tag} {copiedKey === `tag_${i}` && '✓'}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {activeTab === 'raw' && (
+                              <pre className="p-3 rounded-xl bg-black/60 border border-white/10 text-[11px] text-white/70 font-mono overflow-auto max-h-[300px]">
+                                {generatedText || JSON.stringify(parsedData, null, 2)}
+                              </pre>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : isImage && generatedResult ? (
+                      <div className="absolute inset-0 flex items-center justify-center p-4">
+                        <img 
+                          src={generatedResult} 
+                          alt="Generated AI" 
+                          className="max-h-full max-w-full rounded-lg shadow-2xl border border-white/10 object-contain"
+                        />
+                      </div>
                     ) : generatedResult ? (
                       <div className="absolute inset-0 flex items-center justify-center p-4">
-                        {isVideo ? (
-                          <video 
-                            src={generatedResult} 
-                            controls 
-                            autoPlay 
-                            muted
-                            playsInline
-                            className="max-h-full rounded-lg shadow-2xl border border-white/10"
-                          />
-                        ) : isImage ? (
-                          <img 
-                            src={generatedResult} 
-                            alt="Generated AI" 
-                            className="max-h-full max-w-full rounded-lg shadow-2xl border border-white/10 object-contain"
-                          />
-                        ) : (
-                          <div className="flex flex-col items-center gap-4">
-                            <div className="w-20 h-20 bg-neon-purple/20 rounded-full flex items-center justify-center border border-neon-purple/30">
-                              <Mic className="w-10 h-10 text-neon-purple" />
-                            </div>
-                            <audio src={generatedResult} controls className="w-64 accent-neon-purple" />
+                        <div className="flex flex-col items-center gap-4">
+                          <div className="w-20 h-20 bg-neon-purple/20 rounded-full flex items-center justify-center border border-neon-purple/30">
+                            <Mic className="w-10 h-10 text-neon-purple" />
                           </div>
-                        )}
+                          <audio src={generatedResult} controls className="w-64 accent-neon-purple" />
+                        </div>
                       </div>
                     ) : generatedText ? (
                       <div className="relative z-10 max-h-full overflow-y-auto p-6 text-sm leading-6 text-white/75 whitespace-pre-wrap">
