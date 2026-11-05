@@ -1,0 +1,257 @@
+"""Versioned timeline schema + compiler from timeline -> FFmpeg filter graph.
+
+All timing is in integer frames at the sequence frame rate, so edits are frame-exact.
+Track order is display order (top to bottom). Video is composited bottom-up, so a video
+track that appears higher in the list sits on top in the picture.
+"""
+from __future__ import annotations
+
+import uuid
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+SCHEMA_VERSION = 1
+ALLOWED_FPS = (24, 25, 30, 50, 60)
+MAX_CLIPS = 300
+
+
+class Transform(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    x: float = Field(0, ge=-10000, le=10000)  # px offset from centre, in sequence pixels
+    y: float = Field(0, ge=-10000, le=10000)
+    scale: float = Field(1.0, ge=0.05, le=10)
+    rotation: float = Field(0, ge=-360, le=360)  # degrees, clockwise
+    opacity: float = Field(1.0, ge=0, le=1)
+
+
+class Clip(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    id: str = Field(min_length=1, max_length=64)
+    asset_id: uuid.UUID
+    start: int = Field(ge=0)  # timeline frame where the clip begins
+    in_: int = Field(0, ge=0, alias="in")  # source offset (frames)
+    out: int = Field(gt=0)  # source end (frames, exclusive)
+    volume: float = Field(1.0, ge=0, le=4)
+    fade_in: int = Field(0, ge=0)
+    fade_out: int = Field(0, ge=0)
+    transform: Transform = Field(default_factory=Transform)
+
+    @property
+    def length(self) -> int:
+        return self.out - self.in_
+
+    @property
+    def end(self) -> int:
+        return self.start + self.length
+
+    @model_validator(mode="after")
+    def _check(self):
+        if self.out <= self.in_:
+            raise ValueError("clip out must be after in")
+        if self.fade_in + self.fade_out > self.length:
+            raise ValueError("fades longer than clip")
+        return self
+
+
+class Track(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: str = Field(min_length=1, max_length=64)
+    kind: Literal["video", "audio"]
+    name: str = Field(max_length=60)
+    muted: bool = False
+    hidden: bool = False
+    locked: bool = False
+    clips: list[Clip] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _no_overlap(self):
+        cs = sorted(self.clips, key=lambda c: c.start)
+        for a, b in zip(cs, cs[1:]):
+            if b.start < a.end:
+                raise ValueError(f"clips {a.id} and {b.id} overlap on track {self.name}")
+        return self
+
+
+class Timeline(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    schema_version: Literal[1] = SCHEMA_VERSION
+    fps: int
+    width: int = Field(ge=144, le=3840)
+    height: int = Field(ge=144, le=3840)
+    tracks: list[Track] = Field(max_length=24)
+
+    @model_validator(mode="after")
+    def _check(self):
+        if self.fps not in ALLOWED_FPS:
+            raise ValueError(f"fps must be one of {ALLOWED_FPS}")
+        if self.width % 2 or self.height % 2:
+            raise ValueError("width and height must be even")
+        ids = [t.id for t in self.tracks]
+        if len(ids) != len(set(ids)):
+            raise ValueError("duplicate track id")
+        cids = [c.id for t in self.tracks for c in t.clips]
+        if len(cids) != len(set(cids)):
+            raise ValueError("duplicate clip id")
+        if len(cids) > MAX_CLIPS:
+            raise ValueError(f"at most {MAX_CLIPS} clips per sequence")
+        return self
+
+    @property
+    def duration_frames(self) -> int:
+        return max((c.end for t in self.tracks for c in t.clips), default=0)
+
+    def asset_ids(self) -> set[uuid.UUID]:
+        return {c.asset_id for t in self.tracks for c in t.clips}
+
+
+def default_timeline(fps: int = 30, width: int = 1920, height: int = 1080) -> dict:
+    return Timeline(fps=fps, width=width, height=height, tracks=[
+        Track(id="v2", kind="video", name="V2"),
+        Track(id="v1", kind="video", name="V1"),
+        Track(id="a1", kind="audio", name="A1"),
+        Track(id="a2", kind="audio", name="A2"),
+    ]).model_dump(by_alias=True, mode="json")
+
+
+# ---------------------------------------------------------------- compiler
+
+class AssetInfo(BaseModel):
+    path: str
+    kind: Literal["video", "audio", "image"]
+    has_audio: bool
+    has_video: bool
+    duration_s: float | None = None
+
+
+def _f(x: float) -> str:
+    return f"{x:.6f}".rstrip("0").rstrip(".") or "0"
+
+
+def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: str,
+                   out_w: int | None = None, out_h: int | None = None, crf: int = 20) -> tuple[list[str], float]:
+    """Return (ffmpeg argv, duration seconds). Raises ValueError for un-renderable timelines."""
+    fps = tl.fps
+    D = tl.duration_frames / fps
+    if D <= 0:
+        raise ValueError("timeline is empty")
+    W, H = tl.width, tl.height
+
+    args: list[str] = ["ffmpeg", "-hide_banner", "-nostdin", "-y", "-loglevel", "error"]
+    graph: list[str] = [
+        f"color=c=black:s={W}x{H}:r={fps}:d={_f(D)},format=yuv420p[base0]",
+        f"anullsrc=r=48000:cl=stereo,atrim=duration={_f(D)}[abase]",
+    ]
+    n_inputs = 0
+    vlabel = "base0"
+    audio_labels: list[str] = []
+
+    def add_input(clip: Clip, a: AssetInfo) -> int:
+        nonlocal n_inputs
+        dur = clip.length / fps
+        if a.kind == "image":
+            args.extend(["-loop", "1", "-framerate", str(fps), "-t", _f(dur), "-i", a.path])
+        else:
+            args.extend(["-ss", _f(clip.in_ / fps), "-t", _f(dur), "-i", a.path])
+        n_inputs += 1
+        return n_inputs - 1
+
+    # Video: bottom track first.
+    video_tracks = [t for t in tl.tracks if t.kind == "video"]
+    for track in reversed(video_tracks):
+        for clip in sorted(track.clips, key=lambda c: c.start):
+            a = assets.get(clip.asset_id)
+            if a is None:
+                raise ValueError(f"missing media for clip {clip.id}")
+            use_v = a.has_video and not track.hidden and clip.transform.opacity > 0
+            use_a = a.has_audio and not track.muted and clip.volume > 0
+            if not (use_v or use_a):
+                continue
+            idx = add_input(clip, a)
+            st, en, dur = clip.start / fps, clip.end / fps, clip.length / fps
+            if use_v:
+                tf = clip.transform
+                bw, bh = max(2, int(W * tf.scale)), max(2, int(H * tf.scale))
+                chain = [f"fps={fps}", f"scale={bw}:{bh}:force_original_aspect_ratio=decrease:force_divisible_by=2",
+                         "setsar=1", "format=yuva420p"]
+                if tf.rotation:
+                    r = f"{_f(tf.rotation)}*PI/180"
+                    chain.append(f"rotate={r}:c=none:ow=rotw({r}):oh=roth({r})")
+                if tf.opacity < 1:
+                    chain.append(f"colorchannelmixer=aa={_f(tf.opacity)}")
+                if clip.fade_in:
+                    chain.append(f"fade=t=in:st=0:d={_f(clip.fade_in / fps)}:alpha=1")
+                if clip.fade_out:
+                    chain.append(f"fade=t=out:st={_f(dur - clip.fade_out / fps)}:d={_f(clip.fade_out / fps)}:alpha=1")
+                chain.append(f"setpts=PTS-STARTPTS+{_f(st)}/TB")
+                graph.append(f"[{idx}:v]{','.join(chain)}[cv{idx}]")
+                nxt = f"base{idx + 1}"
+                graph.append(
+                    f"[{vlabel}][cv{idx}]overlay=x=(W-w)/2+({_f(tf.x)}):y=(H-h)/2+({_f(tf.y)})"
+                    f":eof_action=pass:enable='between(t,{_f(st)},{_f(en)})'[{nxt}]")
+                vlabel = nxt
+            if use_a:
+                audio_labels.append(_audio_chain(graph, idx, clip, fps))
+
+    for track in (t for t in tl.tracks if t.kind == "audio"):
+        if track.muted:
+            continue
+        for clip in sorted(track.clips, key=lambda c: c.start):
+            a = assets.get(clip.asset_id)
+            if a is None:
+                raise ValueError(f"missing media for clip {clip.id}")
+            if not a.has_audio or clip.volume == 0:
+                continue
+            idx = add_input(clip, a)
+            audio_labels.append(_audio_chain(graph, idx, clip, fps))
+
+    if out_w and out_h and (out_w, out_h) != (W, H):
+        graph.append(f"[{vlabel}]scale={out_w}:{out_h}:force_original_aspect_ratio=decrease:force_divisible_by=2,"
+                     f"pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1[vout]")
+    else:
+        graph.append(f"[{vlabel}]null[vout]")
+    mix_in = "".join(f"[{l}]" for l in ["abase", *audio_labels])
+    graph.append(f"{mix_in}amix=inputs={1 + len(audio_labels)}:duration=first:normalize=0:dropout_transition=0,"
+                 f"alimiter=limit=0.98[aout]")
+
+    args += [
+        "-filter_complex", ";".join(graph),
+        "-map", "[vout]", "-map", "[aout]",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", str(crf), "-pix_fmt", "yuv420p", "-r", str(fps),
+        "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
+        "-t", _f(D), "-movflags", "+faststart",
+        "-progress", "pipe:1", "-nostats", out_path,
+    ]
+    return args, D
+
+
+def _audio_chain(graph: list[str], idx: int, clip: Clip, fps: int) -> str:
+    st, dur = clip.start / fps, clip.length / fps
+    chain = ["aresample=48000", "aformat=sample_fmts=fltp:channel_layouts=stereo", "asetpts=PTS-STARTPTS"]
+    if clip.volume != 1:
+        chain.append(f"volume={_f(clip.volume)}")
+    if clip.fade_in:
+        chain.append(f"afade=t=in:st=0:d={_f(clip.fade_in / fps)}")
+    if clip.fade_out:
+        chain.append(f"afade=t=out:st={_f(dur - clip.fade_out / fps)}:d={_f(clip.fade_out / fps)}")
+    ms = int(round(st * 1000))
+    if ms:
+        chain.append(f"adelay={ms}:all=1")
+    graph.append(f"[{idx}:a]{','.join(chain)}[ca{idx}]")
+    return f"ca{idx}"
+
+
+EXPORT_PRESETS: dict[str, dict] = {
+    # short side target; None = match sequence. Only presets the CPU worker genuinely supports are listed.
+    "match": {"label": "Match sequence · H.264 MP4", "short_side": None, "crf": 20},
+    "720p": {"label": "720p · H.264 MP4", "short_side": 720, "crf": 21},
+    "draft": {"label": "Draft 480p · H.264 MP4 (fast)", "short_side": 480, "crf": 26},
+}
+
+
+def preset_dimensions(tl: Timeline, preset: str) -> tuple[int, int]:
+    p = EXPORT_PRESETS[preset]
+    if not p["short_side"] or min(tl.width, tl.height) <= p["short_side"]:
+        return tl.width, tl.height
+    k = p["short_side"] / min(tl.width, tl.height)
+    return int(tl.width * k) // 2 * 2, int(tl.height * k) // 2 * 2

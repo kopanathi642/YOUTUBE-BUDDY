@@ -1,0 +1,9 @@
+node_modules/
+frontend/dist/
+__pycache__/
+*.pyc
+.env
+backend/.env
+backend/tests/fixtures/
+.pytest_cache/
+*.tsbuildinfo

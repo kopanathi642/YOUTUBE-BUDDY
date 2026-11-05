@@ -1,0 +1,47 @@
+# Render Blueprint — one click creates the web app, the background render worker and Postgres.
+# Media lives in Cloudflare R2 (private bucket). Secrets are entered in the Render dashboard, never committed.
+databases:
+  - name: creator-db
+    plan: basic-256mb
+    region: singapore          # closest Render region to India
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: creator-universe-web
+    runtime: docker
+    plan: starter
+    region: singapore
+    healthCheckPath: /api/v1/health
+    preDeployCommand: alembic upgrade head   # migrations run as a controlled release step
+    autoDeploy: true
+    envVars: &shared
+      - key: ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase: { name: creator-db, property: connectionString }
+      - key: S3_ENDPOINT_URL          # https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+        sync: false
+      - key: S3_REGION
+        value: auto
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: CORS_ORIGINS             # your public app URL, e.g. https://creator-universe-web.onrender.com
+        sync: false
+      - key: SCRATCH_DIR
+        value: /tmp/creator-worker
+
+  - type: worker
+    name: creator-universe-worker
+    runtime: docker
+    plan: standard             # 2 GB RAM: FFmpeg renders need headroom
+    region: singapore
+    dockerCommand: python -m app.worker --queues media,render
+    autoDeploy: true
+    envVars: *shared

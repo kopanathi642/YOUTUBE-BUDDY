@@ -1,0 +1,33 @@
+# Full local stack: docker compose up --build  → http://localhost:8000
+services:
+  db:
+    image: postgres:16
+    environment: { POSTGRES_USER: creator, POSTGRES_PASSWORD: creator, POSTGRES_DB: creator }
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U creator"], interval: 5s, retries: 10 }
+  storage:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address :9001
+    environment: { MINIO_ROOT_USER: dev-access-key, MINIO_ROOT_PASSWORD: dev-secret-key }
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [media:/data]
+  web: &app
+    build: .
+    environment: &env
+      DATABASE_URL: postgresql+psycopg://creator:creator@db:5432/creator
+      S3_ENDPOINT_URL: http://storage:9000
+      S3_PUBLIC_ENDPOINT_URL: http://localhost:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: creator-media-dev
+      S3_ACCESS_KEY_ID: dev-access-key
+      S3_SECRET_ACCESS_KEY: dev-secret-key
+      CORS_ORIGINS: http://localhost:8000
+    command: sh -c "alembic upgrade head && python -c 'from app import storage; storage.ensure_bucket([\"http://localhost:8000\"])' && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports: ["8000:8000"]
+    depends_on: { db: { condition: service_healthy }, storage: { condition: service_started } }
+  worker:
+    <<: *app
+    command: python -m app.worker --queues media,render
+    ports: []
+    depends_on: [web]
+volumes: { pgdata: {}, media: {} }

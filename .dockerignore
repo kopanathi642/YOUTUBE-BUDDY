@@ -1,0 +1,6 @@
+**/node_modules
+frontend/dist
+**/__pycache__
+backend/tests/fixtures
+.git
+docs/ui/source-references

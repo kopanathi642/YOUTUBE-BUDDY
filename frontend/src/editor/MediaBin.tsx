@@ -1,0 +1,121 @@
+import { DragEvent, useRef, useState } from "react";
+import { Upload, Search, Film, Music, ImageIcon, X, RotateCcw, Trash2, Plus, AlertCircle } from "lucide-react";
+import { api, Asset, fmtBytes, fmtDuration } from "../api";
+import { useToast } from "../App";
+import { uploadFile, UploadState } from "../upload";
+
+const ACCEPT = ".mp4,.m4v,.mov,.webm,.mkv,.mp3,.wav,.m4a,.aac,.ogg,.flac,.png,.jpg,.jpeg,.webp";
+
+export default function MediaBin({ projectId, assets, setAssets, reload, readOnly, onAdd }: {
+  projectId: string; assets: Asset[]; setAssets: (f: (a: Asset[]) => Asset[]) => void; reload: () => void; readOnly: boolean;
+  onAdd: (a: Asset) => void; fps: number;
+}) {
+  const toast = useToast();
+  const [uploads, setUploads] = useState<UploadState[]>([]);
+  const ctrls = useRef(new Map<string, AbortController>());
+  const [q, setQ] = useState("");
+  const [filter, setFilter] = useState<"all" | "video" | "audio" | "image">("all");
+  const [over, setOver] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+
+  function start(files: FileList | File[]) {
+    for (const file of Array.from(files)) {
+      const key = `${file.name}-${file.size}-${Date.now()}-${Math.random()}`;
+      const ctrl = new AbortController();
+      ctrls.current.set(key, ctrl);
+      setUploads((u) => [...u, { key, file, loaded: 0, total: file.size, status: "starting" }]);
+      const upd = (s: Partial<UploadState>) => setUploads((u) => u.map((x) => (x.key === key ? { ...x, ...s } : x)));
+      uploadFile(projectId, file, upd, ctrl.signal)
+        .then((a) => { setAssets((xs) => [a, ...xs.filter((x) => x.id !== a.id)]); setUploads((u) => u.filter((x) => x.key !== key)); })
+        .catch((e) => {
+          if ((e as Error).name === "AbortError") { setUploads((u) => u.filter((x) => x.key !== key)); return; }
+          upd({ status: "error", error: (e as Error).message });
+        })
+        .finally(() => ctrls.current.delete(key));
+    }
+  }
+
+  function onDrop(e: DragEvent) {
+    e.preventDefault(); setOver(false);
+    if (readOnly) return;
+    if (e.dataTransfer.files.length) start(e.dataTransfer.files);
+  }
+
+  async function remove(a: Asset) {
+    if (!confirm(`Remove "${a.filename}" from this project? Clips using it will show as missing.`)) return;
+    try { await api(`/media/${a.id}`, { method: "DELETE" }); setAssets((xs) => xs.filter((x) => x.id !== a.id)); }
+    catch (e) { toast((e as Error).message); }
+  }
+  async function retry(a: Asset) {
+    try { await api(`/media/${a.id}/retry`, { method: "POST" }); reload(); } catch (e) { toast((e as Error).message); }
+  }
+
+  const shown = assets.filter((a) => (filter === "all" || a.kind === filter) && a.filename.toLowerCase().includes(q.toLowerCase()));
+
+  return (
+    <section className={`ed-bin panel ${over ? "drop" : ""}`} aria-label="Media bin"
+      onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setOver(true); } }}
+      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(false); }} onDrop={onDrop}>
+      <div className="tabs" role="tablist">
+        <button role="tab" aria-selected className="on">Media</button>
+        <button role="tab" aria-selected={false} disabled title="Planned">Effects</button>
+        <button role="tab" aria-selected={false} disabled title="Planned">Templates</button>
+      </div>
+      <div style={{ padding: 10, display: "grid", gap: 8 }}>
+        <div className="row">
+          <button className="btn primary grow" onClick={() => input.current?.click()} disabled={readOnly}><Upload size={15} />Import media</button>
+          <input ref={input} type="file" multiple accept={ACCEPT} hidden onChange={(e) => { if (e.target.files) start(e.target.files); e.target.value = ""; }} />
+        </div>
+        <div className="row" style={{ position: "relative" }}>
+          <Search size={14} className="dim" style={{ position: "absolute", left: 10 }} />
+          <input className="input" style={{ height: 32, paddingLeft: 30, fontSize: 13 }} placeholder="Search media" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search media" />
+        </div>
+        <div className="seg" role="group" aria-label="Media type" style={{ width: "100%" }}>
+          {(["all", "video", "audio", "image"] as const).map((f) => <button key={f} className={filter === f ? "on" : ""} style={{ flex: 1 }} onClick={() => setFilter(f)}>{f[0].toUpperCase() + f.slice(1)}</button>)}
+        </div>
+      </div>
+      <div className="bin-list">
+        {uploads.map((u) => (
+          <div key={u.key} className="bin-upload">
+            <div className="row" style={{ fontSize: 12.5 }}>
+              <span className="grow ellipsis">{u.file.name}</span>
+              {u.status === "error" ? <span className="badge err">failed</span> : <span className="dim mono">{Math.round((u.loaded / u.total) * 100)}%</span>}
+              <button className="btn icon ghost" style={{ width: 24, height: 24 }} aria-label="Cancel upload" onClick={() => { ctrls.current.get(u.key)?.abort(); setUploads((x) => x.filter((y) => y.key !== u.key)); }}><X size={13} /></button>
+            </div>
+            <div className="progress" style={{ marginTop: 6 }}><i style={{ width: `${(u.loaded / u.total) * 100}%` }} /></div>
+            <div className="dim" style={{ fontSize: 11, marginTop: 4 }}>{u.status === "error" ? u.error : u.status === "finishing" ? "Finalising…" : `Uploading · ${fmtBytes(u.loaded)} of ${fmtBytes(u.total)}`}</div>
+          </div>
+        ))}
+        {assets.length === 0 && uploads.length === 0 && (
+          <div className="empty" style={{ padding: "30px 14px" }}>
+            <Upload size={28} color="#a78bfa" />
+            <div style={{ fontSize: 13 }}>Drag video, audio or images here, or use <b>Import media</b>.</div>
+            <div className="dim" style={{ fontSize: 11.5 }}>MP4 · MOV · WebM · MKV · MP3 · WAV · M4A · PNG · JPG</div>
+          </div>
+        )}
+        <div className="bin-grid">
+          {shown.map((a) => (
+            <div key={a.id} className={`bin-item ${a.status}`} draggable={a.status === "ready" && !readOnly}
+              onDragStart={(e) => { e.dataTransfer.setData("application/x-cu-asset", a.id); e.dataTransfer.setData(`application/x-cu-kind-${a.kind}`, "1"); e.dataTransfer.effectAllowed = "copy"; }}
+              onDoubleClick={() => a.status === "ready" && !readOnly && onAdd(a)} title={`${a.filename}\n${fmtBytes(a.size_bytes)}${a.width ? ` · ${a.width}×${a.height}` : ""}${a.fps ? ` · ${a.fps}fps` : ""}`}>
+              <div className="bin-thumb">
+                {a.thumbnail_url ? <img src={a.thumbnail_url} alt="" loading="lazy" /> : a.kind === "audio" ? <Music size={26} /> : a.kind === "image" && a.proxy_url ? <img src={a.proxy_url} alt="" loading="lazy" /> : a.kind === "image" ? <ImageIcon size={26} /> : <Film size={26} />}
+                {a.status === "ready" && a.kind !== "image" && <span className="bin-dur mono">{fmtDuration(a.duration_s)}</span>}
+                {a.status === "ready" && a.height && a.kind !== "image" && <span className="bin-res">{a.height >= 2160 ? "4K" : a.height >= 1080 ? "HD" : `${a.height}p`}</span>}
+                {a.status === "processing" && <div className="bin-over"><span className="spinner" /><span>{a.job?.stage ?? "queued"} {a.job ? `${Math.round(a.job.progress * 100)}%` : ""}</span></div>}
+                {(a.status === "failed" || a.status === "rejected") && <div className="bin-over err"><AlertCircle size={18} /><span>{a.status}</span></div>}
+                {a.status === "ready" && !readOnly && <button className="bin-add" aria-label={`Add ${a.filename} to timeline`} onClick={() => onAdd(a)}><Plus size={14} /></button>}
+              </div>
+              <div className="row" style={{ padding: "5px 2px 0", gap: 4 }}>
+                <span className="grow ellipsis" style={{ fontSize: 12 }}>{a.filename}</span>
+                {a.status === "failed" && !readOnly && <button className="btn icon ghost" style={{ width: 22, height: 22 }} aria-label="Retry processing" title="Retry" onClick={() => retry(a)}><RotateCcw size={12} /></button>}
+                {!readOnly && <button className="btn icon ghost bin-del" style={{ width: 22, height: 22 }} aria-label={`Remove ${a.filename}`} title="Remove" onClick={() => remove(a)}><Trash2 size={12} /></button>}
+              </div>
+              {a.status_detail && <div className="dim" style={{ fontSize: 10.5, padding: "0 2px" }}>{a.status_detail}</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
