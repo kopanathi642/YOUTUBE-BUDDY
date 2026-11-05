@@ -1,6 +1,19 @@
+import { useState } from "react";
 import { RotateCcw, MousePointerClick, Sparkles } from "lucide-react";
 import { Asset } from "../api";
 import { Clip, Timeline, Track, Transform, DEFAULT_TRANSFORM, framesToTimecode, len, updateClip } from "../timeline";
+
+/** Free typing; the value is applied (and clamped) on Enter or when the box loses focus. Esc reverts. */
+function NumBox({ id, value, disabled, commit }: { id: string; value: string; disabled?: boolean; commit: (v: number) => void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const apply = () => {
+    if (draft !== null) { const v = parseFloat(draft); if (Number.isFinite(v)) commit(v); }
+    setDraft(null);
+  };
+  return <input id={id} type="text" inputMode="decimal" disabled={disabled} value={draft ?? value}
+    onFocus={(e) => e.currentTarget.select()} onChange={(e) => setDraft(e.target.value)} onBlur={apply}
+    onKeyDown={(e) => { if (e.key === "Enter") { apply(); e.currentTarget.blur(); } if (e.key === "Escape") { setDraft(null); e.currentTarget.blur(); } }} />;
+}
 
 function Field({ label, value, min, max, step, unit, onChange, disabled, fmt }: {
   label: string; value: number; min: number; max: number; step: number; unit?: string; disabled?: boolean;
@@ -12,8 +25,8 @@ function Field({ label, value, min, max, step, unit, onChange, disabled, fmt }: 
       <label htmlFor={id}>{label}</label>
       <input type="range" min={min} max={max} step={step} value={value} disabled={disabled} onChange={(e) => onChange(+e.target.value)} aria-labelledby={id} />
       <div className="insp-num">
-        <input id={id} type="number" min={min} max={max} step={step} disabled={disabled} value={fmt ? fmt(value) : Math.round(value * 100) / 100}
-          onChange={(e) => { const v = +e.target.value; if (!Number.isNaN(v)) onChange(Math.min(max, Math.max(min, v))); }} />
+        <NumBox id={id} value={fmt ? fmt(value) : String(Math.round(value * 100) / 100)} disabled={disabled}
+          commit={(v) => onChange(Math.min(max, Math.max(min, v)))} />
         {unit && <span className="dim">{unit}</span>}
       </div>
     </div>
