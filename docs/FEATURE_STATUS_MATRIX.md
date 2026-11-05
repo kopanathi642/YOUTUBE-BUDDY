@@ -33,6 +33,17 @@ Evidence: `backend/tests/test_editor_flow.py` (pytest, real Postgres + S3 protoc
 | Editor | Version history + restore (non-destructive) | WORKING | |
 | Editor | Proxy preview playback in browser | PARTIAL | Real playback from proxies; multi-layer sync is best-effort, not frame-locked |
 | Editor | Speed/reverse, keyframes, crop, transitions, effects, nested sequences, roll/slip/slide | NOT_IMPLEMENTED | Phase 2b / 6 |
+| Editor v2 | Layout matching the founder's master reference (tool sidebar, monitor bar, AI assistant, translate & voice, colour/scopes/nodes/quick-actions strip, V4–V1/A1–A3, inspector tabs, storyboard, recommendations, export dock) | WORKING | screenshots `docs/ui/references/editor-v2*.png` |
+| Colour | Lift/gamma/gain/offset wheels, exposure, contrast, saturation, temperature, tint, 8 looks, bypass — identical maths in preview (SVG filter) and export (lutrgb + matrix) | WORKING | `test_colour_grade_changes_rendered_pixels`, `grade.test.ts` |
+| Colour | Curves, HSL qualifiers, LUT import, masks, shot matching | NOT_IMPLEMENTED | |
+| Scopes | Waveform, RGB parade, vectorscope, histogram computed live from the composited program frame (incl. grade) | WORKING | needs bucket CORS (configured) |
+| Analysis | Scene cuts, silences, loudness (LUFS), auto-colour suggestion, face position — computed on the worker for every upload | WORKING | `test_analysis_detects_scene_cut_silence_and_loudness` |
+| AI (rule-based) | AI Magic plan (review → apply → undo): silence cuts, auto colour, level balance, noise reduction, fades; AI Recommendations; Quick Actions (Auto Edit, Shorts Maker, Clips at scene cuts, Scene Detect, Silence Remove, Smart Reframe) | WORKING | `smart.test.ts`, browser run. Labelled "rule-based" — no generative AI involved |
+| Reframe | New 9:16 / 4:5 sequence, cover crop centred on detected face (static per clip) | WORKING | `test_smart_reframe_creates_vertical_sequence`. Motion tracking: NOT_IMPLEMENTED |
+| Sequences | Multiple sequences per project, switcher, rename/delete API | WORKING | |
+| Capture | Webcam/mic recording (browser permission, level meter, retake) → upload; frame snapshot → image asset | WORKING | WebM without duration header handled |
+| Nodes | Read-only node view of the clip's real render chain, ColorCorrect bypass | PARTIAL | free-form node editor NOT_IMPLEMENTED |
+| AI (providers) | Translate, dub, TTS, captions, lip sync, background/object removal | BLOCKED | UI present and locked; needs provider accounts + adapters (`/api/v1/ai/capabilities` reports truthfully) |
 | Export | Server-side FFmpeg render from originals (H.264/AAC MP4; match / 720p / draft 480p) | WORKING | |
 | Export | Real progress from FFmpeg, cancel, retry, idempotency key | WORKING | `test_export_validation_and_cancel` |
 | Export | Output validation: exists, streams, codec, dimensions, fps, duration, decodability | WORKING | stored on each export, shown as “Verified” |

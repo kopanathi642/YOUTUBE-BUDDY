@@ -48,11 +48,27 @@ Everything is prepared in the repository. Going live needs **three accounts that
 
 How it works: the browser signs in with Google through Firebase, sends the ID token once to `POST /api/v1/auth/google`, the backend verifies the signature against Google's public keys (plus project, issuer, expiry, verified email) and starts its normal session. A Google user whose email matches an existing account is linked to it.
 
-## Step 4 — Your own domain (optional, recommended before launch)
-Render → web service → **Custom domains** → add `app.yourdomain.com`, create the CNAME it shows at your DNS provider. HTTPS certificates are automatic. Then update `CORS_ORIGINS` and the R2 CORS origin to the new domain.
+## Step 4 — Your domain youtubebuddy.com (BigRock)
+1. Render → `creator-universe-web` → **Settings → Custom Domains → Add**: `youtubebuddy.com`, then add `www.youtubebuddy.com`.
+2. BigRock → **My Account → Manage Orders → List/Search Orders → youtubebuddy.com → DNS Management** (if it says "Manage DNS" first, activate it). Then:
+   | Type | Host / Name | Value | TTL |
+   |---|---|---|---|
+   | **A** | `@` (blank / root) | `216.24.57.1` | 3600 |
+   | **CNAME** | `www` | `creator-universe-web.onrender.com` (your exact Render host) | 3600 |
+   Delete any other **A** or **AAAA** records for `@` and `www` (BigRock parking or forwarding records), and switch off BigRock "Domain Forwarding" if it is on.
+3. Back in Render press **Verify** on both domains. HTTPS certificates are issued automatically (minutes to a few hours while DNS spreads).
+4. Update settings to the new address:
+   - Render env `CORS_ORIGINS` = `https://youtubebuddy.com,https://www.youtubebuddy.com`
+   - R2 bucket CORS `AllowedOrigins` = the same two URLs
+   - Firebase → Authentication → Authorized domains → add `youtubebuddy.com` and `www.youtubebuddy.com`
+5. Optional: set Render env **`BRAND_NAME`** to the name you want shown in the app (default "Creator Universe").
 
-## Naming warning before you buy a domain
-The reference images use the name “YouTube Buddy X”. YouTube’s API branding rules forbid using “YouTube” (or look-alikes) in an app/company name or domain if you integrate their API, and using it could create trademark problems even without the API. The app currently uses the working name **Creator Universe**. Choose a final brand that does not contain “YouTube” and get a quick trademark check before buying the domain.
+## Naming warning (please read before launch)
+You plan to use **youtubebuddy.com** and the name “YouTube Buddy X”. YouTube’s API branding rules forbid using “YouTube” (or look-alikes) in an app/company name or domain if you integrate their API, and using it could create trademark problems even without the API. The app currently uses the working name **Creator Universe**. Google's OAuth/YouTube API review is likely to reject an app whose name or domain contains “YouTube”, and Google may send a trademark complaint. It is your decision; the brand shown in the app is one setting (`BRAND_NAME`), so you can switch later without code changes. A common pattern: launch on a non-YouTube domain and point youtubebuddy.com at it as a redirect.
+
+## Step 5 — Optional AI providers (turns on the locked AI buttons)
+Built in and already working (no provider): scene detection, silence removal, auto colour, audio level balance, noise reduction, smart reframe 9:16 / 4:5, AI Magic plan, scopes, recording, snapshots.
+Locked until a provider is connected **and** its adapter is built (next phase): translation, dubbing, AI voice/TTS, captions/transcription, lip sync, background/object removal. Typical choices: OpenAI (Whisper + GPT translation + TTS), ElevenLabs (voices, dubbing), Replicate or sync.so (GPU lip sync, background removal). Create the account, then add its key in Render → Environment (never in chat).
 
 ## Operating it
 * **Deploys:** every push to `main` → CI runs tests → Render auto-deploys. Roll back from Render → *Deploys → Rollback*.
