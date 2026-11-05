@@ -1,15 +1,18 @@
-import { DragEvent, useRef, useState } from "react";
-import { Upload, Search, Film, Music, ImageIcon, X, RotateCcw, Trash2, Plus, AlertCircle } from "lucide-react";
+import { DragEvent, MutableRefObject, useEffect, useRef, useState } from "react";
+import { Upload, Search, Film, Music, ImageIcon, X, RotateCcw, Trash2, Plus, AlertCircle, Video } from "lucide-react";
+import { LOOKS } from "../grade";
 import { api, Asset, fmtBytes, fmtDuration } from "../api";
 import { useToast } from "../App";
 import { uploadFile, UploadState } from "../upload";
 
 const ACCEPT = ".mp4,.m4v,.mov,.webm,.mkv,.mp3,.wav,.m4a,.aac,.ogg,.flac,.png,.jpg,.jpeg,.webp";
 
-export default function MediaBin({ projectId, assets, setAssets, reload, readOnly, onAdd }: {
+export default function MediaBin({ projectId, assets, setAssets, reload, readOnly, onAdd, uploadRef, onRecord, onLook, canLook }: {
   projectId: string; assets: Asset[]; setAssets: (f: (a: Asset[]) => Asset[]) => void; reload: () => void; readOnly: boolean;
-  onAdd: (a: Asset) => void; fps: number;
+  onAdd: (a: Asset) => void; fps: number; uploadRef: MutableRefObject<((f: File[]) => void) | null>; onRecord: () => void;
+  onLook: (i: number) => void; canLook: boolean;
 }) {
+  const [binTab, setBinTab] = useState<"media" | "effects">("media");
   const toast = useToast();
   const [uploads, setUploads] = useState<UploadState[]>([]);
   const ctrls = useRef(new Map<string, AbortController>());
@@ -35,6 +38,8 @@ export default function MediaBin({ projectId, assets, setAssets, reload, readOnl
     }
   }
 
+  useEffect(() => { uploadRef.current = (f) => start(f); });
+
   function onDrop(e: DragEvent) {
     e.preventDefault(); setOver(false);
     if (readOnly) return;
@@ -57,13 +62,20 @@ export default function MediaBin({ projectId, assets, setAssets, reload, readOnl
       onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setOver(true); } }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(false); }} onDrop={onDrop}>
       <div className="tabs" role="tablist">
-        <button role="tab" aria-selected className="on">Media</button>
-        <button role="tab" aria-selected={false} disabled title="Planned">Effects</button>
+        <button role="tab" aria-selected={binTab === "media"} className={binTab === "media" ? "on" : ""} onClick={() => setBinTab("media")}>Media</button>
+        <button role="tab" aria-selected={binTab === "effects"} className={binTab === "effects" ? "on" : ""} onClick={() => setBinTab("effects")}>Effects</button>
         <button role="tab" aria-selected={false} disabled title="Planned">Templates</button>
+        <button role="tab" aria-selected={false} disabled title="Planned (needs licensed stock provider)">Stock</button>
+        <button role="tab" aria-selected={false} disabled title="Planned (needs generation provider)">AI Assets</button>
       </div>
+      {binTab === "effects" ? <div className="bin-list" style={{ paddingTop: 10 }}>
+        <div className="dim" style={{ fontSize: 12, marginBottom: 8 }}>{canLook ? "Click a look to apply it to the selected clip." : "Select a video clip on the timeline, then pick a look."}</div>
+        <div className="bin-grid">{LOOKS.map((l, i) => <button key={l.name} className="look" disabled={!canLook || readOnly} onClick={() => onLook(i)}><span className="look-ph" style={{ filter: `url(#look-${i})` }} /><span>{l.name}</span></button>)}</div>
+      </div> : <>
       <div style={{ padding: 10, display: "grid", gap: 8 }}>
         <div className="row">
-          <button className="btn primary grow" onClick={() => input.current?.click()} disabled={readOnly}><Upload size={15} />Import media</button>
+          <button className="btn primary grow" onClick={() => input.current?.click()} disabled={readOnly}><Upload size={15} />Import Media</button>
+          <button className="btn" onClick={onRecord} disabled={readOnly} title="Record camera or voice"><Video size={15} />Record</button>
           <input ref={input} type="file" multiple accept={ACCEPT} hidden onChange={(e) => { if (e.target.files) start(e.target.files); e.target.value = ""; }} />
         </div>
         <div className="row" style={{ position: "relative" }}>
@@ -116,6 +128,7 @@ export default function MediaBin({ projectId, assets, setAssets, reload, readOnl
           ))}
         </div>
       </div>
+      </>}
     </section>
   );
 }

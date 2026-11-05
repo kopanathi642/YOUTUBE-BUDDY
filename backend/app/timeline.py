@@ -25,6 +25,40 @@ class Transform(BaseModel):
     opacity: float = Field(1.0, ge=0, le=1)
 
 
+Vec3 = tuple[float, float, float]
+
+
+class ColorGrade(BaseModel):
+    """Primary grade. Same maths in the browser preview (SVG filter) and the FFmpeg render (lutrgb + matrix).
+    Per channel: x*wb -> x*(gain-lift)+lift+offset -> pow(1/gamma) -> contrast around 0.5 -> saturation matrix."""
+    model_config = ConfigDict(extra="forbid")
+    enabled: bool = True
+    lift: Vec3 = (0.0, 0.0, 0.0)
+    gamma: Vec3 = (1.0, 1.0, 1.0)
+    gain: Vec3 = (1.0, 1.0, 1.0)
+    offset: Vec3 = (0.0, 0.0, 0.0)
+    exposure: float = Field(0.0, ge=-4, le=4)       # stops
+    contrast: float = Field(1.0, ge=0, le=3)
+    saturation: float = Field(1.0, ge=0, le=3)
+    temperature: float = Field(0.0, ge=-1, le=1)    # + warmer
+    tint: float = Field(0.0, ge=-1, le=1)           # + magenta
+
+    @model_validator(mode="after")
+    def _ranges(self):
+        for name, lo, hi in (("lift", -1, 1), ("gamma", 0.1, 10), ("gain", 0, 4), ("offset", -1, 1)):
+            if any(not (lo <= v <= hi) for v in getattr(self, name)):
+                raise ValueError(f"{name} out of range")
+        return self
+
+    def is_identity(self) -> bool:
+        return not self.enabled or self == ColorGrade(enabled=self.enabled)
+
+    def wb(self) -> Vec3:
+        e = 2 ** self.exposure
+        t, ti = self.temperature, self.tint
+        return (e * (1 + 0.2 * t) * (1 + 0.1 * ti), e * (1 - 0.2 * ti), e * (1 - 0.2 * t) * (1 + 0.1 * ti))
+
+
 class Clip(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     id: str = Field(min_length=1, max_length=64)
@@ -36,6 +70,8 @@ class Clip(BaseModel):
     fade_in: int = Field(0, ge=0)
     fade_out: int = Field(0, ge=0)
     transform: Transform = Field(default_factory=Transform)
+    color: ColorGrade | None = None
+    denoise: bool = False  # FFmpeg FFT noise reduction on this clip's audio (applied in export)
 
     @property
     def length(self) -> int:
@@ -80,6 +116,7 @@ class Timeline(BaseModel):
     width: int = Field(ge=144, le=3840)
     height: int = Field(ge=144, le=3840)
     tracks: list[Track] = Field(max_length=24)
+    notes: str = Field("", max_length=10000)
 
     @model_validator(mode="after")
     def _check(self):
@@ -107,10 +144,13 @@ class Timeline(BaseModel):
 
 def default_timeline(fps: int = 30, width: int = 1920, height: int = 1080) -> dict:
     return Timeline(fps=fps, width=width, height=height, tracks=[
-        Track(id="v2", kind="video", name="V2"),
-        Track(id="v1", kind="video", name="V1"),
-        Track(id="a1", kind="audio", name="A1"),
-        Track(id="a2", kind="audio", name="A2"),
+        Track(id="v4", kind="video", name="Adjustment Layer"),
+        Track(id="v3", kind="video", name="VFX / Compositing"),
+        Track(id="v2", kind="video", name="Titles / Graphics"),
+        Track(id="v1", kind="video", name="Video"),
+        Track(id="a1", kind="audio", name="Voice"),
+        Track(id="a2", kind="audio", name="Music (BGM)"),
+        Track(id="a3", kind="audio", name="SFX / Ambience"),
     ]).model_dump(by_alias=True, mode="json")
 
 
@@ -173,7 +213,10 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
                 tf = clip.transform
                 bw, bh = max(2, int(W * tf.scale)), max(2, int(H * tf.scale))
                 chain = [f"fps={fps}", f"scale={bw}:{bh}:force_original_aspect_ratio=decrease:force_divisible_by=2",
-                         "setsar=1", "format=yuva420p"]
+                         "setsar=1"]
+                if clip.color and not clip.color.is_identity():
+                    chain += grade_filters(clip.color)
+                chain.append("format=yuva420p")
                 if tf.rotation:
                     r = f"{_f(tf.rotation)}*PI/180"
                     chain.append(f"rotate={r}:c=none:ow=rotw({r}):oh=roth({r})")
@@ -225,9 +268,29 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
     return args, D
 
 
+def grade_filters(g: ColorGrade) -> list[str]:
+    def ch(i: int) -> str:
+        m, L, G, O, Ga, C = g.wb()[i], g.lift[i], g.gain[i], g.offset[i], g.gamma[i], g.contrast
+        x = f"clip(val/255*{_f(m)},0,1)"
+        x = f"clip({x}*{_f(G - L)}+{_f(L + O)},0,1)"
+        x = f"pow({x},{_f(1 / Ga)})"
+        x = f"clip(({x}-0.5)*{_f(C)}+0.5,0,1)"
+        return f"'{x}*255'"
+    out = ["format=rgba", f"lutrgb=r={ch(0)}:g={ch(1)}:b={ch(2)}"]
+    s = g.saturation
+    if s != 1:  # identical coefficients to the SVG feColorMatrix "saturate" used by the preview
+        out.append("colorchannelmixer=" + ":".join(f"{k}={_f(v)}" for k, v in {
+            "rr": 0.213 + 0.787 * s, "rg": 0.715 - 0.715 * s, "rb": 0.072 - 0.072 * s,
+            "gr": 0.213 - 0.213 * s, "gg": 0.715 + 0.285 * s, "gb": 0.072 - 0.072 * s,
+            "br": 0.213 - 0.213 * s, "bg": 0.715 - 0.715 * s, "bb": 0.072 + 0.928 * s}.items()))
+    return out
+
+
 def _audio_chain(graph: list[str], idx: int, clip: Clip, fps: int) -> str:
     st, dur = clip.start / fps, clip.length / fps
     chain = ["aresample=48000", "aformat=sample_fmts=fltp:channel_layouts=stereo", "asetpts=PTS-STARTPTS"]
+    if clip.denoise:
+        chain.append("afftdn=nr=18:nf=-40:tn=1")
     if clip.volume != 1:
         chain.append(f"volume={_f(clip.volume)}")
     if clip.fade_in:

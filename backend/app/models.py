@@ -125,6 +125,7 @@ class MediaAsset(Base, Timestamped):
     proxy_key: Mapped[str | None] = mapped_column(String(500))
     thumbnail_key: Mapped[str | None] = mapped_column(String(500))
     waveform_key: Mapped[str | None] = mapped_column(String(500))
+    analysis: Mapped[dict | None] = mapped_column(JSONB)  # scenes, silences, loudness, auto grade, subject position
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 

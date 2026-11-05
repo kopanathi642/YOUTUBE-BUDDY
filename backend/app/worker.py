@@ -16,7 +16,7 @@ import uuid
 
 from sqlalchemy import select
 
-from . import jobs, media, storage
+from . import analysis, jobs, media, storage
 from .config import get_settings
 from .db import session_factory
 from .models import Export, Job, MediaAsset, MediaStatus, Sequence, SequenceVersion
@@ -108,6 +108,15 @@ def handle_media_process(ctx: Ctx, tmp: str):
         media.make_waveform(src, wf, meta["duration_s"] or 0)
         storage.upload(wf, f"{base}/waveform.json", "application/json")
         asset.waveform_key = f"{base}/waveform.json"
+    if meta["kind"] in ("video", "audio"):
+        # Analyse the proxy for video (much faster, same content); originals for audio-only.
+        src_an = proxy if meta["kind"] == "video" else src
+        try:
+            asset.analysis = analysis.analyze(src_an, meta, lambda p, s: ctx.progress(0.88 + 0.1 * p, s, force=True))
+        except Cancelled:
+            raise
+        except Exception as e:  # analysis is helpful, not essential: never fail the upload over it
+            asset.analysis = {"version": 1, "error": f"{type(e).__name__}"}
     asset.status, asset.status_detail = MediaStatus.ready, None
     db.commit()
     return {"asset_id": str(asset.id), "duration_s": meta["duration_s"], "width": meta["width"], "height": meta["height"]}

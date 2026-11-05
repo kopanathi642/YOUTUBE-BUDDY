@@ -73,6 +73,8 @@ def inspect(path: str, claimed_kind: str) -> dict:
     v = next((s for s in streams if s.get("codec_type") == "video" and not s.get("disposition", {}).get("attached_pic")), None)
     a = next((s for s in streams if s.get("codec_type") == "audio"), None)
     duration = float(fmt.get("duration") or 0) or None
+    if not duration and claimed_kind != "image":
+        duration = _decode_duration(path)  # browser recordings (MediaRecorder WebM) carry no duration header
     if claimed_kind == "video" and not v:
         raise MediaRejected("No video stream found")
     if claimed_kind == "audio" and not a:
@@ -106,6 +108,16 @@ def inspect(path: str, claimed_kind: str) -> dict:
                                                        "sample_rate", "channels", "pix_fmt", "color_space", "color_transfer", "color_primaries")}
                               for s in streams]},
     }
+
+
+def _decode_duration(path: str) -> float | None:
+    import re
+    r = run(["ffmpeg", "-hide_banner", "-i", path, "-f", "null", "-"], timeout=3600)
+    times = re.findall(r"time=(\d+):(\d+):([\d.]+)", r.stderr)
+    if not times:
+        return None
+    h, m, sec = times[-1]
+    return int(h) * 3600 + int(m) * 60 + float(sec) or None
 
 
 def sha256_file(path: str) -> str:

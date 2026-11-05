@@ -1,11 +1,11 @@
 import { PointerEvent as RPE, useEffect, useMemo, useRef, useState } from "react";
-import { Scissors, Trash2, Magnet, Lock, Unlock, Eye, EyeOff, Volume2, VolumeX, Plus, ZoomIn, ZoomOut, ArrowLeftToLine, Film, Music } from "lucide-react";
+import { Scissors, Trash2, Magnet, Lock, Unlock, Eye, EyeOff, Volume2, VolumeX, Plus, ZoomIn, ZoomOut, ArrowLeftToLine } from "lucide-react";
 import { Asset } from "../api";
 import { Timeline, Track, Clip, end, len, moveClip, trimStart, trimEnd, snap, snapPoints, splitAllAt, deleteClip, updateTrack, addTrack, duration, framesToTimecode } from "../timeline";
 import { assetFrames } from "./Editor";
 
-const HEAD_W = 156;
-const ROW_H = { video: 58, audio: 50 };
+const HEAD_W = 214;
+const ROW_H = { video: 27, audio: 27 };
 
 type Drag = { mode: "move" | "trimL" | "trimR" | "scrub"; id?: string; x0: number; origStart: number; origEnd: number; base: Timeline; moved: boolean };
 
@@ -111,8 +111,7 @@ export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead,
         <button className="btn sm ghost" onClick={() => edit(addTrack(tl, "video"))} disabled={readOnly || tl.tracks.length >= 24}><Plus size={14} />Video track</button>
         <button className="btn sm ghost" onClick={() => edit(addTrack(tl, "audio"))} disabled={readOnly || tl.tracks.length >= 24}><Plus size={14} />Audio track</button>
         <div className="grow" />
-        <span className="mono" style={{ fontSize: 12.5, color: "var(--cyan)" }}>{timecode}</span>
-        <span className="tl-sep" />
+        {timecode && <><span className="mono" style={{ fontSize: 12.5, color: "var(--cyan)" }}>{timecode}</span><span className="tl-sep" /></>}
         <button className="btn icon ghost" aria-label="Zoom out" onClick={() => zoom(1 / 1.4)}><ZoomOut size={15} /></button>
         <input type="range" min={0} max={100} value={Math.round((Math.log(pps / 4) / Math.log(150)) * 100)} aria-label="Timeline zoom"
           onChange={(e) => setPps(4 * Math.pow(150, +e.target.value / 100))} style={{ width: 110 }} />
@@ -129,7 +128,7 @@ export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead,
             </div>
           </div>
           {view.tracks.map((t) => (
-            <TrackRow key={t.id} t={t} tl={tl} view={view} ppf={ppf} contentW={contentW} assets={assets} selected={selected} readOnly={readOnly}
+            <TrackRow key={t.id} badge={t.kind === "video" ? `V${view.tracks.filter((x) => x.kind === "video").length - view.tracks.filter((x) => x.kind === "video").indexOf(t)}` : `A${view.tracks.filter((x) => x.kind === "audio").indexOf(t) + 1}`} t={t} tl={tl} view={view} ppf={ppf} contentW={contentW} assets={assets} selected={selected} readOnly={readOnly}
               edit={edit} down={down} move={move} up={up}
               onLaneDown={(e) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setSelected(null); setPlayhead(xToFrame(e.clientX, r.left)); }}
               onDrop={(id, x, rectLeft) => onDropAsset(id, t.id, xToFrame(x, rectLeft))} />
@@ -141,8 +140,8 @@ export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead,
   );
 }
 
-function TrackRow({ t, tl, view, ppf, contentW, assets, selected, readOnly, edit, down, move, up, onLaneDown, onDrop }: {
-  t: Track; tl: Timeline; view: Timeline; ppf: number; contentW: number; assets: Map<string, Asset>; selected: string | null; readOnly: boolean;
+function TrackRow({ badge, t, tl, view, ppf, contentW, assets, selected, readOnly, edit, down, move, up, onLaneDown, onDrop }: {
+  badge: string; t: Track; tl: Timeline; view: Timeline; ppf: number; contentW: number; assets: Map<string, Asset>; selected: string | null; readOnly: boolean;
   edit: (t: Timeline | null) => boolean; down: (e: RPE, m: Drag["mode"], c?: Clip) => void; move: (e: RPE) => void; up: () => void;
   onLaneDown: (e: RPE) => void; onDrop: (assetId: string, clientX: number, laneLeft: number) => void;
 }) {
@@ -152,7 +151,8 @@ function TrackRow({ t, tl, view, ppf, contentW, assets, selected, readOnly, edit
   return (
     <div className="tl-row" style={{ height: ROW_H[t.kind] }}>
       <div className={`tl-head ${t.kind}`}>
-        <span className="tl-name">{t.kind === "video" ? <Film size={13} /> : <Music size={13} />}{t.name}</span>
+        <span className="tl-badge">{badge}</span>
+        <span className="tl-name ellipsis" title={t.name}>{t.name}</span>
         <div className="row" style={{ gap: 0 }}>
           <button className="btn icon ghost xs" aria-pressed={t.locked} aria-label={`${t.locked ? "Unlock" : "Lock"} ${t.name}`} disabled={readOnly}
             onClick={() => edit(updateTrack(tl, t.id, { locked: !t.locked }))}>{t.locked ? <Lock size={13} /> : <Unlock size={13} className="dim" />}</button>

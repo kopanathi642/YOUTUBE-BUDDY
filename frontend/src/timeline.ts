@@ -2,12 +2,18 @@
 // Every op returns a NEW timeline or null when the edit is invalid (e.g. it would overlap a clip).
 
 export type Transform = { x: number; y: number; scale: number; rotation: number; opacity: number };
+export type Vec3 = [number, number, number];
+export type ColorGrade = {
+  enabled: boolean; lift: Vec3; gamma: Vec3; gain: Vec3; offset: Vec3;
+  exposure: number; contrast: number; saturation: number; temperature: number; tint: number;
+};
 export type Clip = {
   id: string; asset_id: string; start: number; in: number; out: number;
   volume: number; fade_in: number; fade_out: number; transform: Transform;
+  color?: ColorGrade | null; denoise?: boolean;
 };
 export type Track = { id: string; kind: "video" | "audio"; name: string; muted: boolean; hidden: boolean; locked: boolean; clips: Clip[] };
-export type Timeline = { schema_version: 1; fps: number; width: number; height: number; tracks: Track[] };
+export type Timeline = { schema_version: 1; fps: number; width: number; height: number; tracks: Track[]; notes?: string };
 
 export const DEFAULT_TRANSFORM: Transform = { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 };
 

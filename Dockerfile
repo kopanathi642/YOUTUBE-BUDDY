@@ -9,7 +9,7 @@ RUN npm run build
 # ---- 2. runtime: API + worker share one image (different start commands) ----
 FROM python:3.13-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 FRONTEND_DIST=/app/frontend/dist
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg curl && rm -rf /var/lib/apt/lists/* \
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg curl libglib2.0-0 && rm -rf /var/lib/apt/lists/* \
     && useradd -m -u 10001 app
 WORKDIR /app/backend
 COPY backend/requirements.txt ./

@@ -25,7 +25,8 @@ export async function api<T = any>(path: string, opts: { method?: string; body?:
   const data = await res.json().catch(() => null);
   if (!res.ok) {
     const d = data?.detail;
-    const msg = typeof d === "string" ? d : d?.message ?? (Array.isArray(d) ? d.map((x: any) => x.msg).join("; ") : `Request failed (${res.status})`);
+    const first = d?.errors?.[0];
+    const msg = typeof d === "string" ? d : d?.message ? d.message + (first ? `: ${first.msg} (${(first.loc ?? []).slice(-3).join(".")})` : "") : (Array.isArray(d) ? d.map((x: any) => x.msg).join("; ") : `Request failed (${res.status})`);
     throw new ApiError(res.status, msg, d);
   }
   return data as T;
@@ -46,6 +47,7 @@ export type Asset = {
   size_bytes: number; duration_s: number | null; width: number | null; height: number | null; fps: number | null;
   video_codec: string | null; audio_codec: string | null; has_audio: boolean | null; has_video: boolean | null;
   thumbnail_url: string | null; proxy_url: string | null; waveform_url: string | null; job: Job | null; created_at: string;
+  analysis?: any;
 };
 
 export type Project = {

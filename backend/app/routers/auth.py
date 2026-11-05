@@ -72,7 +72,7 @@ def auth_config():
     """Public sign-in options for the web app. Firebase web config values are public identifiers by design."""
     s = get_settings()
     enabled = bool(s.firebase_project_id and s.firebase_api_key and s.firebase_auth_domain)
-    return {"password": True, "google": enabled,
+    return {"brand": s.brand_name, "password": True, "google": enabled,
             "firebase": {"apiKey": s.firebase_api_key, "authDomain": s.firebase_auth_domain,
                          "projectId": s.firebase_project_id, "appId": s.firebase_app_id} if enabled else None}
 

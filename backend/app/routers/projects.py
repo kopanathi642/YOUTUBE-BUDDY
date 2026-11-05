@@ -164,3 +164,98 @@ def restore(sequence_id: uuid.UUID, body: RestoreIn, request: Request, user: Use
           from_version=body.version)
     db.commit()
     return ser_sequence(s)
+
+
+# ---------------------------------------------------------------- multiple sequences + smart reframe
+
+class SequenceCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    format: Literal["landscape", "vertical", "square", "portrait_45"] | None = None
+    from_sequence_id: uuid.UUID | None = None
+    reframe: bool = False  # subject-aware cover crop of the main video track into the new format
+
+
+ASPECTS = {**FORMATS, "portrait_45": (1080, 1350)}
+
+
+def reframe_timeline(src: dict, W2: int, H2: int, assets: dict[uuid.UUID, MediaAsset]) -> dict:
+    """Fill a new canvas with the bottom video track (cover crop, centred on the detected face when known).
+    Overlay tracks keep their look, with positions scaled to the new canvas. Static crop per clip:
+    no motion tracking yet."""
+    tl = Timeline.model_validate(src)
+    W1, H1 = tl.width, tl.height
+    vids = [t for t in tl.tracks if t.kind == "video"]
+    base = vids[-1] if vids else None
+    for t in vids:
+        for c in t.clips:
+            a = assets.get(c.asset_id)
+            if t is base and a and a.width and a.height:
+                contain = min(W2 / a.width, H2 / a.height)
+                cover = max(W2 / a.width, H2 / a.height)
+                dw = a.width * cover
+                sx = (a.analysis or {}).get("subject_center_x") or 0.5
+                limit = max(0.0, (dw - W2) / 2)
+                x = max(-limit, min(limit, -(sx - 0.5) * dw))
+                c.transform.scale = round(min(10.0, cover / contain), 4)
+                c.transform.x, c.transform.y = round(x, 1), 0.0
+            else:
+                c.transform.x = round(c.transform.x * W2 / W1, 1)
+                c.transform.y = round(c.transform.y * H2 / H1, 1)
+    tl.width, tl.height = W2, H2
+    return tl.model_dump(by_alias=True, mode="json")
+
+
+@router.post("/projects/{project_id}/sequences", status_code=201)
+def create_sequence(project_id: uuid.UUID, body: SequenceCreate, request: Request, user: User = Depends(current_user),
+                    db: Session = Depends(get_db)):
+    p = load_project(db, user, project_id, Role.editor)
+    if db.scalar(select(func.count()).select_from(Sequence).where(Sequence.project_id == p.id)) >= 20:
+        raise HTTPException(422, "A project can have at most 20 sequences")
+    if body.from_sequence_id:
+        src = db.get(Sequence, body.from_sequence_id)
+        if not src or src.project_id != p.id:
+            raise HTTPException(404, "Source sequence not found")
+        tl = src.timeline
+        if body.format:
+            W2, H2 = ASPECTS[body.format]
+            if body.reframe:
+                ids = Timeline.model_validate(tl).asset_ids()
+                assets = {a.id: a for a in db.scalars(select(MediaAsset).where(MediaAsset.id.in_(ids)))} if ids else {}
+                tl = reframe_timeline(tl, W2, H2, assets)
+            else:
+                tl = {**tl, "width": W2, "height": H2}
+    else:
+        W2, H2 = ASPECTS[body.format or "landscape"]
+        main = db.scalar(select(Sequence).where(Sequence.project_id == p.id).order_by(Sequence.created_at))
+        tl = default_timeline(main.timeline["fps"] if main else 30, W2, H2)
+    s = Sequence(workspace_id=p.workspace_id, project_id=p.id, name=body.name.strip(), version=1, timeline=tl)
+    db.add(s)
+    db.flush()
+    db.add(SequenceVersion(sequence_id=s.id, version=1, timeline=tl, saved_by=user.id))
+    audit(db, request, "sequence.create", user=user, workspace_id=p.workspace_id, target_type="sequence", target_id=s.id,
+          reframe=body.reframe, format=body.format)
+    db.commit()
+    return ser_sequence(s)
+
+
+class SequencePatch(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+
+
+@router.patch("/sequences/{sequence_id}")
+def rename_sequence(sequence_id: uuid.UUID, body: SequencePatch, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    s = load_sequence(db, user, sequence_id, Role.editor)
+    s.name = body.name.strip()
+    db.commit()
+    return ser_sequence(s)
+
+
+@router.delete("/sequences/{sequence_id}")
+def delete_sequence(sequence_id: uuid.UUID, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    s = load_sequence(db, user, sequence_id, Role.editor)
+    if db.scalar(select(func.count()).select_from(Sequence).where(Sequence.project_id == s.project_id)) <= 1:
+        raise HTTPException(422, "A project needs at least one sequence")
+    audit(db, request, "sequence.delete", user=user, workspace_id=s.workspace_id, target_type="sequence", target_id=s.id)
+    db.delete(s)
+    db.commit()
+    return {"ok": True}

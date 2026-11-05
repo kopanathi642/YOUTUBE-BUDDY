@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     firebase_auth_domain: str | None = None
     firebase_app_id: str | None = None
 
+    # Product name shown in the app. Change in one place (env BRAND_NAME) — see DEPLOYMENT.md naming warning.
+    brand_name: str = "Creator Universe"
+
     # Web
     cors_origins: str = "http://localhost:5173"
     session_cookie_name: str = "cu_session"

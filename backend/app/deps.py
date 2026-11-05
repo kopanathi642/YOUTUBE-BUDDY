@@ -60,6 +60,7 @@ def ser_asset(a: MediaAsset, job: Job | None = None) -> dict:
         "thumbnail_url": storage.signed_get(a.thumbnail_key) if a.thumbnail_key else None,
         "proxy_url": storage.signed_get(a.proxy_key) if a.proxy_key else None,
         "waveform_url": storage.signed_get(a.waveform_key) if a.waveform_key else None,
+        "analysis": a.analysis,
         "job": ser_job(job),
     }
 
