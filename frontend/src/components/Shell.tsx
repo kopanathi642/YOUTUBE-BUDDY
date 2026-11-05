@@ -44,7 +44,7 @@ export function UserMenu() {
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <button className="btn ghost" onClick={() => setOpen(!open)} aria-haspopup="menu" aria-expanded={open}>
-        <span className="avatar">{initials}</span><span className="hide-m" style={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis" }}>{workspace?.name}</span><ChevronDown size={14} />
+        {me.user.avatar_url ? <img className="avatar" src={me.user.avatar_url} alt="" referrerPolicy="no-referrer" /> : <span className="avatar">{initials}</span>}<span className="hide-m" style={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis" }}>{workspace?.name}</span><ChevronDown size={14} />
       </button>
       {open && (
         <div className="menu card" role="menu">

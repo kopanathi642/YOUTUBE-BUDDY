@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     s3_bucket: str = "creator-media-dev"
     signed_url_ttl_seconds: int = 900
 
+    # Firebase Authentication (Google sign-in). Web config values are public identifiers, not secrets.
+    firebase_project_id: str | None = None
+    firebase_api_key: str | None = None
+    firebase_auth_domain: str | None = None
+    firebase_app_id: str | None = None
+
     # Web
     cors_origins: str = "http://localhost:5173"
     session_cookie_name: str = "cu_session"

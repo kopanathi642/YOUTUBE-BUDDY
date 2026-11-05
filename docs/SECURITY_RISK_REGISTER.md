@@ -13,3 +13,5 @@
 | 9 | Cost abuse (render farming) | Max duration, concurrency cap, clip cap | Per-plan quotas + credits (Phase 8); sign-up abuse controls | Medium |
 | 10 | Brand / trademark | Working name avoids "YouTube" | Trademark check + legal review before launch | High (business) |
 | 11 | Legal pages | None published as final | Privacy policy, terms, refund policy need qualified legal review (India DPDP Act) | High (business) |
+| 12 | Forged Google/Firebase tokens (e.g. decoding JWT without verifying) | RS256 signature checked against Google certs, aud/iss/exp/iat/auth_time/sub enforced, `alg` pinned, fails closed if keys can't be fetched; 9 attack cases tested | Restrict the Firebase browser API key to app domains | High → mitigated |
+| 13 | Account takeover via email linking | Link only when Google says `email_verified`; a second Google UID for the same email gets 409 | — | Medium → mitigated |

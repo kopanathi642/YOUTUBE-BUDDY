@@ -38,6 +38,16 @@ Everything is prepared in the repository. Going live needs **three accounts that
 
 > If Render rejects a plan name in `render.yaml` (it renamed instance types in 2026), choose the equivalent in the dashboard: web **512 MB**, worker **1 CPU / 2 GB**, Postgres **256 MB**.
 
+## Step 3b — Google sign-in (your Firebase project `ytbuddy-3`)
+`render.yaml` already sets `FIREBASE_PROJECT_ID`, `FIREBASE_AUTH_DOMAIN` and `FIREBASE_API_KEY` (public values by design). In the Firebase console:
+1. **Authentication → Sign-in method → Google → Enable** (set a support email).
+2. **Authentication → Settings → Authorized domains → Add domain**: your Render host (e.g. `creator-universe-web.onrender.com`) and later your own domain. Without this, the Google window shows `auth/unauthorized-domain`.
+3. **Project settings → Your apps → Web app** → copy the real `appId` (looks like `1:303749195157:web:` + hex) into Render's `FIREBASE_APP_ID` (optional, but don't use `…web:ytbuddyx`, which isn't valid).
+4. Google Cloud console (same project) → **APIs & Services → Credentials → the "Browser key"** → *Application restrictions: Websites* → add your app domains, so nobody can use the key from other sites.
+5. **OAuth consent screen**: app name, logo, support email, privacy-policy URL. Only basic scopes (email, profile) are requested, so no Google review is needed. Do **not** add YouTube scopes yet: `youtube.readonly` requires Google's verification review and will be requested later, only when a YouTube feature is switched on.
+
+How it works: the browser signs in with Google through Firebase, sends the ID token once to `POST /api/v1/auth/google`, the backend verifies the signature against Google's public keys (plus project, issuer, expiry, verified email) and starts its normal session. A Google user whose email matches an existing account is linked to it.
+
 ## Step 4 — Your own domain (optional, recommended before launch)
 Render → web service → **Custom domains** → add `app.yourdomain.com`, create the CNAME it shows at your DNS provider. HTTPS certificates are automatic. Then update `CORS_ORIGINS` and the R2 CORS origin to the new domain.
 

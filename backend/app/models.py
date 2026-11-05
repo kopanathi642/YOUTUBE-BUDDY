@@ -39,7 +39,9 @@ class User(Base, Timestamped):
     id: Mapped[uuid.UUID] = uuid_pk()
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False, index=True)
     display_name: Mapped[str] = mapped_column(String(120), nullable=False)
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String(255))  # NULL for Google-only accounts
+    firebase_uid: Mapped[str | None] = mapped_column(String(128), unique=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(500))
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 

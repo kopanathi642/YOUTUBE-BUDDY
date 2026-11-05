@@ -34,6 +34,15 @@ services:
         value: "true"
       - key: CORS_ORIGINS             # your public app URL, e.g. https://creator-universe-web.onrender.com
         sync: false
+      # Google sign-in via Firebase project "ytbuddy-3". Web config values are public identifiers, not secrets.
+      - key: FIREBASE_PROJECT_ID
+        value: ytbuddy-3
+      - key: FIREBASE_AUTH_DOMAIN
+        value: ytbuddy-3.firebaseapp.com
+      - key: FIREBASE_API_KEY
+        value: AIzaSyBDvbm-e_74r8nxeTVTLB9ON7tEoy0Th_M
+      - key: FIREBASE_APP_ID          # copy from Firebase console → Project settings → Your apps (optional)
+        sync: false
       - key: SCRATCH_DIR
         value: /tmp/creator-worker
 

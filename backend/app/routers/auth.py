@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..db import get_db
 from ..models import Role, User, Workspace, WorkspaceMember
+from ..firebase_auth import InvalidToken, verify_id_token
 from ..security import (audit, auth_limiter, create_session, current_user, hash_password, revoke_session,
                         verify_password)
 
@@ -29,6 +30,10 @@ class SignupIn(BaseModel):
         return v
 
 
+class GoogleIn(BaseModel):
+    id_token: str = Field(min_length=20, max_length=8000)
+
+
 class LoginIn(BaseModel):
     email: str
     password: str
@@ -45,9 +50,72 @@ def me_payload(db: Session, user: User) -> dict:
                       .where(WorkspaceMember.user_id == user.id, Workspace.deleted_at.is_(None))
                       .order_by(Workspace.is_personal.desc(), Workspace.created_at)).all()
     return {"user": {"id": str(user.id), "email": user.email, "display_name": user.display_name,
-                     "email_verified": user.email_verified},
+                     "email_verified": user.email_verified, "avatar_url": user.avatar_url,
+                     "has_password": user.password_hash is not None, "google_linked": user.firebase_uid is not None},
             "workspaces": [{"id": str(w.id), "name": w.name, "is_personal": w.is_personal, "role": m.role.value}
                            for m, w in rows]}
+
+
+def _create_user(db: Session, **fields) -> tuple[User, Workspace]:
+    user = User(**fields)
+    db.add(user)
+    db.flush()
+    ws = Workspace(name=f"{user.display_name}'s workspace", is_personal=True)
+    db.add(ws)
+    db.flush()
+    db.add(WorkspaceMember(workspace_id=ws.id, user_id=user.id, role=Role.owner))
+    return user, ws
+
+
+@router.get("/config")
+def auth_config():
+    """Public sign-in options for the web app. Firebase web config values are public identifiers by design."""
+    s = get_settings()
+    enabled = bool(s.firebase_project_id and s.firebase_api_key and s.firebase_auth_domain)
+    return {"password": True, "google": enabled,
+            "firebase": {"apiKey": s.firebase_api_key, "authDomain": s.firebase_auth_domain,
+                         "projectId": s.firebase_project_id, "appId": s.firebase_app_id} if enabled else None}
+
+
+@router.post("/google")
+def google_sign_in(body: GoogleIn, request: Request, response: Response, db: Session = Depends(get_db)):
+    """Exchange a verified Firebase ID token (Google provider) for our own session cookie."""
+    auth_limiter.check(f"google-ip:{request.client.host if request.client else '-'}")
+    try:
+        claims = verify_id_token(body.id_token, get_settings().firebase_project_id or "")
+    except InvalidToken as e:
+        audit(db, request, "auth.google_rejected", reason=str(e)[:100])
+        db.commit()
+        raise HTTPException(401, "Google sign-in could not be verified")
+    provider = (claims.get("firebase") or {}).get("sign_in_provider")
+    email = (claims.get("email") or "").strip().lower()
+    if provider != "google.com" or not email or claims.get("email_verified") is not True:
+        raise HTTPException(401, "A verified Google account email is required")
+    uid = claims["sub"]
+    user = db.scalar(select(User).where(User.firebase_uid == uid))
+    created = False
+    if not user:
+        user = db.scalar(select(User).where(User.email == email))
+        if user:
+            if user.firebase_uid and user.firebase_uid != uid:
+                raise HTTPException(409, "This email is linked to a different Google account")
+            user.firebase_uid = uid  # Google has verified ownership of this email, so linking is safe
+            user.email_verified = True
+        else:
+            name = (claims.get("name") or email.split("@")[0])[:120]
+            user, _ = _create_user(db, email=email, display_name=name, password_hash=None, firebase_uid=uid,
+                                   email_verified=True)
+            created = True
+    if not user.is_active:
+        raise HTTPException(403, "Account disabled")
+    pic = claims.get("picture")
+    if isinstance(pic, str) and pic.startswith("https://") and len(pic) <= 500:
+        user.avatar_url = pic
+    token = create_session(db, user, request.headers.get("user-agent"))
+    audit(db, request, "auth.signup" if created else "auth.login", user=user, method="google")
+    db.commit()
+    _set_cookie(response, token)
+    return me_payload(db, user)
 
 
 @router.post("/signup", status_code=201)
@@ -55,13 +123,7 @@ def signup(body: SignupIn, request: Request, response: Response, db: Session = D
     auth_limiter.check(f"signup:{request.client.host if request.client else '-'}")
     if db.scalar(select(func.count()).select_from(User).where(User.email == body.email)):
         raise HTTPException(409, "An account with this email already exists")
-    user = User(email=body.email, display_name=body.display_name.strip(), password_hash=hash_password(body.password))
-    db.add(user)
-    db.flush()
-    ws = Workspace(name=f"{user.display_name}'s workspace", is_personal=True)
-    db.add(ws)
-    db.flush()
-    db.add(WorkspaceMember(workspace_id=ws.id, user_id=user.id, role=Role.owner))
+    user, ws = _create_user(db, email=body.email, display_name=body.display_name.strip(), password_hash=hash_password(body.password))
     token = create_session(db, user, request.headers.get("user-agent"))
     audit(db, request, "auth.signup", user=user, workspace_id=ws.id)
     db.commit()

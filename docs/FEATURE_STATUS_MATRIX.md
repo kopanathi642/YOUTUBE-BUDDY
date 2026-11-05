@@ -10,7 +10,9 @@ Evidence: `backend/tests/test_editor_flow.py` (pytest, real Postgres + S3 protoc
 | Auth | CSRF defence (custom header + CORS) | WORKING | `test_auth_and_csrf` (403 without header) |
 | Auth | Login/sign-up rate limit | PARTIAL | `test_login_rate_limited`; in-process only — move to Redis when API runs >1 instance |
 | Auth | Email verification, password reset | BLOCKED | Needs an email provider (e.g. Resend/SES) |
-| Auth | OAuth (Google), MFA | NOT_IMPLEMENTED | Phase 1b |
+| Auth | Google sign-in via Firebase (project `ytbuddy-3`), server-side ID-token signature verification, account linking by verified email | WORKING (code) / BLOCKED (live) | `test_google_auth.py` (14 tests incl. 9 forged-token attacks). Live popup needs the Firebase console steps in DEPLOYMENT.md (enable Google provider, authorize domain) |
+| Auth | YouTube OAuth scopes | NOT_IMPLEMENTED | deliberately deferred: restricted scope needs Google verification; request only when a YouTube feature exists |
+| Auth | MFA | NOT_IMPLEMENTED | Phase 1b |
 | Workspaces | Personal workspace on sign-up, team workspaces, roles (owner/admin/editor/viewer) | WORKING | `test_viewer_cannot_edit` |
 | Workspaces | Add existing user as member, remove member | WORKING | API only; no UI page yet |
 | Workspaces | Email invitations, ownership transfer, workspace deletion | NOT_IMPLEMENTED | needs email provider |

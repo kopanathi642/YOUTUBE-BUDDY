@@ -25,7 +25,10 @@ def hash_password(pw: str) -> str:
     return _ph.hash(pw)
 
 
-def verify_password(pw: str, hashed: str) -> bool:
+def verify_password(pw: str, hashed: str | None) -> bool:
+    if not hashed:
+        _ph.hash(pw)  # same cost as a real check, so timing doesn't reveal Google-only accounts
+        return False
     try:
         return _ph.verify(hashed, pw)
     except (VerifyMismatchError, InvalidHashError):

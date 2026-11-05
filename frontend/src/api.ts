@@ -32,7 +32,7 @@ export async function api<T = any>(path: string, opts: { method?: string; body?:
 }
 
 export type Workspace = { id: string; name: string; is_personal: boolean; role: "owner" | "admin" | "editor" | "viewer" };
-export type Me = { user: { id: string; email: string; display_name: string; email_verified: boolean }; workspaces: Workspace[] };
+export type Me = { user: { id: string; email: string; display_name: string; email_verified: boolean; avatar_url?: string | null; has_password?: boolean; google_linked?: boolean }; workspaces: Workspace[] };
 
 export type Job = {
   id: string; kind: string; status: "queued" | "running" | "succeeded" | "failed" | "canceled";
