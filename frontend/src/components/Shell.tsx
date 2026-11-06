@@ -19,7 +19,7 @@ export function Brand({ small, sub = "EDITOR UNIVERSE" }: { small?: boolean; sub
 }
 
 // Planned tools are visible (so the roadmap is clear) but labelled and inert — never fake buttons.
-export const PLANNED: { label: string; icon: any }[] = [
+export const EDITOR_TOOLS: { label: string; icon: any }[] = [
   { label: "AI Magic (One-Click)", icon: Sparkles },
   { label: "Shorts Maker", icon: Smartphone },
   { label: "Clips & Reels", icon: Clapperboard },
@@ -77,7 +77,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           <NavLink to="/editor/projects"><FolderOpen size={17} />Projects</NavLink>
           <NavLink to="/editor/projects?open=edit"><Scissors size={17} />Edit</NavLink>
           {[["AI", Wand2], ["Color", Palette], ["Audio", AudioLines], ["Fusion", Workflow], ["Graphics", Type]].map(([l, I]: any) => (
-            <span key={l} title="Planned — not available yet"><I size={17} />{l}</span>
+            <Link key={l} to="/editor/projects?open=edit" title={`${l} tools are inside the editor — open a project`}><I size={17} />{l}</Link>
           ))}
         </nav>
         <div className="grow" />
@@ -97,11 +97,11 @@ export default function Shell({ children }: { children: ReactNode }) {
         <NavLink className="side-link" to="/editor/projects?open=edit"><Film size={17} />Video Editing</NavLink>
         <NavLink className="side-link" to="/editor/projects?open=export"><Download size={17} />Export & Share</NavLink>
         <NavLink className="side-link" to="/library"><LibraryIcon size={17} />Asset library</NavLink>
-        <div className="side-h hide-m">Coming next</div>
-        {PLANNED.map(({ label, icon: I }) => (
-          <div key={label} className="side-link disabled hide-m" aria-disabled="true" title="Planned — not available yet">
-            <I size={17} />{label}<span className="badge soon" style={{ marginLeft: "auto" }}>Soon</span>
-          </div>
+        <div className="side-h hide-m">Inside the editor</div>
+        {EDITOR_TOOLS.map(({ label, icon: I }) => (
+          <Link key={label} to="/editor/projects?open=edit" className="side-link hide-m" title="Open a project to use this tool">
+            <I size={17} />{label}
+          </Link>
         ))}
       </aside>
       <main className="main">{children}</main>
