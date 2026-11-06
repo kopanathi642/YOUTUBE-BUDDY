@@ -55,7 +55,7 @@ export default function MediaBin({ projectId, assets, setAssets, reload, readOnl
     try { await api(`/media/${a.id}/retry`, { method: "POST" }); reload(); } catch (e) { toast((e as Error).message); }
   }
 
-  const shown = assets.filter((a) => (filter === "all" || a.kind === filter) && a.filename.toLowerCase().includes(q.toLowerCase()));
+  const shown = assets.filter((a) => a.kind !== "lut" && (filter === "all" || a.kind === filter) && a.filename.toLowerCase().includes(q.toLowerCase()));
 
   return (
     <section className={`ed-bin panel ${over ? "drop" : ""}`} aria-label="Media bin"

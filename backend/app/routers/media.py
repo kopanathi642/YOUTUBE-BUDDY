@@ -204,3 +204,43 @@ def derive_media(asset_id: uuid.UUID, body: DeriveReq, request: Request, user: U
     audit(db, request, f"media.derive.{body.op}", user=user, workspace_id=src.workspace_id, target_type="media", target_id=new_id, source=str(src.id))
     db.commit()
     return ser_asset(a, job)
+
+
+# ---------------------------------------------------------------- 3D LUTs (.cube) for colour grading
+
+class LutIn(BaseModel):
+    filename: str = Field(min_length=1, max_length=200)
+    content: str = Field(min_length=10, max_length=8 * 1024 * 1024)
+
+
+@router.post("/projects/{project_id}/luts", status_code=201)
+def upload_lut(project_id: uuid.UUID, body: LutIn, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Small text upload (≤ 8 MB) validated as a 3D .cube LUT and stored privately with the project."""
+    import os
+    import tempfile
+    from ..colorlut import LutError, parse_cube
+    p = load_project(db, user, project_id, Role.editor)
+    upload_limiter.check(f"up:{user.id}")
+    if not body.filename.lower().endswith(".cube"):
+        raise HTTPException(422, "Choose a .cube LUT file")
+    try:
+        size, _rows, title = parse_cube(body.content)
+    except (LutError, ValueError) as e:
+        raise HTTPException(422, str(e) or "Not a valid .cube LUT")
+    aid = uuid.uuid4()
+    name = os.path.basename(body.filename).replace("/", "_")[:200]
+    key = f"ws/{p.workspace_id}/proj/{p.id}/luts/{aid}.cube"
+    with tempfile.NamedTemporaryFile("w", suffix=".cube", delete=False) as f:
+        f.write(body.content)
+        tmp = f.name
+    try:
+        storage.upload(tmp, key, "text/plain")
+    finally:
+        os.unlink(tmp)
+    a = MediaAsset(id=aid, workspace_id=p.workspace_id, project_id=p.id, uploaded_by=user.id, filename=name, kind="lut",
+                   declared_content_type="text/plain", size_bytes=len(body.content.encode()), storage_key=key, proxy_key=key,
+                   status=MediaStatus.ready, analysis={"lut": {"size": size, "title": title}})
+    db.add(a)
+    audit(db, request, "lut.upload", user=user, workspace_id=p.workspace_id, target_type="media", target_id=aid, size=size)
+    db.commit()
+    return ser_asset(a)

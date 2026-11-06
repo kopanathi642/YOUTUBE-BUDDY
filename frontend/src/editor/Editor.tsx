@@ -403,7 +403,7 @@ export default function Editor() {
               source={dubSource ? { name: assetMap.get(dubSource.asset_id)?.filename ?? "clip" } : null} />
           </div>
           <div className="r2">
-            <div className="color-panel-anchor"><ColorPanel tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly} /></div>
+            <div className="color-panel-anchor"><ColorPanel tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly} luts={assets.filter((a) => a.kind === "lut")} projectId={projectId!} onLutUploaded={loadMedia} /></div>
             <ScopesPanel samplerRef={samplerRef} tick={playhead} />
             <div className="nodes-anchor"><NodesPanel tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly} /></div>
             <QuickActions caps={caps} onAction={action} readOnly={readOnly} />

@@ -127,9 +127,12 @@ def save_sequence(sequence_id: uuid.UUID, body: SequenceSave, user: User = Depen
         raise HTTPException(422, {"message": "Invalid timeline", "errors": e.errors(include_url=False, include_context=False)})
     ids = tl.asset_ids()
     if ids:
-        found = set(db.scalars(select(MediaAsset.id).where(MediaAsset.id.in_(ids), MediaAsset.project_id == s.project_id)).all())
-        if ids - found:
+        kinds = dict(db.execute(select(MediaAsset.id, MediaAsset.kind).where(MediaAsset.id.in_(ids), MediaAsset.project_id == s.project_id,
+                                                                            MediaAsset.deleted_at.is_(None))).all())
+        if ids - set(kinds):
             raise HTTPException(422, {"message": "Timeline references media outside this project"})
+        if any(kinds[i] == "lut" for i in tl.clip_asset_ids()) or any(kinds[i] != "lut" for i in tl.lut_asset_ids()):
+            raise HTTPException(422, {"message": "A LUT can only be used in colour grading, and clips need video, audio or images"})
     data = tl.model_dump(by_alias=True, mode="json")
     s.version += 1
     s.timeline = data

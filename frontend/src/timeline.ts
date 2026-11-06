@@ -3,9 +3,13 @@
 
 export type Transform = { x: number; y: number; scale: number; rotation: number; opacity: number };
 export type Vec3 = [number, number, number];
+export type CurvePoint = [number, number];
+export type Curves = { master: CurvePoint[]; r: CurvePoint[]; g: CurvePoint[]; b: CurvePoint[] };
+export type LutRef = { asset_id: string; strength: number };
 export type ColorGrade = {
   enabled: boolean; lift: Vec3; gamma: Vec3; gain: Vec3; offset: Vec3;
   exposure: number; contrast: number; saturation: number; temperature: number; tint: number;
+  curves?: Curves | null; lut?: LutRef | null;
 };
 export type Title = { text: string; font_size: number; color: string; bg_color: string | null; bg_opacity: number };
 export type Crop = { left: number; right: number; top: number; bottom: number };

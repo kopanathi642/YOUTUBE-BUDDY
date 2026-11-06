@@ -42,7 +42,7 @@ export type Job = {
 };
 
 export type Asset = {
-  id: string; project_id: string; filename: string; kind: "video" | "audio" | "image";
+  id: string; project_id: string; filename: string; kind: "video" | "audio" | "image" | "lut";
   status: "uploading" | "processing" | "ready" | "failed" | "rejected"; status_detail: string | null;
   size_bytes: number; duration_s: number | null; width: number | null; height: number | null; fps: number | null;
   video_codec: string | null; audio_codec: string | null; has_audio: boolean | null; has_video: boolean | null;

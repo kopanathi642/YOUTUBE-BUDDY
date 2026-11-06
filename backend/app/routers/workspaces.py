@@ -108,8 +108,10 @@ def workspace_media(workspace_id: uuid.UUID, q: str | None = None, kind: str | N
                    MediaAsset.status == MediaStatus.ready))
     if q:
         stmt = stmt.where(MediaAsset.filename.ilike(f"%{q.replace('%', '').replace('_', '')}%"))
-    if kind in ("video", "audio", "image"):
+    if kind in ("video", "audio", "image", "lut"):
         stmt = stmt.where(MediaAsset.kind == kind)
+    else:
+        stmt = stmt.where(MediaAsset.kind != "lut")  # LUTs live in the colour panel, not the media library
     rows = db.execute(stmt.order_by(MediaAsset.created_at.desc()).limit(min(200, max(1, limit)))).all()
     return [ser_asset(a) | {"project_name": pn} for a, pn in rows]
 

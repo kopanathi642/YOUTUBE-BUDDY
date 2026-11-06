@@ -214,6 +214,8 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
             {total > 0 && <div className="stage-chips">
               {autoAdjust && <span className="chip ok"><Sparkles size={12} />Auto-Adjust: ON</span>}
               <span className={`chip ${analysed ? "ok" : ""}`}>{analysed ? "Analysis ready" : "Analysing…"}</span>
+              {layers.some((L) => L.clip.color?.enabled !== false && (L.clip.color?.lut?.strength ?? 0) > 0 && playhead >= L.clip.start && playhead < end(L.clip)) &&
+                <span className="chip" title="LUTs are applied in the export; see the before/after in Color Grading → LUTs">LUT in export</span>}
             </div>}
           </div>
         </div>

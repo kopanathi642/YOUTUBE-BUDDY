@@ -6,6 +6,7 @@ track that appears higher in the list sits on top in the picture.
 """
 from __future__ import annotations
 
+import os
 import uuid
 from typing import Literal
 
@@ -26,6 +27,40 @@ class Transform(BaseModel):
 
 
 Vec3 = tuple[float, float, float]
+Point = tuple[float, float]
+IDENTITY_CURVE: list[Point] = [(0.0, 0.0), (1.0, 1.0)]
+
+
+class Curves(BaseModel):
+    """Tone curves (0..1 in, 0..1 out). Each channel curve is applied after the master curve."""
+    model_config = ConfigDict(extra="forbid")
+    master: list[Point] = Field(default_factory=lambda: list(IDENTITY_CURVE))
+    r: list[Point] = Field(default_factory=lambda: list(IDENTITY_CURVE))
+    g: list[Point] = Field(default_factory=lambda: list(IDENTITY_CURVE))
+    b: list[Point] = Field(default_factory=lambda: list(IDENTITY_CURVE))
+
+    @model_validator(mode="after")
+    def _pts(self):
+        for name in ("master", "r", "g", "b"):
+            pts = getattr(self, name)
+            if not (2 <= len(pts) <= 16):
+                raise ValueError(f"curve {name} needs 2–16 points")
+            xs = [x for x, _ in pts]
+            if any(not (0 <= v <= 1) for pt in pts for v in pt):
+                raise ValueError(f"curve {name} points must be within 0–1")
+            if any(b <= a for a, b in zip(xs, xs[1:])):
+                raise ValueError(f"curve {name} points must be in increasing x order")
+        return self
+
+    def is_identity(self) -> bool:
+        return all([tuple(p) for p in getattr(self, n)] == IDENTITY_CURVE for n in ("master", "r", "g", "b"))
+
+
+class LutRef(BaseModel):
+    """A 3D .cube LUT uploaded to the project (a media asset of kind "lut"), mixed in by `strength`."""
+    model_config = ConfigDict(extra="forbid")
+    asset_id: uuid.UUID
+    strength: float = Field(1.0, ge=0, le=1)
 
 
 class ColorGrade(BaseModel):
@@ -42,6 +77,8 @@ class ColorGrade(BaseModel):
     saturation: float = Field(1.0, ge=0, le=3)
     temperature: float = Field(0.0, ge=-1, le=1)    # + warmer
     tint: float = Field(0.0, ge=-1, le=1)           # + magenta
+    curves: Curves | None = None                     # after contrast, before saturation
+    lut: LutRef | None = None                        # applied last
 
     @model_validator(mode="after")
     def _ranges(self):
@@ -51,7 +88,11 @@ class ColorGrade(BaseModel):
         return self
 
     def is_identity(self) -> bool:
-        return not self.enabled or self == ColorGrade(enabled=self.enabled)
+        if not self.enabled:
+            return True
+        base = self.model_copy(update={"curves": None, "lut": None})
+        return (base == ColorGrade(enabled=True) and (self.curves is None or self.curves.is_identity())
+                and (self.lut is None or self.lut.strength == 0))
 
     def wb(self) -> Vec3:
         e = 2 ** self.exposure
@@ -172,7 +213,13 @@ class Timeline(BaseModel):
         return max((c.end for t in self.tracks for c in t.clips), default=0)
 
     def asset_ids(self) -> set[uuid.UUID]:
+        return self.clip_asset_ids() | self.lut_asset_ids()
+
+    def clip_asset_ids(self) -> set[uuid.UUID]:
         return {c.asset_id for t in self.tracks for c in t.clips if c.asset_id}
+
+    def lut_asset_ids(self) -> set[uuid.UUID]:
+        return {c.color.lut.asset_id for t in self.tracks for c in t.clips if c.color and c.color.lut}
 
 
 def default_timeline(fps: int = 30, width: int = 1920, height: int = 1080) -> dict:
@@ -191,7 +238,7 @@ def default_timeline(fps: int = 30, width: int = 1920, height: int = 1080) -> di
 
 class AssetInfo(BaseModel):
     path: str
-    kind: Literal["video", "audio", "image"]
+    kind: Literal["video", "audio", "image", "lut"]
     has_audio: bool
     has_video: bool
     duration_s: float | None = None
@@ -285,7 +332,7 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
                     chain.append(f"crop=iw*{_f(1 - c.left - c.right)}:ih*{_f(1 - c.top - c.bottom)}:iw*{_f(c.left)}:ih*{_f(c.top)}")
                 chain += [f"scale={bw}:{bh}:force_original_aspect_ratio=decrease:force_divisible_by=2", "setsar=1"]
                 if clip.color and not clip.color.is_identity():
-                    chain += grade_filters(clip.color)
+                    chain += grade_filters(clip.color, workdir, assets, tag=f"c{idx}")
                 chain.append("format=yuva420p")
                 if tf.rotation:
                     r = f"{_f(tf.rotation)}*PI/180"
@@ -340,7 +387,12 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
     return args, D
 
 
-def grade_filters(g: ColorGrade) -> list[str]:
+def _ff_path(p: str) -> str:
+    """Quote a file path for use inside an FFmpeg filter argument."""
+    return "'" + p.replace("\\", "/").replace("'", "") + "'"
+
+
+def grade_filters(g: ColorGrade, workdir: str | None = None, assets: dict | None = None, tag: str = "g") -> list[str]:
     def ch(i: int) -> str:
         m, L, G, O, Ga, C = g.wb()[i], g.lift[i], g.gain[i], g.offset[i], g.gamma[i], g.contrast
         x = f"clip(val/255*{_f(m)},0,1)"
@@ -348,13 +400,27 @@ def grade_filters(g: ColorGrade) -> list[str]:
         x = f"pow({x},{_f(1 / Ga)})"
         x = f"clip(({x}-0.5)*{_f(C)}+0.5,0,1)"
         return f"'{x}*255'"
+    from . import colorlut
+    import tempfile
     out = ["format=rgba", f"lutrgb=r={ch(0)}:g={ch(1)}:b={ch(2)}"]
+    if g.curves and not g.curves.is_identity():
+        workdir = workdir or tempfile.mkdtemp(prefix="grade-")
+        path = colorlut.write_1d_cube(colorlut.curve_tables(g.curves), os.path.join(workdir, f"curves-{tag}.cube"))
+        out.append(f"lut1d=file={_ff_path(path)}:interp=linear")
     s = g.saturation
     if s != 1:  # identical coefficients to the SVG feColorMatrix "saturate" used by the preview
         out.append("colorchannelmixer=" + ":".join(f"{k}={_f(v)}" for k, v in {
             "rr": 0.213 + 0.787 * s, "rg": 0.715 - 0.715 * s, "rb": 0.072 - 0.072 * s,
             "gr": 0.213 - 0.213 * s, "gg": 0.715 + 0.285 * s, "gb": 0.072 - 0.072 * s,
             "br": 0.213 - 0.213 * s, "bg": 0.715 - 0.715 * s, "bb": 0.072 + 0.928 * s}.items()))
+    if g.lut and g.lut.strength > 0:
+        info = (assets or {}).get(g.lut.asset_id)
+        if info is None:
+            raise ValueError("LUT file not available for this render")
+        workdir = workdir or tempfile.mkdtemp(prefix="grade-")
+        size, rows, _ = colorlut.cube_from_path(info.path)
+        path = colorlut.write_3d_cube(size, rows, g.lut.strength, os.path.join(workdir, f"lut-{tag}.cube"))
+        out.append(f"lut3d=file={_ff_path(path)}:interp=tetrahedral")  # keeps alpha (rgba in, rgba out)
     return out
 
 
