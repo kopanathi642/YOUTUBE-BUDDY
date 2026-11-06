@@ -1,5 +1,7 @@
 # Creator Universe — Editor Universe (v0.4)
 
+> **Continuing development?** Read [`HANDOFF.md`](HANDOFF.md) (status, commands, env vars, next steps) and [`CLAUDE.md`](CLAUDE.md).
+
 Cloud video editor for creators. First of three universes (Editor · AI Creation · Super).
 Working name only — see `docs/DEPLOYMENT.md` → *Naming warning*.
 
