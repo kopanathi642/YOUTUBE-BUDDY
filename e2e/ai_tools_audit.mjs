@@ -1,4 +1,5 @@
 // 120-tool AI Generator Universe audit.
+// The audit fires ~50 AI runs in a few minutes: start the server with AI_RUNS_PER_10MIN=1000 (production keeps the default of 60).
 // For EVERY tool: opens its page at 1600px and 1366px and checks the purpose-built workspace, that every control in the
 // registry is on screen, input/output areas, honest status messaging, no horizontal overflow and no console/API errors.
 // For every tool that can run on this server it EXECUTES the real backend operation on real media and records the outcome.

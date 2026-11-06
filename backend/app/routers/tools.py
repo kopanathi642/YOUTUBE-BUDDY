@@ -12,7 +12,8 @@ from ..db import get_db
 from ..deps import load_project, ser_asset, ser_job
 from ..security import require_member
 from ..models import Generation, Job, MediaAsset, MediaStatus, Project, Role, Sequence, SequenceVersion, User
-from ..security import audit, current_user
+from ..config import get_settings
+from ..security import ai_limiter, audit, current_user
 from ..timeline import Timeline
 from ..tools.registry import STUDIOS, TOOLS, keys, public, status
 from ..tools.run import estimate_cost
@@ -105,6 +106,28 @@ def _check_params(db: Session, t: dict, params: dict, workspace_id) -> dict:
     return out
 
 
+PAID_ENGINES = ("fal", "llm", "youtube", "pipeline")
+
+
+def _check_daily_budget(db: Session, workspace_id, est: float) -> None:
+    """Hard daily cap on paid AI per workspace, so a bug, a leaked session or a busy user can't run up the provider bill."""
+    from datetime import datetime, timezone
+    from sqlalchemy import func
+    s = get_settings()
+    if s.ai_daily_budget_usd <= 0:
+        raise HTTPException(403, "Paid AI models are switched off on this server")
+    day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    q = select(func.count(), func.coalesce(func.sum(Generation.est_cost_usd), 0.0)).where(
+        Generation.workspace_id == workspace_id, Generation.created_at >= day, Generation.engine.in_(PAID_ENGINES),
+        Generation.status != "canceled")
+    runs, spent = db.execute(q).one()
+    if runs >= s.ai_daily_paid_runs:
+        raise HTTPException(429, f"Daily limit of {s.ai_daily_paid_runs} paid AI runs reached for this workspace — resets at 05:30 IST")
+    if float(spent) + est > s.ai_daily_budget_usd:
+        raise HTTPException(429, f"Daily paid-AI budget (${s.ai_daily_budget_usd:.2f}) would be exceeded — "
+                                 f"${float(spent):.2f} used today, this run is about ${est:.2f}. Resets at 05:30 IST")
+
+
 def ser_gen(db: Session, g: Generation, full: bool = True) -> dict:
     t = TOOLS.get(g.tool_id, {})
     job = db.get(Job, g.job_id) if g.job_id else None
@@ -132,6 +155,7 @@ def run(project_id: uuid.UUID, tool_id: str, body: RunIn, request: Request, user
     t = TOOLS.get(tool_id)
     if not t:
         raise HTTPException(404, "No such tool")
+    ai_limiter.check(f"ai:{user.id}")
     st = status(t)
     premium = body.model and t["engine"]["type"] == "local" and body.model in {m["id"] for m in t["engine"].get("models", [])}
     if st["state"] == "unbuilt":
@@ -154,13 +178,16 @@ def run(project_id: uuid.UUID, tool_id: str, body: RunIn, request: Request, user
     if root:
         version = 1 + max(g.version for g in db.scalars(select(Generation).where((Generation.root_id == root) | (Generation.id == root))))
     model = body.model or (models[0]["id"] if models and t["engine"]["type"] != "local" else None)
+    paid = t["engine"]["type"] in ("fal", "llm", "youtube") or (t["engine"]["type"] == "pipeline" and t["engine"].get("needs")) or premium
+    est = estimate_cost(t, model, params)
+    if paid:
+        _check_daily_budget(db, p.workspace_id, est or 0.0)
     g = Generation(workspace_id=p.workspace_id, project_id=p.id, created_by=user.id, tool_id=tool_id, engine=t["engine"]["type"],
                    model=model, params=params, status="queued", parent_id=parent and parent.id, version=version,
-                   output_asset_ids=[], est_cost_usd=estimate_cost(t, model, params))
+                   output_asset_ids=[], est_cost_usd=est)
     db.add(g)
     db.flush()
     g.root_id = root or g.id
-    paid = t["engine"]["type"] in ("fal", "llm", "youtube") or (t["engine"]["type"] == "pipeline" and t["engine"].get("needs")) or premium
     j = jobs.enqueue(db, workspace_id=p.workspace_id, project_id=p.id, created_by=user.id, kind="ai.tool",
                      payload={"generation_id": str(g.id)}, max_attempts=1 if paid else 2)
     g.job_id = j.id

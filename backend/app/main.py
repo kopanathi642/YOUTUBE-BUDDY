@@ -19,7 +19,12 @@ logging.basicConfig(level=logging.INFO, format='{"t":"%(asctime)s","lvl":"%(leve
 
 def create_app() -> FastAPI:
     s = get_settings()
-    app = FastAPI(title="Creator Universe API", version="0.1.0", openapi_url="/api/v1/openapi.json", docs_url="/api/v1/docs")
+    prod = s.env == "production"
+    # The interactive API docs are a development aid; in production they are switched off.
+    app = FastAPI(title="Creator Universe API", version="0.1.0", openapi_url=None if prod else "/api/v1/openapi.json",
+                  docs_url=None if prod else "/api/v1/docs", redoc_url=None)
+    csp = content_security_policy(s)
+    hsts = s.cookie_secure or prod
     app.add_middleware(CORSMiddleware, allow_origins=s.cors_origin_list, allow_credentials=True,
                        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
                        allow_headers=["content-type", "x-requested-with", "idempotency-key"])
@@ -33,6 +38,12 @@ def create_app() -> FastAPI:
         response.headers["x-content-type-options"] = "nosniff"
         response.headers["referrer-policy"] = "strict-origin-when-cross-origin"
         response.headers["x-frame-options"] = "DENY"
+        response.headers["permissions-policy"] = "camera=(self), microphone=(self), geolocation=(), payment=(), usb=()"
+        response.headers["cross-origin-opener-policy"] = "same-origin-allow-popups"  # Google sign-in uses a popup
+        if not request.url.path.startswith("/api/v1/docs"):
+            response.headers["content-security-policy"] = csp
+        if hsts:
+            response.headers["strict-transport-security"] = "max-age=31536000; includeSubDomains"
         # path only — never query strings (could contain tokens/signatures)
         log.info(f"rid={rid} {request.method} {request.url.path} {response.status_code} {1000 * (time.perf_counter() - t0):.0f}ms")
         return response
@@ -60,6 +71,40 @@ def create_app() -> FastAPI:
 
     _mount_frontend(app)
     return app
+
+
+def content_security_policy(s) -> str:
+    """Only our own code may run. Media, uploads and downloads may also talk to the private storage endpoint;
+    Google sign-in may talk to Firebase/Google. Everything else (injected scripts, foreign frames) is blocked."""
+    from urllib.parse import urlparse
+    storage = ""
+    ep = s.s3_public_endpoint_url or s.s3_endpoint_url
+    if ep:
+        u = urlparse(ep)
+        if u.scheme and u.netloc:
+            storage = f" {u.scheme}://{u.netloc}"
+    google = ""
+    if s.firebase_project_id:
+        auth = s.firebase_auth_domain or f"{s.firebase_project_id}.firebaseapp.com"
+        google = (" https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com"
+                  " https://apis.google.com"), auth
+    g_connect, g_auth = google if google else ("", "")
+    return "; ".join([
+        "default-src 'self'",
+        "base-uri 'self'",
+        "object-src 'none'",
+        "frame-ancestors 'none'",
+        "form-action 'self'",
+        f"script-src 'self'{' https://apis.google.com https://www.gstatic.com' if g_auth else ''}",
+        "style-src 'self' 'unsafe-inline'",   # React inline style attributes
+        f"img-src 'self' data: blob:{storage}{' https://lh3.googleusercontent.com' if g_auth else ''}",
+        f"media-src 'self' data: blob:{storage}",
+        "font-src 'self' data:",
+        f"connect-src 'self'{storage}{g_connect}",
+        f"frame-src {('https://' + g_auth) if g_auth else chr(39) + 'none' + chr(39)}",
+        "worker-src 'self' blob:",
+        "manifest-src 'self'",
+    ])
 
 
 def _mount_frontend(app: FastAPI) -> None:

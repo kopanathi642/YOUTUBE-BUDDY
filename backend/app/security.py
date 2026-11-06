@@ -99,8 +99,8 @@ async def csrf_guard(request: Request):
 
 # --- Simple sliding-window limiter (per process). Replace with Redis-backed limiter when scaling API horizontally. ---
 class RateLimiter:
-    def __init__(self, limit: int, window_s: int):
-        self.limit, self.window = limit, window_s
+    def __init__(self, limit, window_s: int):
+        self._limit, self.window = limit, window_s  # limit: int, or a callable read at check time (from settings)
         self.hits: dict[str, deque] = defaultdict(deque)
 
     def check(self, key: str) -> None:
@@ -112,8 +112,19 @@ class RateLimiter:
             raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many attempts, try again shortly")
         q.append(now)
 
+    @property
+    def limit(self) -> int:
+        return self._limit() if callable(self._limit) else self._limit
+
     def reset(self):
         self.hits.clear()
 
 
 auth_limiter = RateLimiter(limit=10, window_s=60)
+def _setting(name):
+    from .config import get_settings
+    return lambda: getattr(get_settings(), name)
+
+
+ai_limiter = RateLimiter(limit=_setting("ai_runs_per_10min"), window_s=600)      # stops scripted abuse / runaway costs
+upload_limiter = RateLimiter(limit=_setting("uploads_per_10min"), window_s=600)

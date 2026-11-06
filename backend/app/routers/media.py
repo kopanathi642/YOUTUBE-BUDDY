@@ -13,7 +13,7 @@ from ..db import get_db
 from ..deps import load_asset, load_project, ser_asset
 from ..media import MediaRejected, classify
 from ..models import Job, MediaAsset, MediaStatus, Role, User
-from ..security import audit, current_user
+from ..security import audit, current_user, upload_limiter
 
 router = APIRouter(tags=["media"])
 
@@ -55,6 +55,7 @@ def _safe_name(name: str) -> str:
 def init_upload(project_id: uuid.UUID, body: UploadInit, request: Request, user: User = Depends(current_user),
                 db: Session = Depends(get_db)):
     p = load_project(db, user, project_id, Role.editor)
+    upload_limiter.check(f"up:{user.id}")
     s = get_settings()
     name = _safe_name(body.filename)
     try:

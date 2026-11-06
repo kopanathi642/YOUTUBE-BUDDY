@@ -1,6 +1,6 @@
 # AI Generator Universe — 120-tool audit
 
-Generated 2026-11-06T11:54:35.338Z by `e2e/ai_tools_audit.mjs` against a running server.
+Generated 2026-11-06T16:07:00.439Z by `e2e/ai_tools_audit.mjs` against a running server.
 
 Every tool page was opened at 1600×1000 and 1366×768. A tool's UI passes only if: its studio's purpose-built workspace renders, **every** control in its registry entry is on screen, it has input and output areas, its status message is honest (ready → run button; needs key → names the exact key; not built → says so), there is no horizontal overflow at either size, and there are no page or server errors.
 
@@ -40,15 +40,15 @@ Hosted-model tools (fal.ai, Claude/OpenAI, YouTube) were not run live here becau
 | 019 | Pattern & Texture | B · AI Image Generation | fal · fal-ai/nano-banana-pro, fal-ai/flux-2-pro +2 | ✅ all controls | — needs FAL_KEY (fal.ai account — pay per generation) | compatible | 🔑 Ready once key added |
 | 020 | Image Variations | B · AI Image Generation | fal · fal-ai/nano-banana-pro/edit, openai/gpt-image-2/edit +1 | ✅ all controls | — needs FAL_KEY (fal.ai account — pay per generation) | compatible | 🔑 Ready once key added |
 | 021 | Video Restyle | C · AI Video Transformation | fal · fal-ai/kling-video/o3/pro/video-to-video/edit | ✅ all controls | — needs FAL_KEY (fal.ai account — pay per generation) | compatible | 🔑 Ready once key added |
-| 022 | Background Replace | C · AI Video Transformation | local | ✅ all controls | ✅ 118s · 1 file(s) | placed | ✅ Works (executed) |
-| 023 | Background Removal | C · AI Video Transformation | local | ✅ all controls | ✅ 117s · 1 file(s) | placed | ✅ Works (executed) |
+| 022 | Background Replace | C · AI Video Transformation | local | ✅ all controls | ✅ 126s · 1 file(s) | placed | ✅ Works (executed) |
+| 023 | Background Removal | C · AI Video Transformation | local | ✅ all controls | ✅ 122s · 1 file(s) | placed | ✅ Works (executed) |
 | 024 | Object Removal | C · AI Video Transformation | fal · fal-ai/kling-video/o3/pro/video-to-video/edit | ✅ all controls | — needs FAL_KEY (fal.ai account — pay per generation) | compatible | 🔑 Ready once key added |
 | 025 | Relight & Weather | C · AI Video Transformation | fal · fal-ai/kling-video/o3/pro/video-to-video/edit | ✅ all controls | — needs FAL_KEY (fal.ai account — pay per generation) | compatible | 🔑 Ready once key added |
 | 026 | Video Upscale | C · AI Video Transformation | fal · fal-ai/bytedance-upscaler/upscale/video | ✅ all controls | — needs FAL_KEY (fal.ai account — pay per generation) | compatible | 🔑 Ready once key added |
-| 027 | Stabilization | C · AI Video Transformation | local | ✅ all controls | ✅ 16s · 1 file(s) | placed | ✅ Works (executed) |
-| 028 | Slow Motion & Frame Interpolation | C · AI Video Transformation | local | ✅ all controls | ✅ 589s · 1 file(s) | placed | ✅ Works (executed) |
-| 029 | Denoise & Sharpen | C · AI Video Transformation | local | ✅ all controls | ✅ 8s · 1 file(s) | placed | ✅ Works (executed) |
-| 030 | Auto Colour Grade | C · AI Video Transformation | local | ✅ all controls | ✅ 8s · 1 file(s) | placed | ✅ Works (executed) |
+| 027 | Stabilization | C · AI Video Transformation | local | ✅ all controls | ✅ 18s · 1 file(s) | placed | ✅ Works (executed) |
+| 028 | Slow Motion & Frame Interpolation | C · AI Video Transformation | local | ✅ all controls | ✅ 598s · 1 file(s) | placed | ✅ Works (executed) |
+| 029 | Denoise & Sharpen | C · AI Video Transformation | local | ✅ all controls | ✅ 10s · 1 file(s) | placed | ✅ Works (executed) |
+| 030 | Auto Colour Grade | C · AI Video Transformation | local | ✅ all controls | ✅ 10s · 1 file(s) | placed | ✅ Works (executed) |
 | 031 | Photo Animate | D · AI Animation | fal · fal-ai/kling-video/v3/pro/image-to-video, fal-ai/veo3.1/image-to-video +3 | ✅ all controls | — needs FAL_KEY (fal.ai account — pay per generation) | compatible | 🔑 Ready once key added |
 | 032 | Character Performance | D · AI Animation | fal · fal-ai/kling-video/v3/pro/image-to-video, fal-ai/veo3.1/image-to-video +3 | ✅ all controls | — needs FAL_KEY (fal.ai account — pay per generation) | compatible | 🔑 Ready once key added |
 | 033 | Lip Sync | D · AI Animation | fal · fal-ai/sync-lipsync/v3, fal-ai/kling-video/lipsync/audio-to-video | ✅ all controls | — needs FAL_KEY (fal.ai account — pay per generation) | compatible | 🔑 Ready once key added |
@@ -81,7 +81,7 @@ Hosted-model tools (fal.ai, Claude/OpenAI, YouTube) were not run live here becau
 | 060 | Rewrite & Tone Shift | F · AI Creative Writing | llm | ✅ all controls | — needs ANTHROPIC_API_KEY or OPENAI_API_KEY | n/a | 🔑 Ready once key added |
 | 061 | Scene Breakdown | G · AI Content Intelligence | local | ✅ all controls | ✅ 2s · scenes | n/a | ✅ Works (executed) |
 | 062 | Transcript | G · AI Content Intelligence | local | ✅ all controls | ⚠️ model download blocked in this build sandbox | n/a | ⚠️ Blocked here (model download) |
-| 063 | Face & People Detection | G · AI Content Intelligence | local | ✅ all controls | ✅ 8s · faces | n/a | ✅ Works (executed) |
+| 063 | Face & People Detection | G · AI Content Intelligence | local | ✅ all controls | ✅ 10s · faces | n/a | ✅ Works (executed) |
 | 064 | Ask the Video | G · AI Content Intelligence | fal · fal-ai/video-understanding | ✅ all controls | — needs FAL_KEY (fal.ai account — pay per generation) | n/a | 🔑 Ready once key added |
 | 065 | Highlight Finder | G · AI Content Intelligence | local | ✅ all controls | ✅ 2s · highlights | n/a | ✅ Works (executed) |
 | 066 | Retention Risk Check | G · AI Content Intelligence | local | ✅ all controls | ✅ 2s · retention | n/a | ✅ Works (executed) |
@@ -129,10 +129,10 @@ Hosted-model tools (fal.ai, Claude/OpenAI, YouTube) were not run live here becau
 | 108 | Multi-Language Pack | K · AI Localization | local | ✅ all controls | ⚠️ model download blocked in this build sandbox | n/a | ⚠️ Blocked here (model download) |
 | 109 | Translation Compare | K · AI Localization | pipeline | ✅ all controls | — needs ANTHROPIC_API_KEY or OPENAI_API_KEY | n/a | 🔑 Ready once key added |
 | 110 | Subtitle Timing Fix | K · AI Localization | local | ✅ all controls | ✅ 2s · subtitles | n/a | ✅ Works (executed) |
-| 111 | Workflow Builder | L · AI Creative Automation | pipeline | ✅ all controls | ✅ 14s · workflow | compatible | ✅ Works (executed) |
+| 111 | Workflow Builder | L · AI Creative Automation | pipeline | ✅ all controls | ✅ 12s · workflow | compatible | ✅ Works (executed) |
 | 112 | Long Video → Shorts | L · AI Creative Automation | pipeline | ✅ all controls | ⚠️ model download blocked in this build sandbox | compatible | ⚠️ Blocked here (model download) |
 | 113 | Faceless Video Maker | L · AI Creative Automation | pipeline | ✅ all controls | — needs ANTHROPIC_API_KEY or OPENAI_API_KEY + FAL_KEY (fal.ai account — pay per generation) | compatible | 🔑 Ready once key added |
-| 114 | Podcast to Clips | L · AI Creative Automation | pipeline | ✅ all controls | ✅ 4s · 1 sequence(s) | placed | ✅ Works (executed) |
+| 114 | Podcast to Clips | L · AI Creative Automation | pipeline | ✅ all controls | ✅ 2s · 1 sequence(s) | placed | ✅ Works (executed) |
 | 115 | Auto Localize | L · AI Creative Automation | pipeline | ✅ all controls | ⚠️ model download blocked in this build sandbox | compatible | ⚠️ Blocked here (model download) |
 | 116 | Batch Processor | L · AI Creative Automation | pipeline | ✅ all controls | ✅ 2s · batch | compatible | ✅ Works (executed) |
 | 117 | Scheduled Workflows | L · AI Creative Automation | unbuilt | ✅ all controls | — Needs a scheduler service (cron worker) — not built yet | n/a | 🔒 Not built (shown honestly) |

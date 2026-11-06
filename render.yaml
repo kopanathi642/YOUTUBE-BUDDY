@@ -51,6 +51,10 @@ services:
         sync: false
       - key: YOUTUBE_API_KEY          # channel research tools (free Google Cloud API key, YouTube Data API v3)
         sync: false
+      - key: AI_DAILY_BUDGET_USD      # safety cap on paid AI spend per workspace per day (USD); 0 switches paid models off
+        value: "10"
+      - key: AI_DAILY_PAID_RUNS
+        value: "200"
       - key: SCRATCH_DIR
         value: /tmp/creator-worker
 

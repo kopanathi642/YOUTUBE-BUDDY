@@ -5,6 +5,13 @@ import { useAuth } from "../App";
 import { Brand } from "../components/Shell";
 import { AuthConfig, googleErrorMessage, signInWithGoogle } from "../google";
 
+/** Only same-site paths: blocks open redirects like "//evil.com", "/\\evil.com" or "javascript:" after sign-in. */
+export function safeNext(raw: string | null, origin: string = window.location.origin): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.includes("\\") || /[\u0000-\u001f]/.test(raw)) return "/universes";
+  try { const u = new URL(raw, origin); if (u.origin !== origin) return "/universes"; return u.pathname + u.search + u.hash; }
+  catch { return "/universes"; }
+}
+
 export default function AuthPage({ mode }: { mode: "signin" | "signup" }) {
   const { me, setMe } = useAuth();
   const [params] = useSearchParams();
@@ -16,7 +23,7 @@ export default function AuthPage({ mode }: { mode: "signin" | "signup" }) {
   const [err, setErr] = useState<string | null>(null);
   const [cfg, setCfg] = useState<AuthConfig | null>(null);
   useEffect(() => { api<AuthConfig>("/auth/config").then(setCfg).catch(() => {}); }, []);
-  const next = params.get("next")?.startsWith("/") ? params.get("next")! : "/universes";
+  const next = safeNext(params.get("next"));
   if (me) return <Navigate to={next} replace />;
 
   async function submit(e: FormEvent) {

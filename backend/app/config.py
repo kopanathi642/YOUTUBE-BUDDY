@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     session_cookie_name: str = "cu_session"
     session_ttl_hours: int = 24 * 14
     cookie_secure: bool = False
+    ai_daily_budget_usd: float = 10.0   # max estimated spend on PAID AI models per workspace per day (UTC); 0 = paid models off
+    ai_daily_paid_runs: int = 200
+    ai_runs_per_10min: int = 60          # per-user AI run rate limit
+    uploads_per_10min: int = 120         # per-user upload rate limit       # max paid-model runs per workspace per day, even when the cost estimate is unknown
     cookie_samesite: str = "lax"  # use "none" (+ secure) only when frontend and API are on different sites
 
     # Upload limits (plan entitlements will replace these once billing exists)

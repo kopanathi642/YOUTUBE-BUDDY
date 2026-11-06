@@ -11,7 +11,7 @@ from ..ai_engines import LANG_NAMES, VOICE_BY_ID, default_voice, voices_public
 from ..db import get_db
 from ..deps import load_asset, load_project, ser_asset, ser_job
 from ..models import MediaAsset, MediaStatus, Role, User
-from ..security import audit, current_user
+from ..security import ai_limiter, audit, current_user
 
 router = APIRouter(tags=["ai"])
 
@@ -66,6 +66,7 @@ class TTSReq(BaseModel):
 
 @router.post("/projects/{project_id}/ai/tts", status_code=201)
 def tts(project_id: uuid.UUID, body: TTSReq, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    ai_limiter.check(f"ai:{user.id}")
     p = load_project(db, user, project_id, Role.editor)
     if body.voice_id not in VOICE_BY_ID:
         raise HTTPException(422, "Unknown voice")
@@ -84,6 +85,7 @@ class TranscribeReq(BaseModel):
 
 @router.post("/media/{asset_id}/transcribe", status_code=201)
 def transcribe(asset_id: uuid.UUID, body: TranscribeReq, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    ai_limiter.check(f"ai:{user.id}")
     a = load_asset(db, user, asset_id, Role.editor)
     if a.status != MediaStatus.ready or not a.has_audio:
         raise HTTPException(422, "Choose a ready clip that has sound")
@@ -100,6 +102,7 @@ class TranslateReq(BaseModel):
 
 @router.post("/media/{asset_id}/translate", status_code=201)
 def translate(asset_id: uuid.UUID, body: TranslateReq, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    ai_limiter.check(f"ai:{user.id}")
     a = load_asset(db, user, asset_id, Role.editor)
     if a.status != MediaStatus.ready or not a.has_audio:
         raise HTTPException(422, "Choose a ready clip that has sound")
@@ -120,6 +123,7 @@ class DubReq(BaseModel):
 
 @router.post("/media/{asset_id}/dub", status_code=201)
 def dub(asset_id: uuid.UUID, body: DubReq, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    ai_limiter.check(f"ai:{user.id}")
     src = load_asset(db, user, asset_id, Role.editor)
     if src.status != MediaStatus.ready or not src.has_audio:
         raise HTTPException(422, "Choose a ready clip that has speech")
