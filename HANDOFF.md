@@ -29,7 +29,8 @@ Last updated: 2026-11-07. Read this first when you pick the project up in Claude
 - **Admin:** `ADMIN_EMAILS` (the founder said `kumarbhargav642@gmail.com`; set it in hosting env, not in code). In production an admin must sign in with Google (verified email).
 - **Security asks:** never ask the founder for passwords or keys in chat. Secrets go only into the hosting provider's secret settings. Never commit secrets.
 - **UI requirements:**
-  - Dark premium theme; violet / blue / emerald universe colours.
+  - Dark premium theme; violet / blue / emerald universe colours inside the app. The signed-out landing page (`/`) uses the founder's lime-on-black reference instead (styles scoped under `.lp` in `frontend/src/landing.css`).
+  - Two dashboards: the public landing page before sign-in, and the universe gateway (`/universes`) after sign-in. Signed-in visitors to `/` are sent to `/universes`.
   - Editor layout matches the founder's master reference: tool sidebar, monitor, inspector tabs, V1–V4 / A1–A3, colour/scopes strip, export dock (`docs/ui/references/`).
   - Each AI studio has a distinct UI. AI Generator CSS is scoped under `.aiw` so it can't leak into the editor.
   - Must work at 1366 px laptops and on phones.

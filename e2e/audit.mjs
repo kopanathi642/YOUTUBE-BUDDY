@@ -33,9 +33,12 @@ const setRange = (sel, v) => page.locator(sel).evaluate((el, v) => { Object.getO
 const saved = () => page.waitForFunction(() => document.querySelector(".save-block")?.textContent?.includes("Cloud Saved"), null, { timeout: 15000 });
 
 // ---------------- public pages
-await step("Landing page loads, nav anchors work", async () => {
-  await page.goto(B + "/"); await page.waitForSelector("text=Start editing");
-  for (const a of ["#universes", "#features", "#status"]) await page.click(`a[href="${a}"]`);
+await step("Landing page loads, nav anchors work, live studio counts", async () => {
+  await page.goto(B + "/"); await page.waitForSelector("text=Reach every language.");
+  for (const a of ["#workspaces", "#directory", "#status"]) await page.click(`.lp-links a[href="${a}"]`);
+  await page.waitForFunction(() => document.querySelectorAll(".lp-dir-row:not(.skel)").length === 13);
+  await page.click("button[aria-label='Search tools']"); await page.fill("input[aria-label='Search workspaces']", "dub");
+  await page.waitForFunction(() => document.querySelectorAll(".lp-dir-row").length === 1);
 });
 await step("Sign-up validation shows errors", async () => {
   await page.goto(B + "/signup"); await page.fill("#n", "A"); await page.fill("#e", "bad"); await page.fill("#p", "short");

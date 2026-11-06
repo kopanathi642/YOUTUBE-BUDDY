@@ -475,3 +475,19 @@ def test_generation_isolated_between_workspaces(env, make_client):
     p2 = new_project(other, me2["workspaces"][0]["id"])
     r = other.post(f"/api/v1/projects/{p2['id']}/ai/tools/086/run", json={"params": {"image": env["image"]}})
     assert r.status_code == 404  # cannot use another workspace's file as input
+
+
+def test_public_studios_needs_no_login_and_counts_honestly(make_client, monkeypatch):
+    for k in ("FAL_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "YOUTUBE_API_KEY"):
+        monkeypatch.delenv(k, raising=False)
+    client = make_client()  # signed out
+    r = client.get("/api/v1/public/studios")
+    assert r.status_code == 200
+    d = r.json()
+    assert len(d["studios"]) == 12 and d["total"] == 120
+    assert sum(s["total"] for s in d["studios"]) == 120
+    assert 0 < d["live"] < 120  # local tools are live; key-only tools are not
+    for s in d["studios"]:
+        assert s["live"] == len(s["live_tools"]) <= s["total"]
+    monkeypatch.setenv("FAL_KEY", "x")
+    assert client.get("/api/v1/public/studios").json()["live"] > d["live"]

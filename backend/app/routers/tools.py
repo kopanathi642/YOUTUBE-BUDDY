@@ -29,6 +29,18 @@ def catalogue(user: User = Depends(current_user)):
     return {"studios": STUDIOS, "tools": tools, "keys": k, "counts": counts}
 
 
+@router.get("/public/studios")
+def public_studios():
+    """Signed-out landing page: studios with real live/total tool counts. Only names of tools that work right now."""
+    k = keys()
+    out = []
+    for st in STUDIOS:
+        ts = [t for t in TOOLS.values() if t["studio"] == st["id"]]
+        live = [t["name"] for t in ts if status(t, k)["state"] == "ready"]
+        out.append({**st, "total": len(ts), "live": len(live), "live_tools": live})
+    return {"studios": out, "total": len(TOOLS), "live": sum(s["live"] for s in out)}
+
+
 @router.get("/ai/tools/{tool_id}")
 def tool(tool_id: str, user: User = Depends(current_user)):
     t = TOOLS.get(tool_id) or next((x for x in TOOLS.values() if x["slug"] == tool_id), None)
