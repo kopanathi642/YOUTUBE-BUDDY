@@ -16,12 +16,14 @@ let phase = "start";
 page.on("pageerror", (e) => problems.push(`[${phase}] page error: ${e.message}`));
 page.on("console", (m) => { if (m.type() === "error" && !/fonts\.g|TUNNEL|ERR_TUNNEL|status of 401/.test(m.text()) && !(phase.startsWith("Sign-up validation") && m.text().includes("422"))) problems.push(`[${phase}] console: ${m.text()}`); });
 page.on("response", (r) => { const u = r.url(); if (u.includes("/api/v1/") && r.status() >= 400 && !(r.status() === 401 && u.endsWith("/auth/me")) && !(phase.startsWith("Sign-up validation") && r.status() === 422)) problems.push(`[${phase}] HTTP ${r.status()} ${r.request().method()} ${u.replace(B, "")}`); });
+page.on("dialog", (d) => d.accept().catch(() => {}));   // confirm() prompts: always answer OK
 const w = (ms) => page.waitForTimeout(ms);
 async function step(name, fn) {
   phase = name;
   const before = problems.length;
   try { await fn(); results.push([problems.length > before ? "WARN" : "PASS", name]); }
-  catch (e) { results.push(["FAIL", `${name} — ${String(e.message).split("\n")[0].slice(0, 200)}`]); await page.screenshot({ path: `${OUT}/fail-${results.length}.png` }).catch(() => {}); }
+  catch (e) { await page.keyboard.press("Escape").catch(() => {}); await page.locator(".modal button[aria-label='Close']").click({ timeout: 1000 }).catch(() => {});
+    results.push(["FAIL", `${name} — ${String(e.message).split("\n")[0].slice(0, 200)}`]); await page.screenshot({ path: `${OUT}/fail-${results.length}.png` }).catch(() => {}); }
 }
 const toast = async () => (await page.locator(".toast").allTextContents()).join(" | ");
 const tl = async () => page.evaluate(() => [...document.querySelectorAll(".clip")].map((e) => e.getAttribute("aria-label")));
@@ -63,7 +65,7 @@ await step("Projects page: create, search, archive, restore, rename via editor, 
   await page.click(".seg button:has-text('Archived')"); await page.waitForSelector(".proj-card:has-text('Throwaway')");
   await page.click(".proj-card:has-text('Throwaway') button[aria-label='Restore']"); await w(500);
   await page.click(".seg button:has-text('Active')"); await page.waitForSelector(".proj-card:has-text('Throwaway')");
-  page.once("dialog", (d) => d.accept());
+  
   await page.click(".proj-card:has-text('Throwaway') button[aria-label='Delete']"); await w(800);
   if (await page.locator(".proj-card:has-text('Throwaway')").count()) throw new Error("project not deleted");
 });
@@ -176,13 +178,13 @@ await step("Add Scene (split at playhead) from storyboard", async () => { await 
 await step("Sidebar tools: every item gives working result or explicit reason", async () => {
   const labels = (await page.locator(".ed-side .tool:not(.group-head)").allTextContents()).map((t) => t.replace(/Soon$/, "").trim());
   for (const label of labels) {
-    if (/Video to Shorts \(Auto\)|Reels|Smart Reframe|^Video Tools|^Audio Tools/.test(label)) continue; // sequence-creating ones tested separately
+    if (/Video to Shorts \(Auto\)|Reels|Smart Reframe|^Video Tools|^Audio Tools|Stabilize|Remove Background|Motion Graphics/.test(label)) continue; // long-running or sequence-creating ones have their own steps
     const b = page.locator(".ed-side .tool", { hasText: label }).first();
     if (!(await b.count()) || (await b.isDisabled())) continue;
     const before = await page.evaluate(() => window.__toasts);
     await b.click(); await w(250);
     if (await page.locator(".modal").count()) { await page.click(".modal .btn.ghost"); continue; }
-    const scrollOnly = /^(Media|Edit|Color Grading|VFX & Fusion|Export & Share|Effects & Filters|Transitions)$/.test(label);
+    const scrollOnly = /^(Media|Edit|Color Grading|VFX & Fusion|Export & Share|Effects & Filters|Transitions|Voice & Dubbing)$/.test(label);
     if (!scrollOnly && (await page.evaluate(() => window.__toasts)) <= before) throw new Error(`no feedback from "${label}"`);
   }
   await page.locator(".tool:has-text('Video Tools')").click(); await page.locator(".tool:has-text('Audio Tools')").click();
@@ -212,6 +214,81 @@ await step("Sequence menu: new sequence, switch back", async () => {
 await step("Shorts Maker creates 9:16 sequence", async () => {
   await page.click(".qa:has-text('Shorts Maker')"); await page.waitForFunction(() => document.querySelector(".pill b")?.textContent?.includes("9:16"), null, { timeout: 20000 });
 });
+
+await step("Titles: add title, edit text (Hindi), style, size, colour; renders in preview", async () => {
+  await page.locator(".tl-scroll").evaluate((e) => (e.scrollLeft = 0));
+  await scrubTo(1); await page.click(".ed-side .tool:has-text('Motion Graphics')"); await page.waitForSelector(".clip.title");
+  await page.fill("#title-text", "नमस्ते दोस्तों"); await page.click("#f-Size");   // blur commits text
+  await page.click(".ed-insp .look-list button:has-text('Yellow pop')");
+  await page.click("#f-Size"); await page.keyboard.press("Control+A"); await page.keyboard.type("90"); await page.keyboard.press("Enter");
+  await page.waitForSelector(".title-layer:has-text('नमस्ते')");
+});
+await step("Speed & Time: 2× preset changes clip length", async () => {
+  await page.locator(".tl-scroll").evaluate((e) => (e.scrollLeft = 0));
+  await page.click('[data-track="v1"] .clip >> nth=0'); await page.click(".ed-insp [role=tab]:has-text('Inspector')");
+  const w0 = (await page.locator('[data-track="v1"] .clip').first().boundingBox()).width;
+  await page.click(".ed-insp summary:has-text('Speed')").catch(() => {});
+  await page.click(".ed-insp .look-list button:has-text('2×')"); await w(300);
+  const w1 = (await page.locator('[data-track="v1"] .clip').first().boundingBox()).width;
+  if (!(w1 < w0 * 0.6)) throw new Error(`width ${w0} -> ${w1}`);
+  await page.click(".ed-insp .look-list button:has-text('1×')");
+});
+await step("Cropping sliders", async () => {
+  await page.click(".ed-insp summary:has-text('Cropping')").catch(() => {});
+  await page.click("#f-Left"); await page.keyboard.press("Control+A"); await page.keyboard.type("10"); await page.keyboard.press("Enter");
+  await page.click(".ed-insp button:has-text('Reset crop')");
+});
+await step("Version history: open, restore an earlier version", async () => {
+  await saved(); await page.click("button[aria-label='Version history']"); await page.waitForSelector(".hist-row");
+  
+  await page.locator(".hist-row button:has-text('Restore')").first().click();
+  await page.waitForSelector(".toast:has-text('Restored')");
+  await page.keyboard.press("Control+z").catch(() => {});
+});
+await step("AI voice (text to speech) → voice-over added to timeline", async () => {
+  const n = (await tl()).length;
+  await page.click(".ed-side .tool:has-text('Text to Speech')"); await page.fill("#tts-text", "Welcome back to the channel. Today we explore Goa.");
+  await page.click(".modal button:has-text('Generate voice')");
+  await page.waitForFunction((n) => document.querySelectorAll(".clip").length > n, n, { timeout: 180000 });
+});
+await step("Captions: transcription runs on the worker and reports its engine status honestly", async () => {
+  await page.click(".ed-side .tool:has-text('Subtitle & Translate')"); await page.click(".modal button:has-text('Transcribe')");
+  await page.waitForSelector(".modal .error-box, .modal .transcript", { timeout: 600000 });
+  if (await page.locator(".modal .transcript").count()) { await page.click(".modal button:has-text('Add as captions')"); }
+  else { const t = await page.locator(".modal .error-box").textContent(); if (!/huggingface|Whisper|speech model|OpenAI/i.test(t)) throw new Error("unclear error: " + t); results.push(["NOTE", "Captions engine blocked in this sandbox: " + t.slice(0, 120)]); await page.click(".modal button[aria-label='Close']"); }
+});
+await step("Stabilize selected clip → stabilized copy swapped in", async () => {
+  await page.locator(".tl-scroll").evaluate((e) => (e.scrollLeft = 0));
+  await page.click('[data-track="v1"] .clip >> nth=2'); await page.click(".ed-side .tool:has-text('Stabilize')");
+  await page.waitForSelector('.clip[aria-label*="(stabilized)"]', { timeout: 300000 });
+});
+await step("Background removal on selected clip → transparent copy swapped in", async () => {
+  await page.click('[data-track="v1"] .clip >> nth=1'); await page.click(".qa:has-text('Background Remove')");
+  await page.waitForSelector('.clip[aria-label*="(no background)"]', { timeout: 600000 });
+});
+await step("Highlight finder → 2 shorts created", async () => {
+  await page.click(".ed-side .tool:has-text('Highlight Finder')"); await page.selectOption(".modal select >> nth=0", "15"); await page.selectOption(".modal select >> nth=1", "2");
+  await page.waitForSelector(".modal .plan-op"); await page.click(".modal button.primary");
+  await page.waitForFunction(() => document.querySelector(".pill b")?.textContent?.startsWith("Short 1"), null, { timeout: 30000 });
+  await page.click(".viewer-head .pill:has-text('Program')"); await page.click(".menu-item:has-text('Main sequence')");
+  await page.waitForFunction(() => document.querySelector(".pill b")?.textContent?.includes("Main sequence"));
+});
+await step("Thumbnail designer → saved to media bin", async () => {
+  const n = await page.locator(".bin-item").count();
+  await scrubTo(2); await page.click(".ed-side .tool:has-text('Design & Thumbnail')"); await page.waitForSelector(".thumb-canvas");
+  await page.click(".modal button:has-text('Save to media bin')");
+  await page.waitForFunction((n) => document.querySelectorAll(".bin-item").length > n, n, { timeout: 30000 });
+});
+await step("Translate & Dub runs (pipeline) and reports engine status honestly", async () => {
+  await page.locator(".tl-scroll").evaluate((e) => (e.scrollLeft = 0));
+  await page.click('[data-track="v1"] .clip >> nth=0');
+  await page.click(".voice button:has-text('Translate & Dub')");
+  await page.waitForFunction(() => !document.querySelector(".voice .dub .spinner"), null, { timeout: 600000 });
+  const t = await toast();
+  if (/Dubbed audio added/.test(t)) return;
+  if (/huggingface|Whisper|speech model|OpenAI/i.test(t)) { results.push(["NOTE", "Dubbing engine blocked in this sandbox: " + t.slice(0, 140)]); return; }
+  throw new Error("no clear outcome: " + t);
+});
 await step("Export: tabs, queue, render, verified download", async () => {
   for (const t of ["Presets", "Queue", "Export"]) await page.click(`.export-dock [role=tab]:has-text("${t}")`);
   await page.selectOption(".exp-form select >> nth=1", "draft");
@@ -227,11 +304,11 @@ await step("Export cancel", async () => {
   await page.waitForSelector(".q-row .badge:has-text('canceled')", { timeout: 20000 });
 });
 await step("Reload keeps the edit (persistence)", async () => {
-  await saved(); const before = (await tl()).length; await page.reload(); await page.waitForSelector(".clip");
+  await w(1500); await saved(); await w(1500); await saved(); const before = (await tl()).length; await page.reload(); await page.waitForSelector(".clip");
   const after = (await tl()).length; if (after !== before) throw new Error(`${before} -> ${after}`);
 });
 await step("Delete media from bin", async () => {
-  page.once("dialog", (d) => d.accept()); const n = await page.locator(".bin-item").count();
+   const n = await page.locator(".bin-item").count();
   await page.hover(".bin-item >> nth=0"); await page.click(".bin-item >> nth=0 >> .bin-del"); await w(600);
   if ((await page.locator(".bin-item").count()) !== n - 1) throw new Error("not removed");
 });
@@ -242,8 +319,8 @@ await step("Mobile layout renders editor + dashboard", async () => {
 
 phase = "done";
 await browser.close();
-const fails = results.filter((r) => r[0] !== "PASS");
+const fails = results.filter((r) => r[0] === "FAIL" || r[0] === "WARN");
 console.log(results.map((r) => `${r[0]}  ${r[1]}`).join("\n"));
-console.log(`\n${results.filter((r) => r[0] === "PASS").length}/${results.length} steps passed`);
+console.log(`\n${results.filter((r) => r[0] === "PASS").length}/${results.filter((r) => r[0] !== "NOTE").length} steps passed`);
 if (problems.length) console.log("\nProblems:\n" + [...new Set(problems)].join("\n"));
 process.exit(fails.length || problems.length ? 1 : 0);

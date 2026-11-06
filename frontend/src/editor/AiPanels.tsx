@@ -64,14 +64,18 @@ export function AssistantPanel({ caps, autoAdjust, setAutoAdjust, onMagic, readO
   );
 }
 
-const LANGS = ["Auto-detect", "English", "Hindi", "Spanish", "French", "German", "Portuguese", "Arabic", "Japanese", "Korean", "Chinese", "Tamil", "Telugu", "Bengali", "Marathi"];
-const VOICES = ["Male", "Female", "Narrator", "Young", "Studio"];
-
-export function VoicePanel({ caps }: { caps: Caps }) {
+export function VoicePanel({ caps, catalog, source, onDub, busy }: {
+  caps: Caps; catalog: import("./AiTools").VoiceCatalog | null; source: { name: string } | null;
+  onDub: (target: string, voiceId: string, keepOriginal: boolean) => void; busy: string | null;
+}) {
   const [tab, setTab] = useState<"tv" | "ls">("tv");
-  const [from, setFrom] = useState("Auto-detect"), [to, setTo] = useState("English"), [voice, setVoice] = useState("Narrator");
-  const [keep, setKeep] = useState(true), [lip, setLip] = useState(false);
+  const langs = [...new Set((catalog?.voices ?? []).map((v) => v.language))];
+  const [to, setTo] = useState("hi");
+  const voices = (catalog?.voices ?? []).filter((v) => v.language === to);
+  const [voice, setVoice] = useState("");
+  const [keep, setKeep] = useState(true);
   const dub = caps.get("dubbing"), ls = caps.get("lip_sync");
+  const vid = voices.find((v) => v.id === voice) ? voice : voices[0]?.id ?? "";
   return (
     <section className="panel ai-panel voice" aria-label="Translate and voice">
       <div className="mini-tabs wide" role="tablist">
@@ -80,24 +84,24 @@ export function VoicePanel({ caps }: { caps: Caps }) {
       </div>
       {tab === "tv" ? <>
         <div className="row" style={{ fontSize: 13, fontWeight: 600 }}><Languages size={15} />Translate Video with Voice (Dubbing)</div>
+        <div className="dim" style={{ fontSize: 11.5 }}>Source: {source ? <b style={{ color: "var(--text)" }}>{source.name}</b> : "select a clip with speech"}</div>
         <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <label><span className="label">From (Original)</span><select className="select sm" value={from} onChange={(e) => setFrom(e.target.value)}>{LANGS.map((l) => <option key={l}>{l}</option>)}</select></label>
-          <label><span className="label">To (Translate)</span><select className="select sm" value={to} onChange={(e) => setTo(e.target.value)}>{LANGS.slice(1).map((l) => <option key={l}>{l}</option>)}</select></label>
+          <label><span className="label">From (Original)</span><select className="select sm" disabled><option>Auto-detect</option></select></label>
+          <label><span className="label">To (Translate)</span><select className="select sm" value={to} onChange={(e) => setTo(e.target.value)}>
+            {langs.map((l) => <option key={l} value={l}>{catalog?.languages[l] ?? l}</option>)}</select></label>
         </div>
-        <label><span className="label">Voice Output</span><select className="select sm"><option>AI Voice (Natural)</option><option>Keep original voice (subtitles only)</option></select></label>
         <div><span className="label">Voice Style</span>
-          <div className="voices">{VOICES.map((v) => <button key={v} className={voice === v ? "on" : ""} onClick={() => setVoice(v)} aria-pressed={voice === v}><Mic size={15} />{v}</button>)}</div></div>
+          <div className="voices">{voices.map((v) => <button key={v.id} className={vid === v.id ? "on" : ""} onClick={() => setVoice(v.id)} aria-pressed={vid === v.id} title={v.label}><Mic size={15} />{v.style}</button>)}</div></div>
         <label className="check"><input type="checkbox" checked={keep} onChange={(e) => setKeep(e.target.checked)} />Keep Original Audio (Background)</label>
-        <label className="check"><input type="checkbox" checked={lip} onChange={(e) => setLip(e.target.checked)} />Auto Lip Sync (AI)</label>
-        <button className="btn primary dub" disabled={!dub?.ready} title={dub?.ready ? "" : `Needs: ${dub?.needs}`}><Mic size={16} />Translate &amp; Dub</button>
-        {!dub?.ready && <div className="provider-note"><Lock size={12} />Needs a dubbing provider: {dub?.needs ?? "ElevenLabs"}. Add the key in Render → Environment; nothing is faked meanwhile.</div>}
+        <label className="check" title={`Needs: ${ls?.needs}`}><input type="checkbox" disabled />Auto Lip Sync (AI) <Lock size={11} /></label>
+        <button className="btn primary dub" disabled={!dub?.ready || !source || !vid || !!busy} onClick={() => onDub(to, vid, keep)}>
+          {busy ? <span className="spinner" /> : <Mic size={16} />}{busy ? "Dubbing…" : "Translate & Dub"}</button>
+        {busy ? <div className="provider-note">{busy}</div> : <div className="provider-note">{dub?.needs}</div>}
       </> : <>
         <div className="row" style={{ fontSize: 13, fontWeight: 600 }}><UserRoundX size={15} />AI Lip Sync</div>
-        <label><span className="label">Target voice</span><select className="select sm"><option>Dubbed voice (from Translate)</option><option>Uploaded audio clip</option></select></label>
-        <label><span className="label">Sync mode</span><select className="select sm"><option>Natural (recommended)</option><option>Precise</option></select></label>
         <div className="provider-note" style={{ marginTop: 4 }}>Lip sync changes a real person's face. It will require the person's recorded consent and adds a visible “AI-altered” label to exports.</div>
         <button className="btn primary dub" disabled title={`Needs: ${ls?.needs}`}><Play size={15} />Generate</button>
-        <div className="provider-note"><Lock size={12} />Needs: {ls?.needs ?? "lip-sync GPU provider"}.</div>
+        <div className="provider-note"><Lock size={12} />Not available yet — {ls?.needs ?? "needs a lip-sync GPU provider"}.</div>
       </>}
     </section>
   );
@@ -123,7 +127,7 @@ export function QuickActions({ caps, onAction, readOnly }: { caps: Caps; onActio
   );
 }
 
-export function Recommendations({ tl, assets, edit, readOnly }: { tl: Timeline; assets: Map<string, Asset>; edit: (t: Timeline | null) => boolean; readOnly: boolean }) {
+export function Recommendations({ tl, assets, edit, readOnly }: { tl: Timeline; assets: Map<string | null, Asset>; edit: (t: Timeline | null) => boolean; readOnly: boolean }) {
   const ops = useMemo(() => buildPlan(tl, assets), [tl, assets]);
   return (
     <section className="panel bottom-panel" aria-label="AI recommendations">

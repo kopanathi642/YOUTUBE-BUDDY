@@ -173,6 +173,8 @@ class SequenceCreate(BaseModel):
     format: Literal["landscape", "vertical", "square", "portrait_45"] | None = None
     from_sequence_id: uuid.UUID | None = None
     reframe: bool = False  # subject-aware cover crop of the main video track into the new format
+    range_from: int | None = Field(None, ge=0)  # frames: make a short from just this part of the source sequence
+    range_to: int | None = Field(None, gt=0)
 
 
 ASPECTS = {**FORMATS, "portrait_45": (1080, 1350)}
@@ -216,6 +218,12 @@ def create_sequence(project_id: uuid.UUID, body: SequenceCreate, request: Reques
         if not src or src.project_id != p.id:
             raise HTTPException(404, "Source sequence not found")
         tl = src.timeline
+        if body.range_from is not None and body.range_to is not None:
+            from ..timeline import slice_timeline
+            try:
+                tl = slice_timeline(tl, body.range_from, body.range_to)
+            except ValueError as e:
+                raise HTTPException(422, str(e))
         if body.format:
             W2, H2 = ASPECTS[body.format]
             if body.reframe:

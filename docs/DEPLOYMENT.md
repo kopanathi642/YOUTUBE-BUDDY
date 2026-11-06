@@ -66,9 +66,19 @@ How it works: the browser signs in with Google through Firebase, sends the ID to
 ## Naming warning (please read before launch)
 You plan to use **youtubebuddy.com** and the name “YouTube Buddy X”. YouTube’s API branding rules forbid using “YouTube” (or look-alikes) in an app/company name or domain if you integrate their API, and using it could create trademark problems even without the API. The app currently uses the working name **Creator Universe**. Google's OAuth/YouTube API review is likely to reject an app whose name or domain contains “YouTube”, and Google may send a trademark complaint. It is your decision; the brand shown in the app is one setting (`BRAND_NAME`), so you can switch later without code changes. A common pattern: launch on a non-YouTube domain and point youtubebuddy.com at it as a redirect.
 
-## Step 5 — Optional AI providers (turns on the locked AI buttons)
-Built in and already working (no provider): scene detection, silence removal, auto colour, audio level balance, noise reduction, smart reframe 9:16 / 4:5, AI Magic plan, scopes, recording, snapshots.
-Locked until a provider is connected **and** its adapter is built (next phase): translation, dubbing, AI voice/TTS, captions/transcription, lip sync, background/object removal. Typical choices: OpenAI (Whisper + GPT translation + TTS), ElevenLabs (voices, dubbing), Replicate or sync.so (GPU lip sync, background removal). Create the account, then add its key in Render → Environment (never in chat).
+## Step 5 — AI tools (free by default)
+Everything below runs on your own render worker with open-source models — no AI subscription needed:
+| Tool | Engine | First use online |
+|---|---|---|
+| AI voice / text to speech, dubbing voices | Piper | downloads each voice once (~20–60 MB) |
+| Captions, transcript, dubbing (speech-to-text) | Whisper "small" (faster-whisper) | downloads ~460 MB once from huggingface.co |
+| Caption translation, dubbing (translation) | Argos models via CTranslate2 | downloads ~100 MB per language pair once |
+| Background removal | U²-Net (u2netp) | downloads 5 MB once from GitHub |
+| Stabilization, scene/silence detection, auto colour, loudness | FFmpeg / OpenCV | nothing to download |
+
+`render.yaml` gives the worker a 5 GB disk at `/var/models` so these downloads survive restarts. **First job after deploy is slower** while a model downloads. Captions and translation could not be test-run inside the build sandbox (Hugging Face is blocked there) — run one caption job right after your first deploy to confirm.
+
+Optional: add `OPENAI_API_KEY` in Render → Environment to use OpenAI for captions and translation instead (better accuracy for Hindi/Hinglish; costs per minute). Not available yet: lip sync and object removal (need GPU providers).
 
 ## Operating it
 * **Deploys:** every push to `main` → CI runs tests → Render auto-deploys. Roll back from Render → *Deploys → Rollback*.

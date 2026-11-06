@@ -1,4 +1,6 @@
-# Feature Status Matrix — Editor Universe (v0.1)
+# Feature Status Matrix — Editor Universe (v0.4)
+
+Whole-app check: `e2e/audit.mjs` drives a real browser through **55 steps covering every enabled control** — last run 55/55 passed.
 
 Labels: **WORKING** (verified end-to-end with evidence) · **PARTIAL** · **NOT_IMPLEMENTED** · **BLOCKED** (needs an external account/credential/approval).
 Evidence: `backend/tests/test_editor_flow.py` (pytest, real Postgres + S3 protocol + FFmpeg), `frontend/src/timeline.test.ts` (vitest), and a browser end-to-end run (Playwright, screenshots in `docs/ui/references/`).
@@ -32,7 +34,7 @@ Evidence: `backend/tests/test_editor_flow.py` (pytest, real Postgres + S3 protoc
 | Editor | Autosave with optimistic concurrency (409 on stale save), conflict banner | WORKING | `test_full_edit_and_render` |
 | Editor | Version history + restore (non-destructive) | WORKING | |
 | Editor | Proxy preview playback in browser | PARTIAL | Real playback from proxies; multi-layer sync is best-effort, not frame-locked |
-| Editor | Speed/reverse, keyframes, crop, transitions, effects, nested sequences, roll/slip/slide | NOT_IMPLEMENTED | Phase 2b / 6 |
+| Editor | Reverse, keyframes, cross-dissolve transitions, nested sequences, roll/slip/slide, motion tracking, masks | NOT_IMPLEMENTED | next phases |
 | Editor v2 | Layout matching the founder's master reference (tool sidebar, monitor bar, AI assistant, translate & voice, colour/scopes/nodes/quick-actions strip, V4–V1/A1–A3, inspector tabs, storyboard, recommendations, export dock) | WORKING | screenshots `docs/ui/references/editor-v2*.png` |
 | Colour | Lift/gamma/gain/offset wheels, exposure, contrast, saturation, temperature, tint, 8 looks, bypass — identical maths in preview (SVG filter) and export (lutrgb + matrix) | WORKING | `test_colour_grade_changes_rendered_pixels`, `grade.test.ts` |
 | Colour | Curves, HSL qualifiers, LUT import, masks, shot matching | NOT_IMPLEMENTED | |
@@ -43,7 +45,18 @@ Evidence: `backend/tests/test_editor_flow.py` (pytest, real Postgres + S3 protoc
 | Sequences | Multiple sequences per project, switcher, rename/delete API | WORKING | |
 | Capture | Webcam/mic recording (browser permission, level meter, retake) → upload; frame snapshot → image asset | WORKING | WebM without duration header handled |
 | Nodes | Read-only node view of the clip's real render chain, ColorCorrect bypass | PARTIAL | free-form node editor NOT_IMPLEMENTED |
-| AI (providers) | Translate, dub, TTS, captions, lip sync, background/object removal | BLOCKED | UI present and locked; needs provider accounts + adapters (`/api/v1/ai/capabilities` reports truthfully) |
+| Titles | Title clips (any Indian script + Arabic + Latin, shaped with HarfBuzz via Pillow), 6 styles, size/colour/box, position/scale/rotation/opacity/fades | WORKING | `test_titles_speed_crop.py` (awkward characters, Hindi font pick, pixel check) |
+| Speed | 0.25×–4× per clip, pitch-preserved audio (atempo), speed-aware trim/split/silence maths | WORKING | render duration + audio length verified |
+| Crop | Left/right/top/bottom crop, preview == render | WORKING | |
+| Stabilization | FFmpeg vid.stab two-pass → new "(stabilized)" media, auto-swapped into the timeline | WORKING | `test_derive.py`, audit |
+| Background removal | Open-source U²-Net (u2netp) per frame → lossless alpha MOV + VP9-alpha preview, auto-swapped; clips ≤ 60 s, ~15× real time on 1 CPU | WORKING | `test_derive.py` composites over grey and checks pixels |
+| AI voice (TTS) | Piper voices: English ×5, Spanish, French, German, Italian, Portuguese, Dutch, Russian, Ukrainian, Nepali, Chinese, Vietnamese (GitHub); Hindi ×2 (Hugging Face, online) | WORKING | `test_tts_creates_audio_asset` (real Piper). Hindi voices: download online — verify after deploy |
+| Captions / transcript / SRT | Transcribe on the worker → caption title clips on a Captions track + .srt download; translate captions | WORKING (pipeline) / VERIFY ONLINE (model) | pipeline tested with a stand-in engine; free Whisper model downloads from huggingface.co (blocked in build sandbox) — or OpenAI key |
+| Translate & dub | Transcribe → translate → Piper voice per line, timed to the original, new dub track under the clip, original lowered/muted | WORKING (pipeline) / VERIFY ONLINE (models) | `test_transcribe_translate_dub_pipeline`; Argos/Whisper models download online |
+| Highlights & batch shorts | Rule-based scoring (energy, speech, scene changes) → N shorts as new sequences (range slice + 9:16/4:5/1:1 reframe) | WORKING | `test_short_from_range_slices_and_trims`, audit |
+| Thumbnail designer | Frame + multi-language headline, outline, tilt, shade, position → PNG download / media bin | WORKING | audit |
+| Version history | Top-bar history window, restore any version | WORKING | audit |
+| AI (providers) | Lip sync, object removal | BLOCKED | need GPU model providers; buttons locked with the reason |
 | Export | Server-side FFmpeg render from originals (H.264/AAC MP4; match / 720p / draft 480p) | WORKING | |
 | Export | Real progress from FFmpeg, cancel, retry, idempotency key | WORKING | `test_export_validation_and_cancel` |
 | Export | Output validation: exists, streams, codec, dimensions, fps, duration, decodability | WORKING | stored on each export, shown as “Verified” |

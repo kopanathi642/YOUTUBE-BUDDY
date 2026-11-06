@@ -7,10 +7,12 @@ export type ColorGrade = {
   enabled: boolean; lift: Vec3; gamma: Vec3; gain: Vec3; offset: Vec3;
   exposure: number; contrast: number; saturation: number; temperature: number; tint: number;
 };
+export type Title = { text: string; font_size: number; color: string; bg_color: string | null; bg_opacity: number };
+export type Crop = { left: number; right: number; top: number; bottom: number };
 export type Clip = {
-  id: string; asset_id: string; start: number; in: number; out: number;
+  id: string; asset_id: string | null; start: number; in: number; out: number;
   volume: number; fade_in: number; fade_out: number; transform: Transform;
-  color?: ColorGrade | null; denoise?: boolean;
+  color?: ColorGrade | null; denoise?: boolean; speed?: number; crop?: Crop | null; title?: Title | null;
 };
 export type Track = { id: string; kind: "video" | "audio"; name: string; muted: boolean; hidden: boolean; locked: boolean; clips: Clip[] };
 export type Timeline = { schema_version: 1; fps: number; width: number; height: number; tracks: Track[]; notes?: string };
@@ -18,7 +20,9 @@ export type Timeline = { schema_version: 1; fps: number; width: number; height: 
 export const DEFAULT_TRANSFORM: Transform = { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 };
 
 export const uid = (p = "c") => `${p}${Math.random().toString(36).slice(2, 10)}`;
-export const len = (c: Clip) => c.out - c.in;
+export const sp = (c: Clip) => c.speed ?? 1;
+/** Frames on the timeline = source span / speed (same rounding as the server). */
+export const len = (c: Clip) => Math.max(1, Math.round((c.out - c.in) / sp(c)));
 export const end = (c: Clip) => c.start + len(c);
 export const duration = (tl: Timeline) => Math.max(0, ...tl.tracks.flatMap((t) => t.clips.map(end)));
 
@@ -70,28 +74,32 @@ export function trimStart(tl: Timeline, id: string, newStart: number): Timeline 
   const f = findClip(tl, id);
   if (!f || f.track.locked) return null;
   const delta = newStart - f.clip.start;
-  const nin = f.clip.in + delta;
-  if (nin < 0 || nin >= f.clip.out - Math.max(1, f.clip.fade_in + f.clip.fade_out)) return null;
-  if (!fits(f.track, newStart, f.clip.out - nin, id)) return null;
+  const nin = f.clip.in + Math.round(delta * sp(f.clip));
+  if (nin < 0 || nin >= f.clip.out) return null;
+  const nlen = Math.max(1, Math.round((f.clip.out - nin) / sp(f.clip)));
+  if (nlen <= f.clip.fade_in + f.clip.fade_out || nlen < 1) return null;
+  if (!fits(f.track, newStart, nlen, id)) return null;
   return mapClip(tl, id, (c) => ({ ...c, start: newStart, in: nin }));
 }
 
 export function trimEnd(tl: Timeline, id: string, newEnd: number, sourceMax: number): Timeline | null {
   const f = findClip(tl, id);
   if (!f || f.track.locked) return null;
-  const nout = f.clip.in + (newEnd - f.clip.start);
-  if (nout <= f.clip.in + Math.max(0, f.clip.fade_in + f.clip.fade_out) || nout > sourceMax) return null;
-  if (!fits(f.track, f.clip.start, nout - f.clip.in, id)) return null;
+  const nlen = newEnd - f.clip.start;
+  const nout = f.clip.in + Math.round(nlen * sp(f.clip));
+  if (nlen < 1 || nlen <= f.clip.fade_in + f.clip.fade_out || nout > sourceMax || nout <= f.clip.in) return null;
+  if (!fits(f.track, f.clip.start, nlen, id)) return null;
   return mapClip(tl, id, (c) => ({ ...c, out: nout }));
 }
 
 export function splitAt(tl: Timeline, id: string, frame: number): { tl: Timeline; rightId: string } | null {
   const f = findClip(tl, id);
   if (!f || f.track.locked || frame <= f.clip.start || frame >= end(f.clip)) return null;
-  const cut = f.clip.in + (frame - f.clip.start);
+  const cut = f.clip.in + Math.round((frame - f.clip.start) * sp(f.clip));
+  if (cut <= f.clip.in || cut >= f.clip.out) return null;
   const rightId = uid();
-  const left: Clip = { ...f.clip, out: cut, fade_out: 0, fade_in: Math.min(f.clip.fade_in, cut - f.clip.in) };
-  const right: Clip = { ...f.clip, id: rightId, start: frame, in: cut, fade_in: 0, fade_out: Math.min(f.clip.fade_out, f.clip.out - cut) };
+  const left: Clip = { ...f.clip, out: cut, fade_out: 0, fade_in: Math.min(f.clip.fade_in, frame - f.clip.start - 1) };
+  const right: Clip = { ...f.clip, id: rightId, start: frame, in: cut, fade_in: 0, fade_out: Math.min(f.clip.fade_out, end(f.clip) - frame - 1) };
   return { rightId, tl: mapClip(tl, id, () => [left, right]) };
 }
 
@@ -118,6 +126,26 @@ export function updateClip(tl: Timeline, id: string, patch: Partial<Clip>): Time
   const f = findClip(tl, id);
   if (!f || f.track.locked) return null;
   return mapClip(tl, id, (c) => ({ ...c, ...patch, transform: { ...c.transform, ...(patch.transform ?? {}) } }));
+}
+
+/** Change speed; refused if the longer clip would overlap the next one. */
+export function setSpeed(tl: Timeline, id: string, speed: number): Timeline | null {
+  const f = findClip(tl, id);
+  if (!f || f.track.locked || f.clip.title) return null;
+  const c2 = { ...f.clip, speed };
+  if (len(c2) <= c2.fade_in + c2.fade_out) c2.fade_in = c2.fade_out = 0;
+  if (!fits(f.track, c2.start, len(c2), id)) return null;
+  return mapClip(tl, id, () => c2);
+}
+
+export const DEFAULT_TITLE: Title = { text: "Your title", font_size: 110, color: "#ffffff", bg_color: "#7c3aed", bg_opacity: 0.85 };
+
+export function insertTitle(tl: Timeline, trackId: string, start: number, frames: number, title: Title = DEFAULT_TITLE): { tl: Timeline; id: string } | null {
+  const track = tl.tracks.find((t) => t.id === trackId);
+  if (!track || track.locked || track.kind !== "video") return null;
+  const s = freeSlot(track, start, frames);
+  const clip: Clip = { id: uid("t"), asset_id: null, title: { ...title }, start: s, in: 0, out: frames, volume: 1, fade_in: 0, fade_out: 0, transform: { ...DEFAULT_TRANSFORM } };
+  return { id: clip.id, tl: { ...tl, tracks: tl.tracks.map((t) => (t.id === trackId ? { ...t, clips: [...t.clips, clip] } : t)) } };
 }
 
 export function updateTrack(tl: Timeline, id: string, patch: Partial<Omit<Track, "clips" | "id" | "kind">>): Timeline {

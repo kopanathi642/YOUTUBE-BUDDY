@@ -103,6 +103,7 @@ def inspect(path: str, claimed_kind: str) -> dict:
         "video_codec": v.get("codec_name") if v else None,
         "audio_codec": a.get("codec_name") if a else None,
         "has_video": bool(v), "has_audio": bool(a),
+        "has_alpha": bool(v and claimed_kind == "video" and any(x in (v.get("pix_fmt") or "") for x in ("rgba", "argb", "bgra", "abgr", "yuva", "ya8", "gbrap"))),
         "probe": {"format": {k: fmt.get(k) for k in ("format_name", "duration", "bit_rate", "size")},
                   "streams": [{k: s.get(k) for k in ("index", "codec_type", "codec_name", "width", "height", "avg_frame_rate",
                                                        "sample_rate", "channels", "pix_fmt", "color_space", "color_transfer", "color_primaries")}
@@ -137,7 +138,17 @@ def make_thumbnail(src: str, dst: str, meta: dict) -> None:
 
 
 def make_proxy(src: str, dst: str, meta: dict) -> None:
-    """Lightweight H.264 540p proxy for smooth browser playback. Originals stay untouched."""
+    """Lightweight H.264 540p proxy for smooth browser playback. Originals stay untouched.
+    Videos with transparency get a VP9-with-alpha WebM proxy instead (browsers show its transparency)."""
+    if meta.get("has_alpha"):
+        cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", src, "-vf", "scale=-2:'min(540,ih)'",
+               "-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p", "-b:v", "0", "-crf", "36", "-deadline", "realtime", "-cpu-used", "8",
+               "-row-mt", "1", "-auto-alt-ref", "0"]
+        cmd += ["-c:a", "libopus", "-b:a", "96k"] if meta["has_audio"] else ["-an"]
+        r = run(cmd + [dst], timeout=3 * 3600)
+        if r.returncode != 0:
+            raise RuntimeError(f"alpha proxy failed: {r.stderr[-400:]}")
+        return
     cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", src,
            "-vf", "scale=-2:'min(540,ih)'", "-c:v", "libx264", "-preset", "veryfast", "-crf", "28",
            "-g", "30", "-pix_fmt", "yuv420p", "-movflags", "+faststart"]

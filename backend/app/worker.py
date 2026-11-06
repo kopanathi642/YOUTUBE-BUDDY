@@ -85,10 +85,11 @@ def handle_media_process(ctx: Ctx, tmp: str):
         asset.thumbnail_key = f"{base}/thumb.jpg"
     ctx.progress(0.4, "proxy", force=True)
     if meta["kind"] == "video":
-        proxy = os.path.join(tmp, "proxy.mp4")
+        ext, ctype = (".webm", "video/webm") if meta.get("has_alpha") else (".mp4", "video/mp4")
+        proxy = os.path.join(tmp, "proxy" + ext)
         media.make_proxy(src, proxy, meta)
-        storage.upload(proxy, f"{base}/proxy.mp4", "video/mp4")
-        asset.proxy_key = f"{base}/proxy.mp4"
+        storage.upload(proxy, f"{base}/proxy{ext}", ctype)
+        asset.proxy_key = f"{base}/proxy{ext}"
     elif meta["kind"] == "audio":
         proxy = os.path.join(tmp, "proxy.m4a")
         media.make_audio_proxy(src, proxy)
@@ -153,7 +154,7 @@ def handle_render_export(ctx: Ctx, tmp: str):
                                 duration_s=a.duration_s)
     ow, oh = preset_dimensions(tl, exp.preset)
     out = os.path.join(tmp, "export.mp4")
-    argv, dur = compile_ffmpeg(tl, infos, out, ow, oh, crf=EXPORT_PRESETS[exp.preset]["crf"])
+    argv, dur = compile_ffmpeg(tl, infos, out, ow, oh, crf=EXPORT_PRESETS[exp.preset]["crf"], workdir=tmp)
     ctx.progress(0.1, "rendering", force=True)
     proc = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     stderr_buf: list[str] = []
@@ -188,7 +189,159 @@ def handle_render_export(ctx: Ctx, tmp: str):
     return {"export_id": str(exp.id), "duration_s": dur, "width": ow, "height": oh, "bytes": exp.output_size_bytes}
 
 
-HANDLERS = {"media.process": handle_media_process, "render.export": handle_render_export}
+# ------------------------------------------------------------------ media.derive (stabilize / remove background)
+
+def handle_media_derive(ctx: Ctx, tmp: str):
+    """Make a new media file from an existing one, then process it like a normal upload. Source stays untouched."""
+    db = ctx.db
+    p = ctx.job.payload
+    new = db.get(MediaAsset, uuid.UUID(p["asset_id"]))
+    src_a = db.get(MediaAsset, uuid.UUID(p["source_id"]))
+    if not new or not src_a or src_a.deleted_at:
+        raise Permanent("source media no longer exists")
+    src = os.path.join(tmp, "src" + os.path.splitext(src_a.filename)[1].lower())
+    ctx.progress(0.02, "downloading", force=True)
+    storage.download(src_a.storage_key, src)
+    out = os.path.join(tmp, "derived" + os.path.splitext(new.storage_key)[1])
+    from . import derive
+    if p["op"] == "stabilize":
+        derive.stabilize(src, out, src_a.has_audio, lambda f, s: ctx.progress(0.05 + 0.6 * f, s))
+    elif p["op"] == "remove_bg":
+        derive.remove_background(src, out, src_a, lambda f, s: ctx.progress(0.05 + 0.6 * f, s))
+    else:
+        raise Permanent(f"unknown operation {p['op']}")
+    new.size_bytes = os.path.getsize(out)
+    storage.upload(out, new.storage_key, new.declared_content_type)
+    db.commit()
+    sub = os.path.join(tmp, "process")
+    os.makedirs(sub, exist_ok=True)
+    return handle_media_process(ctx, sub)
+
+
+# ------------------------------------------------------------------ AI: voice, transcription, translation, dubbing
+
+MAX_TRANSCRIBE_S = 30 * 60
+
+
+def _engine(fn, *a, **k):
+    from .ai_engines import EngineError
+    try:
+        return fn(*a, **k)
+    except EngineError as e:
+        raise Permanent(str(e))
+
+
+def _ensure_transcript(ctx: Ctx, tmp: str, asset: MediaAsset, language: str | None = None) -> dict:
+    from . import ai_engines
+    an = dict(asset.analysis or {})
+    t = an.get("transcript")
+    if t and (not language or t.get("language") == language):
+        return t
+    if not asset.has_audio:
+        raise Permanent("This media has no audio to transcribe")
+    if (asset.duration_s or 0) > MAX_TRANSCRIBE_S:
+        raise Permanent("Transcription is limited to 30-minute files for now")
+    src = os.path.join(tmp, "tsrc" + os.path.splitext(asset.filename)[1].lower())
+    ctx.progress(0.05, "downloading", force=True)
+    storage.download(asset.storage_key, src)
+    wav = os.path.join(tmp, "speech16k.wav")
+    r = media.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", src, "-vn", "-ac", "1", "-ar", "16000", wav])
+    if r.returncode:
+        raise RuntimeError("audio extraction failed")
+    ctx.progress(0.15, "transcribing speech", force=True)
+    t = _engine(ai_engines.transcribe, wav, language)
+    an = dict(asset.analysis or {})
+    an["transcript"] = t
+    asset.analysis = an
+    ctx.db.commit()
+    return t
+
+
+def _ensure_translation(ctx: Ctx, tmp: str, asset: MediaAsset, target: str) -> dict:
+    from . import ai_engines
+    t = _ensure_transcript(ctx, tmp, asset)
+    cached = (asset.analysis or {}).get("translations", {}).get(target)
+    if cached:
+        return cached
+    ctx.progress(0.5, f"translating to {ai_engines.LANG_NAMES.get(target, target)}", force=True)
+    texts, engine = _engine(ai_engines.translate, [s["text"] for s in t["segments"]], t["language"], target)
+    tr = {"language": target, "source_language": t["language"], "engine": engine,
+          "segments": [{**s, "text": x} for s, x in zip(t["segments"], texts)]}
+    an = dict(asset.analysis or {})
+    an["translations"] = {**an.get("translations", {}), target: tr}
+    asset.analysis = an
+    ctx.db.commit()
+    return tr
+
+
+def _load(ctx, key="asset_id") -> MediaAsset:
+    a = ctx.db.get(MediaAsset, uuid.UUID(ctx.job.payload[key]))
+    if a is None or a.deleted_at:
+        raise Permanent("media no longer exists")
+    return a
+
+
+def handle_ai_transcribe(ctx: Ctx, tmp: str):
+    t = _ensure_transcript(ctx, tmp, _load(ctx), ctx.job.payload.get("language"))
+    return {"language": t["language"], "segments": len(t["segments"]), "engine": t.get("engine")}
+
+
+def handle_ai_translate(ctx: Ctx, tmp: str):
+    tr = _ensure_translation(ctx, tmp, _load(ctx), ctx.job.payload["target"])
+    return {"language": tr["language"], "segments": len(tr["segments"]), "engine": tr["engine"]}
+
+
+def _finish_generated(ctx: Ctx, tmp: str, new: MediaAsset, path: str):
+    new.size_bytes = os.path.getsize(path)
+    storage.upload(path, new.storage_key, new.declared_content_type)
+    ctx.db.commit()
+    sub = os.path.join(tmp, "process")
+    os.makedirs(sub, exist_ok=True)
+    return handle_media_process(ctx, sub)
+
+
+def handle_ai_tts(ctx: Ctx, tmp: str):
+    from . import ai_engines
+    new = _load(ctx)
+    ctx.progress(0.1, "generating voice", force=True)
+    out = os.path.join(tmp, "voice.wav")
+    _engine(ai_engines.tts, ctx.job.payload["text"], ctx.job.payload["voice_id"], out)
+    return _finish_generated(ctx, tmp, new, out)
+
+
+def handle_ai_dub(ctx: Ctx, tmp: str):
+    """Transcribe -> translate -> speak each line in the target voice at its original time -> one aligned audio track."""
+    from . import ai_engines
+    new, src = _load(ctx), _load(ctx, "source_id")
+    p = ctx.job.payload
+    tr = _ensure_translation(ctx, tmp, src, p["target"])
+    segs = [s for s in tr["segments"] if s["text"].strip()]
+    if not segs:
+        raise Permanent("No speech found to dub")
+    total = src.duration_s or (segs[-1]["end"] + 1)
+    parts = []
+    for i, s in enumerate(segs):
+        ctx.progress(0.6 + 0.3 * i / len(segs), f"voicing line {i + 1}/{len(segs)}", force=True)
+        slot = max(0.4, (segs[i + 1]["start"] if i + 1 < len(segs) else total) - s["start"])
+        wav = os.path.join(tmp, f"line{i}.wav")
+        d = _engine(ai_engines.tts, s["text"], p["voice_id"], wav)
+        if d > slot * 1.02:  # speak faster to fit the original timing (never more than ~1.5x)
+            d = _engine(ai_engines.tts, s["text"], p["voice_id"], wav, max(0.66, slot / d * 0.98))
+        parts.append((wav, s["start"]))
+    out = os.path.join(tmp, "dub.wav")
+    cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-t", f"{total:.3f}", "-i", "anullsrc=r=48000:cl=stereo"]
+    for wav, _ in parts:
+        cmd += ["-i", wav]
+    fl = [f"[{i + 1}:a]aresample=48000,aformat=channel_layouts=stereo,adelay={int(st * 1000)}:all=1[d{i}]" for i, (_, st) in enumerate(parts)]
+    fl.append("[0:a]" + "".join(f"[d{i}]" for i in range(len(parts))) + f"amix=inputs={len(parts) + 1}:duration=first:normalize=0[o]")
+    r = media.run(cmd + ["-filter_complex", ";".join(fl), "-map", "[o]", "-c:a", "pcm_s16le", out], timeout=1800)
+    if r.returncode:
+        raise RuntimeError("dub mix failed: " + r.stderr[-300:])
+    return _finish_generated(ctx, tmp, new, out)
+
+
+HANDLERS = {"media.process": handle_media_process, "media.derive": handle_media_derive, "render.export": handle_render_export,
+            "ai.transcribe": handle_ai_transcribe, "ai.translate": handle_ai_translate, "ai.tts": handle_ai_tts, "ai.dub": handle_ai_dub}
 
 
 def process_one(worker_id: str, queues: list[str]) -> bool:
@@ -230,7 +383,7 @@ def process_one(worker_id: str, queues: list[str]) -> bool:
 
 
 def _mark_media_failed(db, job: Job, msg: str):
-    if job.kind == "media.process":
+    if job.kind in ("media.process", "media.derive", "ai.tts", "ai.dub"):
         a = db.get(MediaAsset, uuid.UUID(job.payload["asset_id"]))
         if a and a.status not in (MediaStatus.rejected, MediaStatus.ready):
             a.status, a.status_detail = MediaStatus.failed, msg[:500]

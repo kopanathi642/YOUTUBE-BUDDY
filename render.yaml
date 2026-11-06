@@ -43,6 +43,8 @@ services:
         value: AIzaSyBDvbm-e_74r8nxeTVTLB9ON7tEoy0Th_M
       - key: FIREBASE_APP_ID          # copy from Firebase console → Project settings → Your apps (optional)
         sync: false
+      - key: OPENAI_API_KEY           # optional: use OpenAI for captions/translation instead of the free models
+        sync: false
       - key: SCRATCH_DIR
         value: /tmp/creator-worker
 
@@ -53,4 +55,8 @@ services:
     region: singapore
     dockerCommand: python -m app.worker --queues media,render
     autoDeploy: true
+    disk:                      # keeps downloaded AI models (Whisper, voices, translation, U2-Net) across restarts
+      name: models
+      mountPath: /var/models
+      sizeGB: 5
     envVars: *shared

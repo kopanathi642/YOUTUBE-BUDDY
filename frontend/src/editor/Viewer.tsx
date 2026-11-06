@@ -1,7 +1,8 @@
 import { MutableRefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Play, Pause, SkipBack, SkipForward, Rewind, FastForward, Volume2, VolumeX, Maximize, Camera, Frame, Repeat, ChevronDown, Plus, Check, Sparkles } from "lucide-react";
 import { Asset, SequenceDoc } from "../api";
-import { Clip, Timeline, end, framesToTimecode } from "../timeline";
+import { Clip, Timeline, end, framesToTimecode, sp } from "../timeline";
+import { titleFont } from "../fonts";
 import { isNeutral, svgFilterBody } from "../grade";
 
 export type Sampler = (w: number) => HTMLCanvasElement | null;
@@ -14,9 +15,10 @@ function fadeFactor(c: Clip, frame: number): number {
 }
 
 type Layer = { clip: Clip; trackHidden: boolean; trackMuted: boolean; kind: "video" | "audio"; asset: Asset; z: number };
+const TITLE_ASSET = { kind: "title", width: 0, height: 0, has_audio: false } as unknown as Asset;
 
 export default function Viewer({ tl, assets, playhead, setPlayhead, playing, setPlaying, total, samplerRef, sequences, currentSeqId, onSwitchSeq, onNewSeq, onSnapshot, autoAdjust, analysed }: {
-  tl: Timeline; assets: Map<string, Asset>; playhead: number; setPlayhead: (f: number | ((f: number) => number)) => void;
+  tl: Timeline; assets: Map<string | null, Asset>; playhead: number; setPlayhead: (f: number | ((f: number) => number)) => void;
   playing: boolean; setPlaying: (p: boolean | ((p: boolean) => boolean)) => void; total: number;
   samplerRef: MutableRefObject<Sampler | null>; sequences: SequenceDoc[]; currentSeqId: string;
   onSwitchSeq: (id: string) => void; onNewSeq: () => void; onSnapshot: () => void; autoAdjust: boolean; analysed: boolean;
@@ -70,6 +72,7 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
   for (const t of tl.tracks.filter((t) => t.kind === "video").reverse()) {
     z++;
     for (const c of t.clips) {
+      if (c.title) { if (playhead >= c.start && playhead < end(c)) layers.push({ clip: c, trackHidden: t.hidden, trackMuted: true, kind: "video", asset: TITLE_ASSET, z }); continue; }
       const a = assets.get(c.asset_id);
       if (!a || a.status !== "ready" || !a.proxy_url) continue;
       if (playhead >= c.start - pre && playhead < end(c)) layers.push({ clip: c, trackHidden: t.hidden, trackMuted: t.muted, kind: "video", asset: a, z });
@@ -86,7 +89,8 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
       const el = els.current.get(L.clip.id);
       if (!el || el instanceof HTMLImageElement) continue;
       const active = playhead >= L.clip.start && playhead < end(L.clip);
-      const want = (L.clip.in + Math.max(0, playhead - L.clip.start)) / fps;
+      const want = (L.clip.in + Math.max(0, playhead - L.clip.start) * sp(L.clip)) / fps;
+      if (el.playbackRate !== sp(L.clip)) { el.playbackRate = sp(L.clip); (el as any).preservesPitch = true; }
       el.muted = muted || L.trackMuted || !L.asset.has_audio;
       el.volume = Math.min(1, L.clip.volume * fadeFactor(L.clip, playhead));
       if (active && playing) {
@@ -99,11 +103,14 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
     }
   });
 
+  /** Same maths as the FFmpeg compiler: crop the source, fit it into the (scaled) canvas, then offset. */
   const geom = (L: Layer, k: number) => {
-    const a = L.asset, tf = L.clip.transform;
-    const aw = a.width || tl.width, ah = a.height || tl.height;
+    const a = L.asset, tf = L.clip.transform, cr = L.clip.crop;
+    const fx = cr ? 1 - cr.left - cr.right : 1, fy = cr ? 1 - cr.top - cr.bottom : 1;
+    const aw = (a.width || tl.width) * fx, ah = (a.height || tl.height) * fy;
     const fit = Math.min((tl.width * tf.scale) / aw, (tl.height * tf.scale) / ah);
-    return { w: aw * fit * k, h: ah * fit * k, cx: (tl.width / 2 + tf.x) * k, cy: (tl.height / 2 + tf.y) * k };
+    const w = aw * fit * k, h = ah * fit * k;
+    return { w, h, cx: (tl.width / 2 + tf.x) * k, cy: (tl.height / 2 + tf.y) * k, fullW: w / fx, fullH: h / fy, offX: -(cr?.left ?? 0) * (w / fx), offY: -(cr?.top ?? 0) * (h / fy) };
   };
 
   // Composite the current frame onto a canvas (same maths as the stage + render). Used by scopes & snapshots.
@@ -119,6 +126,16 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
       ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
       for (const L of visRef.current) {
         const el = els.current.get(L.clip.id);
+        if (L.clip.title) {
+          const ti = L.clip.title, tf = L.clip.transform, fs = ti.font_size * tf.scale * k;
+          ctx.save(); ctx.globalAlpha = tf.opacity * fadeFactor(L.clip, playhead);
+          ctx.translate((tl.width / 2 + tf.x) * k, (tl.height / 2 + tf.y) * k); ctx.rotate((tf.rotation * Math.PI) / 180);
+          ctx.font = `700 ${fs}px ${titleFont(ti.text)}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          const lines = ti.text.split("\n"), lh = fs * 1.2, tw = Math.max(...lines.map((l) => ctx.measureText(l).width)), th = lh * lines.length, pad = fs * 0.25;
+          if (ti.bg_color) { ctx.fillStyle = ti.bg_color; ctx.globalAlpha *= ti.bg_opacity; ctx.fillRect(-tw / 2 - pad, -th / 2 - pad, tw + 2 * pad, th + 2 * pad); ctx.globalAlpha = tf.opacity * fadeFactor(L.clip, playhead); }
+          ctx.fillStyle = ti.color; lines.forEach((l, i) => ctx.fillText(l, 0, -th / 2 + lh * (i + 0.5)));
+          ctx.restore(); continue;
+        }
         if (!el) continue;
         if (el instanceof HTMLVideoElement && el.readyState < 2) continue;
         const g = geom(L, k);
@@ -126,7 +143,8 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
         ctx.globalAlpha = L.clip.transform.opacity * fadeFactor(L.clip, playhead);
         if (!isNeutral(L.clip.color)) ctx.filter = `url(#g-${L.clip.id})`;
         ctx.translate(g.cx, g.cy); ctx.rotate((L.clip.transform.rotation * Math.PI) / 180);
-        ctx.drawImage(el as CanvasImageSource, -g.w / 2, -g.h / 2, g.w, g.h);
+        ctx.beginPath(); ctx.rect(-g.w / 2, -g.h / 2, g.w, g.h); ctx.clip();
+        ctx.drawImage(el as CanvasImageSource, -g.w / 2 + g.offX, -g.h / 2 + g.offY, g.fullW, g.fullH);
         ctx.restore();
       }
       return cv;
@@ -170,17 +188,23 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
         <div ref={stageWrap} className="stage-wrap">
           <div className="stage" style={{ width: view.w, height: view.h }}>
             {layers.filter((L) => L.kind === "video").sort((a, b) => a.z - b.z).map((L) => {
-              const a = L.asset, tf = L.clip.transform, g = geom(L, k);
+              const a = L.asset, tf = L.clip.transform;
               const active = playhead >= L.clip.start && playhead < end(L.clip);
-              const style: React.CSSProperties = {
-                width: g.w, height: g.h, left: g.cx - g.w / 2, top: g.cy - g.h / 2, zIndex: L.z,
-                transform: `rotate(${tf.rotation}deg)`, opacity: active && !L.trackHidden ? tf.opacity * fadeFactor(L.clip, playhead) : 0,
-                filter: isNeutral(L.clip.color) ? undefined : `url(#g-${L.clip.id})`,
-              };
+              const opacity = active && !L.trackHidden ? tf.opacity * fadeFactor(L.clip, playhead) : 0;
+              if (L.clip.title) {
+                const ti = L.clip.title, fs = ti.font_size * tf.scale * k;
+                return <div key={L.clip.id} className="title-layer" style={{ left: (tl.width / 2 + tf.x) * k, top: (tl.height / 2 + tf.y) * k, zIndex: L.z, opacity,
+                  transform: `translate(-50%, -50%) rotate(${tf.rotation}deg)`, fontFamily: titleFont(ti.text), fontSize: fs, color: ti.color, padding: fs * 0.25,
+                  background: ti.bg_color ? `${ti.bg_color}${Math.round(ti.bg_opacity * 255).toString(16).padStart(2, "0")}` : "transparent" }}>{ti.text}</div>;
+              }
+              const g = geom(L, k);
+              const wrap: React.CSSProperties = { width: g.w, height: g.h, left: g.cx - g.w / 2, top: g.cy - g.h / 2, zIndex: L.z, transform: `rotate(${tf.rotation}deg)`, opacity,
+                filter: isNeutral(L.clip.color) ? undefined : `url(#g-${L.clip.id})` };
+              const inner: React.CSSProperties = { position: "absolute", width: g.fullW, height: g.fullH, left: g.offX, top: g.offY };
               const ref = (el: any) => { if (el) els.current.set(L.clip.id, el); else els.current.delete(L.clip.id); };
-              return a.kind === "image"
-                ? <img key={L.clip.id} ref={ref} src={a.proxy_url!} crossOrigin="anonymous" className="layer" style={style} alt="" draggable={false} />
-                : <video key={L.clip.id} ref={ref} src={a.proxy_url!} crossOrigin="anonymous" className="layer" style={style} preload="auto" playsInline />;
+              return <div key={L.clip.id} className="layer clipwrap" style={wrap}>{a.kind === "image"
+                ? <img ref={ref} src={a.proxy_url!} crossOrigin="anonymous" style={inner} alt="" draggable={false} />
+                : <video ref={ref} src={a.proxy_url!} crossOrigin="anonymous" style={inner} preload="auto" playsInline />}</div>;
             })}
             {layers.filter((L) => L.kind === "audio").map((L) => (
               <audio key={L.clip.id} ref={(el) => { if (el) els.current.set(L.clip.id, el); else els.current.delete(L.clip.id); }} src={L.asset.proxy_url!} crossOrigin="anonymous" preload="auto" />

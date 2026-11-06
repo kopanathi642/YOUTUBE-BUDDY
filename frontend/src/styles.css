@@ -1,3 +1,14 @@
+@font-face { font-family: "CU Inter"; src: url("/fonts/InterDisplay-Bold.otf") format("opentype"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "CU Devanagari"; src: url("/fonts/NotoSansDevanagari-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "CU Bengali"; src: url("/fonts/NotoSansBengali-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "CU Gurmukhi"; src: url("/fonts/NotoSansGurmukhi-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "CU Gujarati"; src: url("/fonts/NotoSansGujarati-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "CU Oriya"; src: url("/fonts/NotoSansOriya-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "CU Tamil"; src: url("/fonts/NotoSansTamil-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "CU Telugu"; src: url("/fonts/NotoSansTelugu-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "CU Kannada"; src: url("/fonts/NotoSansKannada-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "CU Malayalam"; src: url("/fonts/NotoSansMalayalam-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "CU Arabic"; src: url("/fonts/NotoSansArabic-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
 :root {
   --bg: #05061a;
   --bg-2: #090b24;

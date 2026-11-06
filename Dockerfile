@@ -14,6 +14,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg curl lib
 WORKDIR /app/backend
 COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
+# Piper voice engine (open source) — voices themselves download on first use into MODEL_CACHE
+RUN curl -fsSL https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz | tar -xz -C /opt \
+    && chmod -R a+rX /opt/piper
+ENV PIPER_BIN=/opt/piper/piper MODEL_CACHE=/var/models U2NET_HOME=/var/models/u2net
+RUN mkdir -p /var/models && chown 10001 /var/models
 COPY backend/ ./
 COPY --from=web /web/dist /app/frontend/dist
 USER app

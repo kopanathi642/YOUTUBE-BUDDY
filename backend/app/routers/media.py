@@ -40,7 +40,7 @@ class CompleteReq(BaseModel):
 def _latest_jobs(db: Session, asset_ids: list[uuid.UUID]) -> dict:
     if not asset_ids:
         return {}
-    rows = db.scalars(select(Job).where(Job.kind == "media.process",
+    rows = db.scalars(select(Job).where(Job.kind.in_(["media.process", "media.derive"]),
                                         Job.payload["asset_id"].astext.in_([str(i) for i in asset_ids]))
                       .order_by(Job.created_at)).all()
     return {uuid.UUID(j.payload["asset_id"]): j for j in rows}
@@ -171,3 +171,35 @@ def delete_media(asset_id: uuid.UUID, request: Request, user: User = Depends(cur
     audit(db, request, "media.delete", user=user, workspace_id=a.workspace_id, target_type="media", target_id=a.id)
     db.commit()
     return {"ok": True}
+
+
+class DeriveReq(BaseModel):
+    op: str = Field(pattern="^(stabilize|remove_bg)$")
+
+
+DERIVE = {"stabilize": (" (stabilized)", "mp4", "video/mp4"), "remove_bg": (" (no background)", "mov", "video/quicktime")}
+
+
+@router.post("/media/{asset_id}/derive", status_code=201)
+def derive_media(asset_id: uuid.UUID, body: DeriveReq, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Create a processed copy (stabilized / background removed) as a NEW media item. The original is never changed."""
+    from ..derive import MAX_BG_SECONDS
+    src = load_asset(db, user, asset_id, Role.editor)
+    if src.status != MediaStatus.ready or src.kind != "video" or not src.has_video:
+        raise HTTPException(422, "Only ready video files can be processed this way")
+    if body.op == "remove_bg" and (src.duration_s or 0) > MAX_BG_SECONDS:
+        raise HTTPException(422, f"Background removal works on clips up to {MAX_BG_SECONDS} seconds for now — trim or split the file first")
+    suffix, ext, ctype = DERIVE[body.op]
+    stem = src.filename.rsplit(".", 1)[0][:150]
+    new_id = uuid.uuid4()
+    a = MediaAsset(id=new_id, workspace_id=src.workspace_id, project_id=src.project_id, uploaded_by=user.id,
+                   filename=f"{stem}{suffix}.{ext}", kind="video", declared_content_type=ctype, size_bytes=0,
+                   storage_key=f"ws/{src.workspace_id}/proj/{src.project_id}/media/{new_id}/original.{ext}", status=MediaStatus.processing)
+    db.add(a)
+    db.flush()
+    job = jobs.enqueue(db, workspace_id=src.workspace_id, project_id=src.project_id, created_by=user.id, kind="media.derive",
+                       payload={"asset_id": str(new_id), "source_id": str(src.id), "op": body.op},
+                       idempotency_key=f"derive:{new_id}", max_attempts=2)
+    audit(db, request, f"media.derive.{body.op}", user=user, workspace_id=src.workspace_id, target_type="media", target_id=new_id, source=str(src.id))
+    db.commit()
+    return ser_asset(a, job)

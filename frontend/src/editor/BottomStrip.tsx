@@ -5,7 +5,7 @@ import { Timeline, end, framesToTimecode } from "../timeline";
 import { buildPlan } from "../smart";
 
 export default function BottomStrip({ tl, assets, setPlayhead, setSelected, setNotes, readOnly, onAddScene }: {
-  tl: Timeline; assets: Map<string, Asset>; setPlayhead: (f: number) => void; setSelected: (id: string) => void;
+  tl: Timeline; assets: Map<string | null, Asset>; setPlayhead: (f: number) => void; setSelected: (id: string) => void;
   setNotes: (s: string) => void; readOnly: boolean; onAddScene: () => void;
 }) {
   const [tab, setTab] = useState<"story" | "scenes" | "chapters" | "assets" | "notes" | "ai">("story");
@@ -18,7 +18,7 @@ export default function BottomStrip({ tl, assets, setPlayhead, setSelected, setN
     .filter((s: any) => s.e > c.start && s.f < end(c)).map((s: any) => ({ ...s, f: Math.max(s.f, c.start), e: Math.min(s.e, end(c)) })));
   const used = [...new Set(tl.tracks.flatMap((t) => t.clips.map((c) => c.asset_id)))].map((id) => assets.get(id)).filter(Boolean) as Asset[];
   const tabs: [typeof tab, string][] = [["story", "Storyboard"], ["scenes", "Scenes"], ["chapters", "Chapters"], ["assets", "Assets"], ["notes", "Notes"], ["ai", "AI Suggestions"]];
-  const thumb = (id: string) => assets.get(id)?.thumbnail_url ?? (assets.get(id)?.kind === "image" ? assets.get(id)?.proxy_url : null);
+  const thumb = (id: string | null) => assets.get(id)?.thumbnail_url ?? (assets.get(id)?.kind === "image" ? assets.get(id)?.proxy_url : null);
   return (
     <section className="panel bottom-panel storyboard" aria-label="Storyboard">
       <div className="mini-tabs" role="tablist">{tabs.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>)}</div>

@@ -10,7 +10,7 @@ const ROW_H = { video: 27, audio: 27 };
 type Drag = { mode: "move" | "trimL" | "trimR" | "scrub"; id?: string; x0: number; origStart: number; origEnd: number; base: Timeline; moved: boolean };
 
 export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead, selected, setSelected, snapOn, setSnapOn, readOnly, onDropAsset, timecode }: {
-  tl: Timeline; assets: Map<string, Asset>; edit: (t: Timeline | null, coalesce?: string) => boolean; playhead: number; setPlayhead: (f: number) => void;
+  tl: Timeline; assets: Map<string | null, Asset>; edit: (t: Timeline | null, coalesce?: string) => boolean; playhead: number; setPlayhead: (f: number) => void;
   selected: string | null; setSelected: (id: string | null) => void; snapOn: boolean; setSnapOn: (f: (s: boolean) => boolean) => void; readOnly: boolean;
   onDropAsset: (assetId: string, trackId: string, frame: number) => void; timecode: string;
 }) {
@@ -79,7 +79,7 @@ export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead,
       next = trimStart(d.base, d.id!, snapOn ? snap(d.origStart + df, pts, thr) : d.origStart + df);
     } else {
       const c = d.base.tracks.flatMap((t) => t.clips).find((c) => c.id === d.id)!;
-      next = trimEnd(d.base, d.id!, snapOn ? snap(d.origEnd + df, pts, thr) : d.origEnd + df, assetFrames(assets.get(c.asset_id), fps));
+      next = trimEnd(d.base, d.id!, snapOn ? snap(d.origEnd + df, pts, thr) : d.origEnd + df, c.title ? Number.POSITIVE_INFINITY : assetFrames(assets.get(c.asset_id), fps));
     }
     if (next) setDraft(next);
   }
@@ -141,7 +141,7 @@ export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead,
 }
 
 function TrackRow({ badge, t, tl, view, ppf, contentW, assets, selected, readOnly, edit, down, move, up, onLaneDown, onDrop }: {
-  badge: string; t: Track; tl: Timeline; view: Timeline; ppf: number; contentW: number; assets: Map<string, Asset>; selected: string | null; readOnly: boolean;
+  badge: string; t: Track; tl: Timeline; view: Timeline; ppf: number; contentW: number; assets: Map<string | null, Asset>; selected: string | null; readOnly: boolean;
   edit: (t: Timeline | null) => boolean; down: (e: RPE, m: Drag["mode"], c?: Clip) => void; move: (e: RPE) => void; up: () => void;
   onLaneDown: (e: RPE) => void; onDrop: (assetId: string, clientX: number, laneLeft: number) => void;
 }) {
@@ -170,15 +170,15 @@ function TrackRow({ badge, t, tl, view, ppf, contentW, assets, selected, readOnl
         {t.clips.map((c) => {
           const a = assets.get(c.asset_id);
           const w = Math.max(4, len(c) * ppf);
-          const missing = !a || a.status !== "ready";
+          const missing = !c.title && (!a || a.status !== "ready");
           return (
-            <div key={c.id} className={`clip ${t.kind} ${a?.kind ?? ""} ${selected === c.id ? "sel" : ""} ${missing ? "missing" : ""} ${t.hidden || t.muted ? "off" : ""}`}
+            <div key={c.id} className={`clip ${t.kind} ${c.title ? "title" : a?.kind ?? ""} ${selected === c.id ? "sel" : ""} ${missing ? "missing" : ""} ${t.hidden || t.muted ? "off" : ""}`}
               style={{ left: c.start * ppf, width: w, backgroundImage: t.kind === "video" && a?.thumbnail_url ? `url(${a.thumbnail_url})` : a?.kind === "image" && a.proxy_url ? `url(${a.proxy_url})` : undefined }}
               onPointerDown={(e) => down(e, "move", c)} onPointerMove={move} onPointerUp={up} role="button" tabIndex={0}
-              aria-label={`${a?.filename ?? "Missing media"} clip, ${framesToTimecode(len(c), view.fps)}`}
+              aria-label={`${c.title ? "Title: " + c.title.text : a?.filename ?? "Missing media"} clip, ${framesToTimecode(len(c), view.fps)}`}
               onKeyDown={(e) => e.key === "Enter" && down(e as any, "move", c)}>
               {!readOnly && !t.locked && <span className="edge l" onPointerDown={(e) => down(e, "trimL", c)} onPointerMove={move} onPointerUp={up} />}
-              <span className="clip-label">{missing ? "⚠ Missing media" : a!.filename}</span>
+              <span className="clip-label">{c.title ? `T  ${c.title.text}` : missing ? "⚠ Missing media" : a!.filename}{(c.speed ?? 1) !== 1 ? `  ·  ${c.speed}×` : ""}</span>
               {a?.waveform_url && (t.kind === "audio" || w > 60) && <Wave url={a.waveform_url} assetId={a.id} inS={c.in / view.fps} outS={c.out / view.fps} width={w} audioTrack={t.kind === "audio"} />}
               {(c.fade_in > 0 || c.fade_out > 0) && <>
                 {c.fade_in > 0 && <span className="fade in" style={{ width: c.fade_in * ppf }} />}

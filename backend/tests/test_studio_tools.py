@@ -111,4 +111,19 @@ def test_capabilities_are_honest(make_client):
     signup(c)
     caps = {x["id"]: x for x in c.get("/api/v1/ai/capabilities").json()}
     assert caps["scene_detect"]["ready"] and caps["silence_remove"]["ready"] and caps["auto_color"]["ready"]
-    assert not caps["lip_sync"]["ready"] and not caps["dubbing"]["ready"]
+    assert not caps["lip_sync"]["ready"] and not caps["object_remove"]["ready"]
+    assert caps["tts"]["ready"] and caps["background_remove"]["ready"] and caps["stabilize"]["ready"]
+
+
+def test_short_from_range_slices_and_trims():
+    from app.timeline import Timeline, slice_timeline, default_timeline
+    import uuid
+    tl = default_timeline(30, 1920, 1080)
+    v1 = next(t for t in tl["tracks"] if t["id"] == "v1")
+    aid = str(uuid.uuid4())
+    v1["clips"] = [{"id": "a", "asset_id": aid, "start": 0, "in": 0, "out": 300, "fade_in": 15},          # 0-10 s
+                   {"id": "b", "asset_id": aid, "start": 300, "in": 0, "out": 600, "speed": 2.0}]       # 10-20 s at 2x
+    out = Timeline.model_validate(slice_timeline(tl, 240, 420))                                        # 8 s .. 14 s
+    clips = next(t for t in out.tracks if t.id == "v1").clips
+    assert [(c.id, c.start, c.in_, c.out, c.length) for c in clips] == [("a", 0, 240, 300, 60), ("b", 60, 0, 240, 120)]
+    assert clips[0].fade_in == 0 and out.duration_frames == 180

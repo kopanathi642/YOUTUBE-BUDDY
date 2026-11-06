@@ -338,3 +338,11 @@ input[type="range"] { accent-color: var(--purple); width: 100%; }
 .sb-card img, .sb-ph { height: 30px; }
 .ed2 .ed-bin .tabs { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
 .ed2 .ed-bin .tabs button { white-space: nowrap; padding: 6px 7px; }
+.clipwrap { overflow: hidden; }
+.clipwrap > img, .clipwrap > video { object-fit: fill; pointer-events: none; }
+.title-layer { position: absolute; white-space: pre; font-weight: 700; line-height: 1.2; pointer-events: none; text-align: center; }
+.clip.title { background: linear-gradient(180deg, #b45309, #92400e) !important; border-color: rgba(251, 191, 36, .6); }
+.transcript { max-height: 220px; overflow-y: auto; margin-top: 12px; padding: 8px 10px; border-radius: 10px; background: var(--bg-2); border: 1px solid var(--line); font-size: 13px; display: grid; gap: 4px; }
+.thumb-grid { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 14px; margin-top: 12px; }
+.thumb-canvas { width: 100%; aspect-ratio: 16 / 9; border-radius: 10px; border: 1px solid var(--line); background: #000; }
+@media (max-width: 760px) { .thumb-grid { grid-template-columns: 1fr; } }

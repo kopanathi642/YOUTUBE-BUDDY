@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { RotateCcw, MousePointerClick, ChevronRight } from "lucide-react";
 import { Asset } from "../api";
-import { Clip, Timeline, Track, Transform, DEFAULT_TRANSFORM, framesToTimecode, len, updateClip } from "../timeline";
+import { Clip, Timeline, Track, Transform, DEFAULT_TRANSFORM, DEFAULT_TITLE, Title, Crop, framesToTimecode, len, updateClip, setSpeed } from "../timeline";
 import { LOOKS, withLook, sanitizeGrade } from "../grade";
 
 /** Free typing; applied (and clamped) on Enter or blur. Esc reverts. */
@@ -30,12 +30,19 @@ function Field({ label, value, min, max, step, unit, onChange, disabled, onReset
   );
 }
 
-const SOON_ROWS = ["Cropping", "Speed & Time", "Stabilization", "Motion Tracking", "Mask & Roto"];
+const SOON_ROWS = ["Motion Tracking", "Mask & Roto"];
+const SPEEDS = [0.25, 0.5, 1, 1.5, 2, 4];
+const TITLE_STYLES: [string, Partial<Title>][] = [
+  ["Purple box", { color: "#ffffff", bg_color: "#7c3aed", bg_opacity: 0.9 }], ["Clean white", { color: "#ffffff", bg_color: null }],
+  ["Subtitle", { color: "#ffffff", bg_color: "#000000", bg_opacity: 0.6, font_size: 56 }], ["Yellow pop", { color: "#111111", bg_color: "#facc15", bg_opacity: 1 }],
+  ["Neon", { color: "#22d3ee", bg_color: "#0b0d24", bg_opacity: 0.85 }], ["Big headline", { color: "#ffffff", bg_color: null, font_size: 180 }],
+];
 
-export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab }: {
+export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab, onAddTitle, onStabilize, toast }: {
   tl: Timeline; sel: { track: Track; clip: Clip } | null; asset: Asset | undefined;
   edit: (t: Timeline | null, coalesce?: string) => boolean; readOnly: boolean;
   tab: "inspector" | "effects" | "transition" | "text" | "metadata"; setTab: (t: any) => void;
+  onAddTitle: () => void; onStabilize: (assetId: string) => void; toast: (m: string) => void;
 }) {
   const tabs = [["inspector", "Inspector"], ["effects", "Effects"], ["transition", "Transition"], ["text", "Text"], ["metadata", "Metadata"]] as const;
   const head = <div className="tabs" role="tablist">{tabs.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>)}</div>;
@@ -43,17 +50,24 @@ export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab 
     <aside className="panel ed-insp" aria-label="Inspector">{head}
       <div className="empty" style={{ padding: "20px 14px" }}><MousePointerClick size={24} color="#a78bfa" />
         <div style={{ fontSize: 12.5 }}>Select a clip on the timeline.</div>
+        {tab === "text" && <button className="btn primary sm" disabled={readOnly} onClick={onAddTitle}>T  Add title at playhead</button>}
         <div className="dim" style={{ fontSize: 11, lineHeight: 1.7 }}>Space play · ←/→ frame · S split · Del delete · Shift+Del ripple · Ctrl+Z undo · N snap</div></div>
     </aside>);
   const { clip, track } = sel;
   const ro = readOnly || track.locked;
   const set = (patch: Partial<Clip>, key: string) => edit(updateClip(tl, clip.id, patch), `${clip.id}:${key}`);
   const setT = (patch: Partial<Transform>, key: string) => set({ transform: { ...clip.transform, ...patch } }, key);
-  const fps = tl.fps, visual = track.kind === "video" && asset?.has_video, audio = !!asset?.has_audio;
+  const fps = tl.fps, isTitle = !!clip.title, visual = track.kind === "video" && (asset?.has_video || isTitle), audio = !!asset?.has_audio;
+  const ti: Title = clip.title ?? DEFAULT_TITLE;
+  const setTitle = (patch: Partial<Title>, key: string) => set({ title: { ...ti, ...patch } }, `title:${key}`);
+  const cr: Crop = clip.crop ?? { left: 0, right: 0, top: 0, bottom: 0 };
+  const setCrop = (patch: Partial<Crop>, key: string) => set({ crop: { ...cr, ...patch } }, `crop:${key}`);
+  const speedTo = (v: number) => { const r = setSpeed(tl, clip.id, v); if (r) edit(r, `${clip.id}:speed`); else toast("Not enough room — the faster/slower clip would overlap the next clip. Move it first."); };
+  const canSpeed = !isTitle && asset?.kind !== "image";
   return (
     <aside className="panel ed-insp" aria-label="Inspector">{head}
       <div className="insp-body">
-        <div className="insp-title"><div className="ellipsis" style={{ fontWeight: 600 }}>{asset?.filename ?? "Missing media"}</div>
+        <div className="insp-title"><div className="ellipsis" style={{ fontWeight: 600 }}>{isTitle ? `Title: ${ti.text}` : asset?.filename ?? "Missing media"}</div>
           <div className="dim mono" style={{ fontSize: 11 }}>{track.name} · {framesToTimecode(clip.start, fps)} · len {framesToTimecode(len(clip), fps)}</div>
           {track.locked && <span className="badge warn">Track locked</span>}</div>
         {tab === "inspector" && <>
@@ -68,6 +82,19 @@ export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab 
           {audio && <details open className="insp-sec"><summary>Audio</summary>
             <Field label="Volume" value={Math.round(clip.volume * 100)} min={0} max={400} step={1} unit="%" disabled={ro} onChange={(v) => set({ volume: v / 100 }, "vol")} onReset={() => set({ volume: 1 }, "v0")} />
             <label className="check"><input type="checkbox" checked={!!clip.denoise} disabled={ro} onChange={(e) => set({ denoise: e.target.checked }, "dn")} />Noise reduction <span className="dim" style={{ fontSize: 11 }}>(heard in export)</span></label>
+          </details>}
+          {canSpeed && <details className="insp-sec" open={(clip.speed ?? 1) !== 1}><summary>Speed &amp; Time</summary>
+            <Field label="Speed" value={clip.speed ?? 1} min={0.25} max={4} step={0.05} unit="×" disabled={ro} onChange={speedTo} onReset={() => speedTo(1)} />
+            <div className="look-list">{SPEEDS.map((v) => <button key={v} className={`btn sm ${(clip.speed ?? 1) === v ? "toggled" : ""}`} disabled={ro} onClick={() => speedTo(v)}>{v}×</button>)}</div>
+            <div className="dim" style={{ fontSize: 11, marginTop: 4 }}>Audio keeps its pitch. The clip's length on the timeline changes with speed.</div>
+          </details>}
+          {visual && !isTitle && <details className="insp-sec" open={!!clip.crop}><summary>Cropping</summary>
+            {(["left", "right", "top", "bottom"] as const).map((side) => <Field key={side} label={side[0].toUpperCase() + side.slice(1)} value={Math.round(cr[side] * 100)} min={0} max={45} step={1} unit="%" disabled={ro} onChange={(v) => setCrop({ [side]: v / 100 }, side)} />)}
+            <button className="btn sm ghost" disabled={ro || !clip.crop} onClick={() => set({ crop: null }, "crop0")}><RotateCcw size={12} />Reset crop</button>
+          </details>}
+          {visual && !isTitle && asset?.kind === "video" && <details className="insp-sec"><summary>Stabilization</summary>
+            <div className="dim" style={{ fontSize: 11.5, marginBottom: 6 }}>Creates a smoothed copy of this clip's video on the cloud worker (original kept). Then swap it in.</div>
+            <button className="btn sm" disabled={ro} onClick={() => onStabilize(asset.id)}>Stabilize this video</button>
           </details>}
           {SOON_ROWS.map((r) => <div key={r} className="soon-row"><ChevronRight size={13} />{r}<span className="badge soon">Soon</span></div>)}
         </>}
@@ -87,7 +114,22 @@ export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab 
             onChange={(v) => { const f = Math.round(v * fps); if (f + clip.fade_in <= len(clip)) set({ fade_out: f }, "fo"); }} />
           <div className="dim" style={{ fontSize: 11 }}>Fades work on picture and sound. Cross-dissolves and wipes are planned.</div>
         </div>}
-        {tab === "text" && <div className="insp-sec dim" style={{ fontSize: 12 }}>Title and text clips are planned (Phase 2b). Until then, add a PNG title or badge as an image clip on the Titles / Graphics track.</div>}
+        {tab === "text" && (isTitle ? <div className="insp-sec">
+          <div className="label">Style</div>
+          <div className="look-list" style={{ marginBottom: 8 }}>{TITLE_STYLES.map(([n, st]) => <button key={n} className="btn sm" disabled={ro} onClick={() => setTitle(st, "style")}>{n}</button>)}</div>
+          <label className="label" htmlFor="title-text">Text</label>
+          <textarea id="title-text" className="notes" style={{ width: "100%", minHeight: 64 }} defaultValue={ti.text} key={clip.id} disabled={ro} maxLength={300}
+            onBlur={(e) => e.target.value.trim() && e.target.value !== ti.text && setTitle({ text: e.target.value }, "text")} />
+          <div className="dim" style={{ fontSize: 11, margin: "2px 0 8px" }}>Any language — Hindi, Tamil, Telugu, Bengali, Gujarati, Punjabi, Kannada, Malayalam, Odia, Arabic and Latin.</div>
+          <Field label="Size" value={ti.font_size} min={8} max={400} step={1} unit="px" disabled={ro} onChange={(v) => setTitle({ font_size: Math.round(v) }, "size")} />
+          <label className="cslider"><span>Text colour</span><input type="color" value={ti.color} disabled={ro} onChange={(e) => setTitle({ color: e.target.value }, "color")} /><span className="mono">{ti.color}</span></label>
+          <label className="check" style={{ margin: "6px 0" }}><input type="checkbox" checked={!!ti.bg_color} disabled={ro} onChange={(e) => setTitle({ bg_color: e.target.checked ? "#7c3aed" : null }, "bg")} />Background box</label>
+          {ti.bg_color && <><label className="cslider"><span>Box colour</span><input type="color" value={ti.bg_color} disabled={ro} onChange={(e) => setTitle({ bg_color: e.target.value }, "bgc")} /><span className="mono">{ti.bg_color}</span></label>
+            <Field label="Box opacity" value={Math.round(ti.bg_opacity * 100)} min={0} max={100} step={1} unit="%" disabled={ro} onChange={(v) => setTitle({ bg_opacity: v / 100 }, "bgo")} /></>}
+          <div className="dim" style={{ fontSize: 11 }}>Position, size, rotation and opacity are in the Inspector tab; fades in the Transition tab.</div>
+        </div> : <div className="insp-sec"><button className="btn primary sm" disabled={readOnly} onClick={onAddTitle}>T  Add title at playhead</button>
+          <div className="dim" style={{ fontSize: 11.5, marginTop: 6 }}>Titles go on the Titles / Graphics track and render in any Indian language.</div></div>)}
+        {tab === "metadata" && !asset && <div className="insp-sec dim" style={{ fontSize: 12 }}>Titles have no source file.</div>}
         {tab === "metadata" && asset && <div className="insp-sec"><dl className="meta">
           <dt>Type</dt><dd>{asset.kind}</dd>
           {asset.width && <><dt>Resolution</dt><dd>{asset.width}×{asset.height}</dd></>}

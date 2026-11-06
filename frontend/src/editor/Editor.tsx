@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Cloud, CloudOff, Loader2, AlertTriangle, Undo2, Redo2, Home, FolderOpen, Scissors, Workflow, Palette, AudioLines, Sparkles, Activity, Type, Image as ImageIcon, LayoutTemplate, Youtube, Bot, Bell } from "lucide-react";
+import { History as HistoryIcon, X as XIcon, Cloud, CloudOff, Loader2, AlertTriangle, Undo2, Redo2, Home, FolderOpen, Scissors, Workflow, Palette, AudioLines, Sparkles, Activity, Type, Image as ImageIcon, LayoutTemplate, Youtube, Bot, Bell } from "lucide-react";
 import { api, ApiError, Asset, Project, SequenceDoc } from "../api";
 import { useToast } from "../App";
 import { Brand, UserMenu } from "../components/Shell";
 import { useHistory } from "./useHistory";
-import { Timeline, duration, splitAllAt, splitAt, deleteClip, findClip, insertClip, updateClip, end } from "../timeline";
+import { Timeline, Clip, duration, splitAllAt, splitAt, deleteClip, findClip, insertClip, insertTitle, updateClip, end, fits, freeSlot, addTrack, uid, DEFAULT_TRANSFORM } from "../timeline";
+import { CaptionsModal, TTSModal, VoiceCatalog } from "./AiTools";
+import { HighlightsModal, ThumbnailModal, Moment } from "./Creator";
+import HistoryPanel from "./HistoryPanel";
 import { LOOKS, svgFilterBody, withLook, sanitizeGrade } from "../grade";
 import { buildPlan, applyCuts, silenceCuts, applySceneSplits, sceneSplits, loudnessGain } from "../smart";
 import MediaBin from "./MediaBin";
@@ -53,12 +56,18 @@ export default function Editor() {
   const [plan, setPlan] = useState<ReturnType<typeof buildPlan> | null>(null);
   const [recording, setRecording] = useState(false);
   const [exportFocus, setExportFocus] = useState(0);
+  const [showHistory, setShowHistory] = useState(false);
+  type Pending = { type: "swap"; sourceId: string } | { type: "dub"; clipId: string; keep: boolean; target: string } | { type: "tts"; at: number };
+  const [pending, setPending] = useState<Record<string, Pending>>({}); // new asset id -> what to do when it is ready
+  const [catalog, setCatalog] = useState<VoiceCatalog | null>(null);
+  const [aiModal, setAiModal] = useState<null | "captions" | "transcript" | "tts" | "highlights" | "thumbnail">(null);
+  const [dubBusy, setDubBusy] = useState<string | null>(null);
   const [autoAdjust, setAutoAdjustState] = useState(() => { try { return localStorage.getItem("cu.autoAdjust") === "1"; } catch { return false; } });
   const setAutoAdjust = (v: boolean) => { setAutoAdjustState(v); try { localStorage.setItem("cu.autoAdjust", v ? "1" : "0"); } catch { /* ignore */ } };
   const samplerRef = useRef<Sampler | null>(null);
   const uploadRef = useRef<((f: File[]) => void) | null>(null);
   const readOnly = project?.my_role === "viewer";
-  const assetMap = useMemo(() => new Map(assets.map((a) => [a.id, a])), [assets]);
+  const assetMap = useMemo(() => new Map<string | null, Asset>(assets.map((a) => [a.id, a])), [assets]);
 
   // ---------- load
   const loadMedia = useCallback(async () => {
@@ -84,6 +93,93 @@ export default function Editor() {
     const t = setInterval(loadMedia, 2500);
     return () => clearInterval(t);
   }, [assets, loadMedia]);
+
+  // When generated media (stabilized copy, dub, voice-over) is ready, put it on the timeline — one undoable edit each.
+  useEffect(() => {
+    if (!tl) return;
+    let next = tl;
+    const msgs: string[] = [];
+    const done: string[] = [];
+    for (const [nid, job] of Object.entries(pending)) {
+      const a = assets.find((x) => x.id === nid);
+      if (!a || a.status === "processing") continue;
+      done.push(nid);
+      if (a.status !== "ready") { msgs.push(`${a.filename} failed: ${a.status_detail ?? a.job?.error ?? "processing error"}`); if (job.type === "dub") setDubBusy(null); continue; }
+      if (job.type === "swap") {
+        let n = 0;
+        for (const t of next.tracks) for (const c of t.clips) if (c.asset_id === job.sourceId) { next = updateClip(next, c.id, { asset_id: nid }) ?? next; n++; }
+        msgs.push(n ? `Swapped in “${a.filename}” on ${n} clip${n > 1 ? "s" : ""} — Ctrl+Z to go back to the original` : `“${a.filename}” is ready in the media bin`);
+      } else if (job.type === "dub") {
+        setDubBusy(null);
+        const src = findClip(next, job.clipId)?.clip;
+        if (!src) { msgs.push(`“${a.filename}” is ready in the media bin`); continue; }
+        const dubClip: Clip = { id: uid(), asset_id: nid, start: src.start, in: src.in, out: Math.min(src.out, Math.floor((a.duration_s ?? 0) * next.fps)), speed: src.speed ?? 1,
+          volume: 1, fade_in: 0, fade_out: 0, transform: { ...DEFAULT_TRANSFORM } };
+        let track = next.tracks.find((t) => t.kind === "audio" && !t.locked && fits(t, dubClip.start, Math.round((dubClip.out - dubClip.in) / (dubClip.speed ?? 1)), undefined));
+        if (!track) { next = addTrack(next, "audio"); track = next.tracks[next.tracks.length - 1]; next = { ...next, tracks: next.tracks.map((t) => (t.id === track!.id ? { ...t, name: `Dub (${job.target})` } : t)) }; }
+        const tid = track.id;
+        next = { ...next, tracks: next.tracks.map((t) => (t.id === tid ? { ...t, clips: [...t.clips, dubClip] } : t)) };
+        next = updateClip(next, src.id, { volume: job.keep ? 0.15 : 0 }) ?? next;
+        msgs.push(`Dubbed audio added under the clip; original voice ${job.keep ? "lowered to 15%" : "muted"} — Ctrl+Z to undo`);
+      } else if (job.type === "tts") {
+        const frames = Math.max(1, Math.floor((a.duration_s ?? 1) * next.fps));
+        const track = next.tracks.find((t) => t.kind === "audio" && !t.locked) ;
+        if (!track) { msgs.push(`“${a.filename}” is ready in the media bin`); continue; }
+        const r = insertClip(next, track.id, nid, freeSlot(track, job.at, frames), 0, frames);
+        if (r) { next = r.tl; msgs.push(`Voice-over added to ${track.name} at ${(r.tl.tracks.find((t) => t.id === track.id)!.clips.find((c) => c.id === r.id)!.start / next.fps).toFixed(1)}s`); }
+      }
+    }
+    if (!done.length) return;
+    setPending((m) => { const n = { ...m }; done.forEach((d) => delete n[d]); return n; });
+    if (next !== tl) edit(next);
+    msgs.forEach(toast);
+  }, [assets]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { api<VoiceCatalog>("/ai/voices").then(setCatalog).catch(() => {}); }, []);
+
+  async function derive(assetId: string, op: string, label: string) {
+    try {
+      const a = await api<Asset>(`/media/${assetId}/derive`, { method: "POST", body: { op } });
+      setAssets((xs) => [a, ...xs]); setPending((m) => ({ ...m, [a.id]: { type: "swap", sourceId: assetId } }));
+      toast(`${label} on the cloud worker… “${a.filename}” will replace the original on the timeline when ready`);
+    } catch (e) { toast((e as Error).message); }
+  }
+
+  /** Clip whose speech gets dubbed: the selected one, else the first clip with sound on the main track. */
+  const dubSource = (() => {
+    if (!tl) return null;
+    const s = selected ? findClip(tl, selected)?.clip : null;
+    if (s && s.asset_id && assetMap.get(s.asset_id)?.has_audio) return s;
+    const base = [...tl.tracks].reverse().find((t) => t.kind === "video");
+    return base?.clips.find((c) => assetMap.get(c.asset_id)?.has_audio) ?? null;
+  })();
+  async function startDub(target: string, voiceId: string, keep: boolean) {
+    if (!dubSource?.asset_id) return;
+    try {
+      setDubBusy("Starting…");
+      const a = await api<Asset>(`/media/${dubSource.asset_id}/dub`, { method: "POST", body: { target, voice_id: voiceId } });
+      setAssets((xs) => [a, ...xs]); setPending((m) => ({ ...m, [a.id]: { type: "dub", clipId: dubSource.id, keep, target } }));
+      setDubBusy("Transcribing, translating and voicing on the cloud worker — keeps running if you close the tab");
+    } catch (e) { setDubBusy(null); toast((e as Error).message); }
+  }
+  function videoSel(): string | null {
+    const s = selected && tl ? findClip(tl, selected)?.clip : null;
+    const a = s?.asset_id ? assetMap.get(s.asset_id) : undefined;
+    if (!a || a.kind !== "video") { toast("Select a video clip on the timeline first"); return null; }
+    return a.id;
+  }
+
+  function addTitle() {
+    if (!tl) return;
+    const track = tl.tracks.find((t) => t.id === "v2" && !t.locked) ?? tl.tracks.find((t) => t.kind === "video" && !t.locked);
+    if (!track) { toast("Unlock a video track first"); return; }
+    const r = insertTitle(tl, track.id, playhead, 3 * fps);
+    if (r && edit(r.tl)) {
+      const at = r.tl.tracks.find((t) => t.id === track.id)!.clips.find((c) => c.id === r.id)!.start;
+      setSelected(r.id); setInspTab("text"); setPlaying(false); setPlayhead(at);
+      toast(at === playhead ? "Title added — edit its text in the Text tab" : `That spot was taken, so the title went to the next free gap at ${(at / fps).toFixed(1)}s`);
+    }
+  }
 
   // ---------- autosave
   const saving = useRef(false);
@@ -199,6 +295,8 @@ export default function Editor() {
       case "magic": setPlan(buildPlan(tl, assetMap)); break;
       case "short916": case "reframe": reframe("vertical", `Short 9:16 (${seq?.name ?? "edit"})`); break;
       case "reels45": reframe("portrait_45", `Reel 4:5 (${seq?.name ?? "edit"})`); break;
+      case "viral": case "batch": setAiModal("highlights"); break;
+      case "design": setAiModal("thumbnail"); break;
       case "clips": { const s = sceneSplits(tl, assetMap); if (!s.length) { toast("No scene changes found in the clips on the timeline"); break; } edit(applySceneSplits(tl, s)); toast(`Split into clips at ${s.length} scene change${s.length > 1 ? "s" : ""} — select and delete the parts you don't need`); break; }
       case "scenes": { const s = sceneSplits(tl, assetMap); toast(s.length ? `${s.length} scene change${s.length > 1 ? "s" : ""} found — see the Scenes tab below` : "No scene changes found in clips on the timeline"); document.querySelector<HTMLButtonElement>(".storyboard [role=tab]:nth-child(2)")?.click(); break; }
       case "silence": { const c = silenceCuts(tl, assetMap); if (!c.length) { toast("No removable silences found (≥ 0.6 s below -35 dB)"); break; } edit(applyCuts(tl, c)); toast(`Removed ${c.length} silence${c.length > 1 ? "s" : ""} — Ctrl+Z to undo`); break; }
@@ -206,12 +304,18 @@ export default function Editor() {
       case "color": scroll(".color-panel-anchor"); break;
       case "fusion": scroll(".nodes-anchor"); break;
       case "effects": setInspTab("effects"); break;
+      case "motion": case "title": addTitle(); break;
+      case "templates": setInspTab("text"); toast("Title styles: add a title, then pick a style in the Text tab"); break;
       case "transitions": setInspTab("transition"); break;
       case "export": setExportFocus((n) => n + 1); scroll(".export-dock"); break;
-      case "bg": needs("background_remove"); break;
+      case "bg": { const id = videoSel(); if (id) derive(id, "remove_bg", "Removing the background"); break; }
+      case "stabilize": { const id = videoSel(); if (id) derive(id, "stabilize", "Stabilizing"); break; }
       case "obj": needs("object_remove"); break;
-      case "subtitle": needs("translate"); break; case "voice": needs("dubbing"); break; case "tts": needs("tts"); break;
-      case "lipsync": needs("lip_sync"); break; case "transcribe": needs("transcribe"); break;
+      case "subtitle": setAiModal("captions"); break;
+      case "voice": scroll(".voice"); break;
+      case "tts": setAiModal("tts"); break;
+      case "lipsync": needs("lip_sync"); break;
+      case "transcribe": setAiModal("transcript"); break;
       default: toast("Planned — not available yet");
     }
   }
@@ -249,7 +353,7 @@ export default function Editor() {
   const selAsset = sel ? assetMap.get(sel.clip.asset_id) : undefined;
   const onTl = new Set(tl.tracks.flatMap((t) => t.clips.map((c) => c.asset_id)));
   const analysed = [...onTl].every((id) => { const a = assetMap.get(id); return a && a.status === "ready" && (a.kind === "image" || a.analysis); });
-  const NAV: [string, any, string | null][] = [["Fusion (Nodes)", Workflow, "fusion"], ["Color", Palette, "color"], ["Audio", AudioLines, "loudness-nav"], ["VFX", Activity, "fusion"], ["Motion", Type, null], ["Graphics", ImageIcon, null], ["Design", ImageIcon, null], ["AI Studio", Sparkles, "magic"], ["Templates", LayoutTemplate, null], ["YouTube", Youtube, null], ["Automation", Bot, null]];
+  const NAV: [string, any, string | null][] = [["Fusion (Nodes)", Workflow, "fusion"], ["Color", Palette, "color"], ["Audio", AudioLines, "loudness-nav"], ["VFX", Activity, "fusion"], ["Motion", Type, "motion"], ["Graphics", ImageIcon, "media"], ["Design", ImageIcon, "design"], ["AI Studio", Sparkles, "magic"], ["Templates", LayoutTemplate, "templates"], ["YouTube", Youtube, null], ["Automation", Bot, null]];
 
   return (
     <div className="ed2">
@@ -272,6 +376,7 @@ export default function Editor() {
           <button className="btn icon ghost" onClick={hist.undo} disabled={!hist.canUndo || readOnly} title="Undo (Ctrl+Z)" aria-label="Undo"><Undo2 size={16} /></button>
           <button className="btn icon ghost" onClick={hist.redo} disabled={!hist.canRedo || readOnly} title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><Redo2 size={16} /></button>
         </div>
+        <button className="btn icon ghost" onClick={() => setShowHistory(true)} title="Version history" aria-label="Version history"><HistoryIcon size={17} /></button>
         <SaveBlock state={readOnly ? "readonly" : save} version={version} />
         <button className="btn icon ghost" aria-label="Notifications (none)" disabled><Bell size={17} /></button>
         <UserMenu />
@@ -293,7 +398,8 @@ export default function Editor() {
               onNewSeq={() => createSequence({ name: `Sequence ${sequences.length + 1}`, format: tl.width >= tl.height ? "landscape" : "vertical" }, "New empty sequence created")}
               onSnapshot={snapshot} />
             <AssistantPanel caps={caps} autoAdjust={autoAdjust} setAutoAdjust={setAutoAdjust} onMagic={() => action("magic")} readOnly={readOnly} pending={!analysed} />
-            <VoicePanel caps={caps} />
+            <VoicePanel caps={caps} catalog={catalog} busy={dubBusy} onDub={startDub}
+              source={dubSource ? { name: assetMap.get(dubSource.asset_id)?.filename ?? "clip" } : null} />
           </div>
           <div className="r2">
             <div className="color-panel-anchor"><ColorPanel tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly} /></div>
@@ -306,7 +412,8 @@ export default function Editor() {
               selected={selected} setSelected={setSelected} snapOn={snapOn} setSnapOn={setSnapOn} readOnly={readOnly}
               onDropAsset={(id, trackId, at) => { const a = assetMap.get(id); if (a) addAssetToTimeline(a, trackId, at); }}
               timecode="" />
-            <Inspector tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly} tab={inspTab} setTab={setInspTab} />
+            <Inspector tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly} tab={inspTab} setTab={setInspTab}
+              onAddTitle={addTitle} onStabilize={(id) => derive(id, "stabilize", "Stabilizing")} toast={toast} />
           </div>
           <div className="r4">
             <BottomStrip tl={tl} assets={assetMap} setPlayhead={(f) => { setPlaying(false); setPlayhead(f); }} setSelected={setSelected} readOnly={readOnly}
@@ -318,6 +425,34 @@ export default function Editor() {
         </div>
       </div>
       {plan && <PlanDialog ops={plan} onClose={() => setPlan(null)} onApply={(ids) => { let t = tl; for (const o of plan) if (ids.has(o.id)) t = o.apply(t); edit(t); setPlan(null); toast(`AI Magic applied ${ids.size} change${ids.size > 1 ? "s" : ""} — Ctrl+Z to undo`); }} />}
+      {showHistory && (
+        <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && setShowHistory(false)}>
+          <div className="card modal" role="dialog" aria-modal="true" aria-label="Version history" style={{ width: "min(460px,100%)", maxHeight: "80vh", overflow: "auto", padding: 0 }}>
+            <div className="row" style={{ padding: "12px 14px 0" }}><b className="grow">Version history · {seq.name}</b><button className="btn icon ghost" aria-label="Close" onClick={() => setShowHistory(false)}><XIcon size={16} /></button></div>
+            <HistoryPanel sequenceId={seq.id} current={version} readOnly={readOnly} onRestored={(s) => { setVersion(s.version); savedRef.current = s.timeline; hist.reset(s.timeline); setSave("saved"); setShowHistory(false); toast(`Restored — saved as version ${s.version}`); }} />
+          </div>
+        </div>)}
+      {(aiModal === "captions" || aiModal === "transcript") && <CaptionsModal tl={tl} assets={assetMap} catalog={catalog} mode={aiModal} onClose={() => setAiModal(null)} refresh={loadMedia}
+        onApply={(t) => { edit(t); setAiModal(null); toast("Captions added on the Captions track — edit any line in the Text tab"); }} />}
+      {aiModal === "highlights" && <HighlightsModal tl={tl} assets={assetMap} onClose={() => setAiModal(null)} onPreview={(f) => { setPlaying(false); setPlayhead(f); }}
+        onCreate={async (ms: Moment[], format: string) => {
+          await doSave(true);
+          let first: SequenceDoc | null = null;
+          for (const [i, m] of ms.entries()) {
+            try {
+              const s = await api<SequenceDoc>(`/projects/${project.id}/sequences`, { method: "POST", body: {
+                name: `Short ${i + 1} (${Math.floor(m.from / fps / 60)}:${String(Math.floor((m.from / fps) % 60)).padStart(2, "0")})`, from_sequence_id: seq.id,
+                range_from: m.from, range_to: m.to, ...(format ? { format, reframe: true } : {}) } });
+              setSequences((ss) => [...ss, s]); first = first ?? s;
+            } catch (e) { toast((e as Error).message); }
+          }
+          setAiModal(null);
+          if (first) { openSequence(first); toast(`Created ${ms.length} short${ms.length > 1 ? "s" : ""} — switch between them with the Program menu`); }
+        }} />}
+      {aiModal === "thumbnail" && <ThumbnailModal samplerRef={samplerRef} onClose={() => setAiModal(null)}
+        onSave={(f) => { uploadRef.current?.([f]); setAiModal(null); toast("Thumbnail saved to your media bin"); }} />}
+      {aiModal === "tts" && <TTSModal catalog={catalog} projectId={project.id} onClose={() => setAiModal(null)}
+        onCreated={(a) => { setAssets((xs) => [a, ...xs]); setPending((m) => ({ ...m, [a.id]: { type: "tts", at: playhead } })); setAiModal(null); toast("Generating voice on the cloud worker…"); }} />}
       {recording && <RecordModal onClose={() => setRecording(false)} onDone={(f) => { setRecording(false); uploadRef.current?.([f]); toast("Recording is uploading to your media bin"); }} />}
     </div>
   );

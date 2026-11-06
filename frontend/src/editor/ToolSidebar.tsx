@@ -10,8 +10,8 @@ type Item = { id: string; label: string; icon: any; cap?: string; soon?: boolean
 const SHORTS: Item[] = [
   { id: "short916", label: "Video to Shorts (Auto)", icon: Zap, cap: "smart_reframe" },
   { id: "clips", label: "Auto Clips & Highlights", icon: LayoutGrid, cap: "scene_detect" },
-  { id: "viral", label: "Viral Moments Finder", icon: BarChart3, soon: true },
-  { id: "batch", label: "Multi-Shorts (Batch)", icon: Layers, soon: true },
+  { id: "viral", label: "Highlight Finder", icon: BarChart3, cap: "scene_detect" },
+  { id: "batch", label: "Multi-Shorts (Batch)", icon: Layers, cap: "smart_reframe" },
   { id: "reels45", label: "Reels / Shorts Formatter", icon: Smartphone, cap: "smart_reframe" },
   { id: "reframe", label: "Smart Reframe (9:16)", icon: Crop, cap: "smart_reframe" },
 ];
@@ -19,6 +19,8 @@ const VIDEO_TOOLS: Item[] = [
   { id: "scenes", label: "Scene Detection", icon: LayoutGrid, cap: "scene_detect" },
   { id: "silence", label: "Silence Removal", icon: AudioLines, cap: "silence_remove" },
   { id: "autocolor", label: "Auto Color", icon: Palette, cap: "auto_color" },
+  { id: "stabilize", label: "Stabilize (selected clip)", icon: Crop, cap: "stabilize" },
+  { id: "bg", label: "Remove Background", icon: Wand, cap: "background_remove" },
 ];
 const AUDIO_TOOLS: Item[] = [
   { id: "loudness", label: "Balance Levels", icon: AudioLines, cap: "loudness" },
@@ -30,13 +32,13 @@ const MORE: Item[] = [
   { id: "tts", label: "Text to Speech (TTS)", icon: Type, cap: "tts" },
   { id: "lipsync", label: "Lip Sync (AI)", icon: UserRoundX, cap: "lip_sync" },
   { id: "transcribe", label: "AI Transcribe", icon: FileText, cap: "transcribe" },
-  { id: "design", label: "Design & Thumbnail", icon: ImageIcon, soon: true },
+  { id: "design", label: "Design & Thumbnail", icon: ImageIcon },
   { id: "stock", label: "Stock Library", icon: Library, soon: true },
   { id: "effects", label: "Effects & Filters", icon: Wand },
   { id: "transitions", label: "Transitions", icon: ArrowLeftRight },
   { id: "color", label: "Color Grading", icon: Palette },
   { id: "fusion", label: "VFX & Fusion", icon: Workflow },
-  { id: "motion", label: "Motion Graphics", icon: Shapes, soon: true },
+  { id: "motion", label: "Motion Graphics (Titles)", icon: Shapes },
   { id: "elements", label: "Elements", icon: Layers, soon: true },
   { id: "export", label: "Export & Share", icon: Upload },
 ];

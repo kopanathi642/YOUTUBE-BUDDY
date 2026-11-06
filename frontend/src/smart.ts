@@ -1,7 +1,7 @@
 // Rule-based smart editing driven by the worker's real media analysis (scenes, silences, loudness, colour).
 // Every operation is a normal, undoable timeline edit — nothing is hidden.
 import type { Asset } from "./api";
-import { Timeline, Clip, end, splitAt, deleteClip, updateClip, findClip } from "./timeline";
+import { Timeline, Clip, end, splitAt, deleteClip, updateClip, findClip, sp } from "./timeline";
 import { isNeutral, sanitizeGrade } from "./grade";
 
 export type Analysis = {
@@ -13,6 +13,7 @@ export type Analysis = {
   error?: string;
 };
 const an = (a?: Asset): Analysis => ((a as any)?.analysis ?? {}) as Analysis;
+const A = (m: Map<string | null, Asset>, id: string | null) => (id ? m.get(id) : undefined);
 
 export const TARGET_LUFS = -14;
 const PAD_S = 0.15, MIN_CUT_S = 0.4;
@@ -20,16 +21,16 @@ const PAD_S = 0.15, MIN_CUT_S = 0.4;
 export type Cut = { clipId: string; trackId: string; from: number; to: number };
 
 /** Silent stretches inside clips on the timeline, in timeline frames (padded so words aren't clipped). */
-export function silenceCuts(tl: Timeline, assets: Map<string, Asset>): Cut[] {
+export function silenceCuts(tl: Timeline, assets: Map<string | null, Asset>): Cut[] {
   const fps = tl.fps, out: Cut[] = [];
   for (const t of tl.tracks) {
     if (t.locked) continue;
     for (const c of t.clips) {
-      const sil = an(assets.get(c.asset_id)).silences ?? [];
+      const sil = an(A(assets, c.asset_id)).silences ?? [];
       for (const s of sil) {
         const a = Math.max(s.start + PAD_S, c.in / fps), b = Math.min(s.end - PAD_S, c.out / fps);
         if (b - a < MIN_CUT_S) continue;
-        const from = c.start + Math.ceil(a * fps - c.in - 1e-6), to = c.start + Math.floor(b * fps - c.in + 1e-6);
+        const from = c.start + Math.ceil((a * fps - c.in) / sp(c) - 1e-6), to = c.start + Math.floor((b * fps - c.in) / sp(c) + 1e-6);
         if (to - from >= 1 && from >= c.start && to <= end(c)) out.push({ clipId: c.id, trackId: t.id, from, to });
       }
     }
@@ -58,11 +59,11 @@ export function applyCuts(tl: Timeline, cuts: Cut[]): Timeline {
 }
 
 /** Split clips at detected scene changes. */
-export function sceneSplits(tl: Timeline, assets: Map<string, Asset>): { clipId: string; frame: number }[] {
+export function sceneSplits(tl: Timeline, assets: Map<string | null, Asset>): { clipId: string; frame: number }[] {
   const fps = tl.fps, out: { clipId: string; frame: number }[] = [];
   for (const t of tl.tracks) if (t.kind === "video" && !t.locked) for (const c of t.clips) {
-    for (const s of an(assets.get(c.asset_id)).scenes ?? []) {
-      const f = c.start + Math.round(s.start * fps - c.in);
+    for (const s of an(A(assets, c.asset_id)).scenes ?? []) {
+      const f = c.start + Math.round((s.start * fps - c.in) / sp(c));
       if (f > c.start + 2 && f < end(c) - 2) out.push({ clipId: c.id, frame: f });
     }
   }
@@ -89,7 +90,7 @@ export function loudnessGain(a?: Asset): number | null {
 export type PlanOp = { id: string; label: string; detail: string; apply: (tl: Timeline) => Timeline };
 
 /** "AI Magic" plan: only operations backed by real measurements of the media on this timeline. */
-export function buildPlan(tl: Timeline, assets: Map<string, Asset>): PlanOp[] {
+export function buildPlan(tl: Timeline, assets: Map<string | null, Asset>): PlanOp[] {
   const ops: PlanOp[] = [];
   const cuts = silenceCuts(tl, assets);
   if (cuts.length) {
@@ -97,12 +98,12 @@ export function buildPlan(tl: Timeline, assets: Map<string, Asset>): PlanOp[] {
     ops.push({ id: "silence", label: `Cut ${cuts.length} silence${cuts.length > 1 ? "s" : ""}`, detail: `Removes ${secs.toFixed(1)}s of dead air (≤ -35 dB, ≥ 0.6s), keeps 0.15s around speech`, apply: (t) => applyCuts(t, silenceCuts(t, assets)) });
   }
   // Targets are re-found at apply time, so earlier steps (e.g. silence cuts that split clips) are covered.
-  const colorTargets = (t: Timeline): Clip[] => t.tracks.filter((x) => x.kind === "video" && !x.locked).flatMap((x) => x.clips).filter((c) => { const g = an(assets.get(c.asset_id)).auto_grade; return isNeutral(c.color) && !!g && !isNeutral(sanitizeGrade(g)); });
-  const gainTargets = (t: Timeline) => t.tracks.filter((x) => !x.locked).flatMap((x) => x.clips).map((c) => ({ c, g: loudnessGain(assets.get(c.asset_id)) })).filter((x) => x.g && x.c.volume === 1);
-  const noiseTargets = (t: Timeline) => t.tracks.filter((x) => !x.locked).flatMap((x) => x.clips).filter((c) => assets.get(c.asset_id)?.has_audio && !c.denoise);
+  const colorTargets = (t: Timeline): Clip[] => t.tracks.filter((x) => x.kind === "video" && !x.locked).flatMap((x) => x.clips).filter((c) => { const g = an(A(assets, c.asset_id)).auto_grade; return isNeutral(c.color) && !!g && !isNeutral(sanitizeGrade(g)); });
+  const gainTargets = (t: Timeline) => t.tracks.filter((x) => !x.locked).flatMap((x) => x.clips).map((c) => ({ c, g: loudnessGain(A(assets, c.asset_id)) })).filter((x) => x.g && x.c.volume === 1);
+  const noiseTargets = (t: Timeline) => t.tracks.filter((x) => !x.locked).flatMap((x) => x.clips).filter((c) => A(assets, c.asset_id)?.has_audio && !c.denoise);
   const nc = colorTargets(tl).length, ng = gainTargets(tl).length, nn = noiseTargets(tl).length;
   if (nc) ops.push({ id: "color", label: `Auto colour & exposure on ${nc} clip${nc > 1 ? "s" : ""}`, detail: "Levels + white balance measured from each clip", apply: (t) => {
-    let o = t; for (const c of colorTargets(t)) o = updateClip(o, c.id, { color: sanitizeGrade(an(assets.get(c.asset_id)).auto_grade) }) ?? o; return o; } });
+    let o = t; for (const c of colorTargets(t)) o = updateClip(o, c.id, { color: sanitizeGrade(an(A(assets, c.asset_id)).auto_grade) }) ?? o; return o; } });
   if (ng) ops.push({ id: "loud", label: `Balance audio levels on ${ng} clip${ng > 1 ? "s" : ""}`, detail: `Brings each clip to about ${TARGET_LUFS} LUFS (online-video level)`, apply: (t) => {
     let o = t; for (const { c, g } of gainTargets(t)) o = updateClip(o, c.id, { volume: g! }) ?? o; return o; } });
   if (nn) ops.push({ id: "denoise", label: "Remove background noise", detail: "FFT noise reduction on clip audio (heard in the export)", apply: (t) => {

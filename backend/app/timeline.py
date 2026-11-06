@@ -59,10 +59,37 @@ class ColorGrade(BaseModel):
         return (e * (1 + 0.2 * t) * (1 + 0.1 * ti), e * (1 - 0.2 * ti), e * (1 - 0.2 * t) * (1 + 0.1 * ti))
 
 
+HEX = r"^#[0-9a-fA-F]{6}$"
+
+
+class Title(BaseModel):
+    """Text/title clip rendered with FFmpeg drawtext using the same bundled font as the browser preview."""
+    model_config = ConfigDict(extra="forbid")
+    text: str = Field(min_length=1, max_length=300)
+    font_size: int = Field(96, ge=8, le=400)  # sequence pixels
+    color: str = Field("#ffffff", pattern=HEX)
+    bg_color: str | None = Field(None, pattern=HEX)
+    bg_opacity: float = Field(0.7, ge=0, le=1)
+
+
+class Crop(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    left: float = Field(0, ge=0, le=0.45)
+    right: float = Field(0, ge=0, le=0.45)
+    top: float = Field(0, ge=0, le=0.45)
+    bottom: float = Field(0, ge=0, le=0.45)
+
+    def is_identity(self) -> bool:
+        return not (self.left or self.right or self.top or self.bottom)
+
+
 class Clip(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     id: str = Field(min_length=1, max_length=64)
-    asset_id: uuid.UUID
+    asset_id: uuid.UUID | None = None
+    title: Title | None = None
+    speed: float = Field(1.0, ge=0.25, le=4)
+    crop: Crop | None = None
     start: int = Field(ge=0)  # timeline frame where the clip begins
     in_: int = Field(0, ge=0, alias="in")  # source offset (frames)
     out: int = Field(gt=0)  # source end (frames, exclusive)
@@ -75,7 +102,9 @@ class Clip(BaseModel):
 
     @property
     def length(self) -> int:
-        return self.out - self.in_
+        """Frames the clip occupies on the timeline (source span divided by speed)."""
+        import math
+        return max(1, math.floor((self.out - self.in_) / self.speed + 0.5))  # same rounding as the editor (Math.round)
 
     @property
     def end(self) -> int:
@@ -85,6 +114,10 @@ class Clip(BaseModel):
     def _check(self):
         if self.out <= self.in_:
             raise ValueError("clip out must be after in")
+        if (self.asset_id is None) == (self.title is None):
+            raise ValueError("a clip needs either media (asset_id) or a title, not both")
+        if self.title is not None and self.speed != 1:
+            raise ValueError("titles have no speed")
         if self.fade_in + self.fade_out > self.length:
             raise ValueError("fades longer than clip")
         return self
@@ -139,7 +172,7 @@ class Timeline(BaseModel):
         return max((c.end for t in self.tracks for c in t.clips), default=0)
 
     def asset_ids(self) -> set[uuid.UUID]:
-        return {c.asset_id for t in self.tracks for c in t.clips}
+        return {c.asset_id for t in self.tracks for c in t.clips if c.asset_id}
 
 
 def default_timeline(fps: int = 30, width: int = 1920, height: int = 1080) -> dict:
@@ -169,7 +202,8 @@ def _f(x: float) -> str:
 
 
 def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: str,
-                   out_w: int | None = None, out_h: int | None = None, crf: int = 20) -> tuple[list[str], float]:
+                   out_w: int | None = None, out_h: int | None = None, crf: int = 20,
+                   workdir: str | None = None) -> tuple[list[str], float]:
     """Return (ffmpeg argv, duration seconds). Raises ValueError for un-renderable timelines."""
     fps = tl.fps
     D = tl.duration_frames / fps
@@ -186,13 +220,18 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
     vlabel = "base0"
     audio_labels: list[str] = []
 
+    import os
+    import tempfile
+    workdir = workdir or tempfile.mkdtemp(prefix="titles-")
+    n_titles = 0
+
     def add_input(clip: Clip, a: AssetInfo) -> int:
         nonlocal n_inputs
         dur = clip.length / fps
         if a.kind == "image":
             args.extend(["-loop", "1", "-framerate", str(fps), "-t", _f(dur), "-i", a.path])
-        else:
-            args.extend(["-ss", _f(clip.in_ / fps), "-t", _f(dur), "-i", a.path])
+        else:  # source span (before speed change)
+            args.extend(["-ss", _f(clip.in_ / fps), "-t", _f((clip.out - clip.in_) / fps), "-i", a.path])
         n_inputs += 1
         return n_inputs - 1
 
@@ -200,6 +239,31 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
     video_tracks = [t for t in tl.tracks if t.kind == "video"]
     for track in reversed(video_tracks):
         for clip in sorted(track.clips, key=lambda c: c.start):
+            if clip.title is not None:
+                if track.hidden or clip.transform.opacity <= 0:
+                    continue
+                n_titles += 1
+                tf, ti = clip.transform, clip.title
+                st, en, dur = clip.start / fps, clip.end / fps, clip.length / fps
+                from .titles import render_title_png
+                png = os.path.join(workdir, f"title{n_titles}.png")
+                render_title_png(ti, tf, W, H, png)
+                args.extend(["-loop", "1", "-framerate", str(fps), "-t", _f(dur), "-i", png])
+                n_inputs += 1
+                chain = ["format=yuva420p"]
+                if tf.opacity < 1:
+                    chain.append(f"colorchannelmixer=aa={_f(tf.opacity)}")
+                if clip.fade_in:
+                    chain.append(f"fade=t=in:st=0:d={_f(clip.fade_in / fps)}:alpha=1")
+                if clip.fade_out:
+                    chain.append(f"fade=t=out:st={_f(dur - clip.fade_out / fps)}:d={_f(clip.fade_out / fps)}:alpha=1")
+                chain.append(f"setpts=PTS-STARTPTS+{_f(st)}/TB")
+                lab = f"ti{n_titles}"
+                graph.append(f"[{n_inputs - 1}:v]{','.join(chain)}[{lab}]")
+                nxt = f"tbase{n_titles}"
+                graph.append(f"[{vlabel}][{lab}]overlay=0:0:eof_action=pass:enable='between(t,{_f(st)},{_f(en)})'[{nxt}]")
+                vlabel = nxt
+                continue
             a = assets.get(clip.asset_id)
             if a is None:
                 raise ValueError(f"missing media for clip {clip.id}")
@@ -212,8 +276,14 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
             if use_v:
                 tf = clip.transform
                 bw, bh = max(2, int(W * tf.scale)), max(2, int(H * tf.scale))
-                chain = [f"fps={fps}", f"scale={bw}:{bh}:force_original_aspect_ratio=decrease:force_divisible_by=2",
-                         "setsar=1"]
+                chain = []
+                if clip.speed != 1 and a.kind != "image":
+                    chain.append(f"setpts=(PTS-STARTPTS)/{_f(clip.speed)}")
+                chain.append(f"fps={fps}")
+                if clip.crop and not clip.crop.is_identity():
+                    c = clip.crop
+                    chain.append(f"crop=iw*{_f(1 - c.left - c.right)}:ih*{_f(1 - c.top - c.bottom)}:iw*{_f(c.left)}:ih*{_f(c.top)}")
+                chain += [f"scale={bw}:{bh}:force_original_aspect_ratio=decrease:force_divisible_by=2", "setsar=1"]
                 if clip.color and not clip.color.is_identity():
                     chain += grade_filters(clip.color)
                 chain.append("format=yuva420p")
@@ -240,6 +310,8 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
         if track.muted:
             continue
         for clip in sorted(track.clips, key=lambda c: c.start):
+            if clip.asset_id is None:
+                continue
             a = assets.get(clip.asset_id)
             if a is None:
                 raise ValueError(f"missing media for clip {clip.id}")
@@ -289,6 +361,14 @@ def grade_filters(g: ColorGrade) -> list[str]:
 def _audio_chain(graph: list[str], idx: int, clip: Clip, fps: int) -> str:
     st, dur = clip.start / fps, clip.length / fps
     chain = ["aresample=48000", "aformat=sample_fmts=fltp:channel_layouts=stereo", "asetpts=PTS-STARTPTS"]
+    sp = clip.speed
+    while sp > 2.0 + 1e-9:
+        chain.append("atempo=2"); sp /= 2
+    while sp < 0.5 - 1e-9:
+        chain.append("atempo=0.5"); sp /= 0.5
+    if abs(sp - 1) > 1e-9:
+        chain.append(f"atempo={_f(sp)}")
+    chain.append(f"atrim=duration={_f(dur)}")
     if clip.denoise:
         chain.append("afftdn=nr=18:nf=-40:tn=1")
     if clip.volume != 1:
@@ -318,3 +398,29 @@ def preset_dimensions(tl: Timeline, preset: str) -> tuple[int, int]:
         return tl.width, tl.height
     k = p["short_side"] / min(tl.width, tl.height)
     return int(tl.width * k) // 2 * 2, int(tl.height * k) // 2 * 2
+
+
+def slice_timeline(src: dict, a: int, b: int) -> dict:
+    """Keep only frames [a, b) of a timeline, shifted to start at 0. Clips are trimmed (speed-aware); fades clamped."""
+    import math
+    tl = Timeline.model_validate(src)
+    if b <= a:
+        raise ValueError("empty range")
+    for t in tl.tracks:
+        kept = []
+        for c in t.clips:
+            s, e = c.start, c.end
+            if e <= a or s >= b:
+                continue
+            ns, ne = max(s, a), min(e, b)
+            c.in_ = c.in_ + math.floor((ns - s) * c.speed + 0.5)
+            new_len = ne - ns
+            c.out = min(c.out, c.in_ + max(1, math.floor(new_len * c.speed + 0.5)))
+            if c.out <= c.in_:
+                continue
+            c.start = ns - a
+            c.fade_in = min(c.fade_in, max(0, c.length - 1)) if ns == s else 0
+            c.fade_out = min(c.fade_out, max(0, c.length - 1 - c.fade_in)) if ne == e else 0
+            kept.append(c)
+        t.clips = kept
+    return tl.model_dump(by_alias=True, mode="json")

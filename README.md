@@ -5,7 +5,9 @@ Working name only — see `docs/DEPLOYMENT.md` → *Naming warning*.
 
 **What works today:** accounts and workspaces with roles · projects · resumable uploads straight to private cloud storage · automatic media checks, thumbnails, proxies and waveforms · multitrack timeline (move, trim, split, ripple delete, snapping, lock/hide/mute, position/scale/rotation/opacity, volume, fades) · undo/redo · autosave with version history · cloud MP4 export that keeps running after you close the browser, with real progress, cancel and automatic output checks.
 
-**Not yet:** AI features, colour/audio/VFX pages, billing, developer API. They appear in the UI as "Soon" and do nothing. Full list: `docs/FEATURE_STATUS_MATRIX.md`.
+**Also working (v0.4):** colour grading + live scopes, titles in Indian languages, speed, crop, stabilization, background removal, AI voice, captions & dubbing pipeline, AI Magic plan, highlight finder & batch shorts, smart reframe, thumbnail designer, webcam recording, version history. Whole-app browser audit: `e2e/audit.mjs` (55/55).
+
+**Not yet:** lip sync and object removal (need GPU providers), billing/credits, developer API, motion tracking, keyframes. They appear in the UI as locked or "Soon". Full list: `docs/FEATURE_STATUS_MATRIX.md`.
 
 ```
 backend/   FastAPI API + FFmpeg worker, SQLAlchemy models, Alembic migrations, pytest suite
