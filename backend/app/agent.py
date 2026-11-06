@@ -20,6 +20,7 @@ import httpx
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
+from .config import get_settings
 from .models import AgentReport, Job, JobStatus, PlatformSetting
 
 log = logging.getLogger("agent")
@@ -72,7 +73,9 @@ def health(db: Session) -> dict:
     done = db.scalar(select(func.count()).select_from(Job).where(Job.status == JobStatus.succeeded, Job.finished_at >= now - timedelta(days=1))) or 0
     fails = {k: n for k, n in failed}
     total_fail = sum(fails.values())
-    disk = shutil.disk_usage(os.environ.get("SCRATCH_DIR", "/tmp"))
+    scratch = get_settings().scratch_dir  # same folder the worker renders into
+    os.makedirs(scratch, exist_ok=True)   # the worker creates it lazily; it may not exist before the first job
+    disk = shutil.disk_usage(scratch)
     k = keys()
     ready = sum(1 for t in TOOLS.values() if status(t, k)["state"] == "ready")
     if stuck:
