@@ -174,3 +174,14 @@ footer.land-foot { border-top: 1px solid var(--line); padding: 24px 32px; color:
 .google-btn:hover:not(:disabled) { background: #f1f3f4; border-color: #f1f3f4; }
 .or { display: flex; align-items: center; gap: 10px; color: var(--text-3); font-size: 12px; margin: 16px 0; }
 .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+/* Plans & billing */
+.bill-plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.bill-plan { display: grid; gap: 4px; align-content: start; text-align: left; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255,255,255,.03); color: var(--text); font-size: 11.5px; cursor: pointer; }
+.bill-plan:disabled { cursor: default; }
+.bill-plan.on { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(168,85,247,.18); }
+.bill-plan.cur { border-color: #4ade80aa; }
+.bill-price { font-size: 18px; font-weight: 700; } .bill-price small { font-size: 11px; font-weight: 400; color: var(--text-3); }
+.bill-pay { display: grid; grid-template-columns: 150px 1fr; gap: 14px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.bill-qr { width: 150px; height: 150px; background: #fff; border-radius: 10px; display: grid; place-items: center; color: #111; overflow: hidden; }
+.bill-qr img { width: 100%; height: 100%; object-fit: contain; }
+@media (max-width: 560px) { .bill-plans { grid-template-columns: 1fr; } .bill-pay { grid-template-columns: 1fr; } .bill-qr { margin: 0 auto; } }

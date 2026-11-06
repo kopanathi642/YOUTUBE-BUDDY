@@ -45,6 +45,9 @@ def _set_cookie(resp: Response, token: str):
                     samesite=s.cookie_samesite, max_age=s.session_ttl_hours * 3600, path="/")
 
 
+from ..billing import active_plan, is_platform_admin  # noqa: E402
+
+
 def me_payload(db: Session, user: User) -> dict:
     rows = db.execute(select(WorkspaceMember, Workspace).join(Workspace)
                       .where(WorkspaceMember.user_id == user.id, Workspace.deleted_at.is_(None))
@@ -52,7 +55,8 @@ def me_payload(db: Session, user: User) -> dict:
     return {"user": {"id": str(user.id), "email": user.email, "display_name": user.display_name,
                      "email_verified": user.email_verified, "avatar_url": user.avatar_url,
                      "has_password": user.password_hash is not None, "google_linked": user.firebase_uid is not None},
-            "workspaces": [{"id": str(w.id), "name": w.name, "is_personal": w.is_personal, "role": m.role.value}
+            "is_platform_admin": is_platform_admin(user),
+            "workspaces": [{"id": str(w.id), "name": w.name, "is_personal": w.is_personal, "role": m.role.value, "plan": active_plan(w)}
                            for m, w in rows]}
 
 

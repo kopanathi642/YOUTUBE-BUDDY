@@ -57,6 +57,12 @@ function Workspace({ t, tools, studios }: { t: Tool; tools: Tool[]; studios: any
   const [g] = useGeneration(cur, () => { loadHistory(); reloadMedia(); });
 
   useEffect(() => { try { const { mask, ...rest } = v; sessionStorage.setItem(VKEY(t.id), JSON.stringify(rest)); void mask; } catch { /* storage off */ } }, [v, t.id]);
+  useEffect(() => {  // opened from the Editor with ?project=…&media=… : pick that project and drop the clip into the first media input
+    const q = new URLSearchParams(window.location.search), proj = q.get("project"), m = q.get("media");
+    if (proj) setPid(proj);
+    const slot = t.params.find((p) => p.type === "media");
+    if (m && slot) setV((s) => ({ ...s, [slot.key]: m }));
+  }, [t.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {  // a workflow sent from Templates or the Director Agent
     if (!["111", "118"].includes(t.id)) return;
     try { const s = sessionStorage.getItem("cu.wf.load"); if (s) { sessionStorage.removeItem("cu.wf.load"); setV((x) => ({ ...x, graph: JSON.parse(s) })); } } catch { /* storage off */ }

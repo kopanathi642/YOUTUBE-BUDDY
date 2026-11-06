@@ -55,6 +55,22 @@ services:
         value: "10"
       - key: AI_DAILY_PAID_RUNS
         value: "200"
+      - key: FREE_PLAN_PAID_RUNS
+        value: "5"
+      - key: ADMIN_EMAILS              # founder Google account(s): set QR + approve UPI payments
+        sync: false
+      - key: PEXELS_API_KEY            # free stock library
+        sync: false
+      - key: PIXABAY_API_KEY
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_ID    # YouTube publishing (free Google Cloud OAuth client)
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false                    # a Fernet key; must be the same on web + worker (see .env.example)
       - key: SCRATCH_DIR
         value: /tmp/creator-worker
 

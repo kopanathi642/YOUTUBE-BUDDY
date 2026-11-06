@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { History as HistoryIcon, X as XIcon, Cloud, CloudOff, Loader2, AlertTriangle, Undo2, Redo2, Home, FolderOpen, Scissors, Workflow, Palette, AudioLines, Sparkles, Activity, Type, Image as ImageIcon, LayoutTemplate, Youtube, Bot, Bell } from "lucide-react";
 import { api, ApiError, Asset, Project, SequenceDoc } from "../api";
 import { useToast } from "../App";
@@ -11,7 +11,8 @@ import { HighlightsModal, ThumbnailModal, Moment } from "./Creator";
 import HistoryPanel from "./HistoryPanel";
 import { LOOKS, svgFilterBody, withLook, sanitizeGrade } from "../grade";
 import { buildPlan, applyCuts, silenceCuts, applySceneSplits, sceneSplits, loudnessGain } from "../smart";
-import MediaBin from "./MediaBin";
+import MediaBin, { BinTab } from "./MediaBin";
+import { insertTemplate, TitleTemplate } from "../templates";
 import Viewer, { Sampler } from "./Viewer";
 import TimelinePanel from "./TimelinePanel";
 import Inspector from "./Inspector";
@@ -35,6 +36,7 @@ export function assetFrames(a: Asset | undefined, fps: number): number {
 export default function Editor() {
   const { projectId } = useParams();
   const [search] = useSearchParams();
+  const navigate = useNavigate();
   const toast = useToast();
   const [project, setProject] = useState<Project | null>(null);
   const [sequences, setSequences] = useState<SequenceDoc[]>([]);
@@ -51,6 +53,8 @@ export default function Editor() {
   const [playhead, setPlayhead] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const [binReq, setBinReq] = useState<{ tab: BinTab; n: number } | null>(null);
+  const openBin = (tab: BinTab) => { setBinReq((r) => ({ tab, n: (r?.n ?? 0) + 1 })); document.querySelector(".ed-bin")?.scrollIntoView({ behavior: "smooth", block: "nearest" }); };
   const [inspTab, setInspTab] = useState<"inspector" | "effects" | "transition" | "text" | "metadata">("inspector");
   const [snapOn, setSnapOn] = useState(true);
   const [caps, setCaps] = useState<Caps>(new Map());
@@ -287,8 +291,12 @@ export default function Editor() {
 
   function action(id: string) {
     if (!tl) return;
-    const cap = (c: string) => caps.get(c);
-    const needs = (c: string) => { const x = cap(c); if (x && !x.ready) { toast(`Not available yet — needs: ${x.needs}`); return true; } return false; };
+    /** Open an AI Generator tool with this project and the selected clip already filled in; its result has Edit in Timeline. */
+    const toGenerator = (toolId: string) => {
+      const a = sel?.clip.asset_id ? assetMap.get(sel.clip.asset_id) : undefined;
+      if (!a || a.kind !== "video") { toast("Select a video clip on the timeline first"); return; }
+      navigate(`/ai-generator/tool/${toolId}?project=${projectId}&media=${a.id}`);
+    };
     const scroll = (sel: string) => document.querySelector(sel)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     switch (id) {
       case "media": scroll(".ed-bin"); break;
@@ -306,16 +314,17 @@ export default function Editor() {
       case "fusion": scroll(".nodes-anchor"); break;
       case "effects": setInspTab("effects"); break;
       case "motion": case "title": addTitle(); break;
-      case "templates": setInspTab("text"); toast("Title styles: add a title, then pick a style in the Text tab"); break;
+      case "templates": case "elements": openBin("templates"); break;
+      case "stock": openBin("stock"); break;
       case "transitions": setInspTab("transition"); break;
       case "export": setExportFocus((n) => n + 1); scroll(".export-dock"); break;
       case "bg": { const id = videoSel(); if (id) derive(id, "remove_bg", "Removing the background"); break; }
       case "stabilize": { const id = videoSel(); if (id) derive(id, "stabilize", "Stabilizing"); break; }
-      case "obj": needs("object_remove"); break;
+      case "obj": toGenerator("024"); break;   // Object Removal lives in the AI Generator (hosted video-inpainting model)
       case "subtitle": setAiModal("captions"); break;
       case "voice": scroll(".voice"); break;
       case "tts": setAiModal("tts"); break;
-      case "lipsync": needs("lip_sync"); break;
+      case "lipsync": toGenerator("033"); break;  // Lip Sync lives in the AI Generator (hosted lip-sync model)
       case "transcribe": setAiModal("transcript"); break;
       default: toast("Planned — not available yet");
     }
@@ -393,13 +402,19 @@ export default function Editor() {
           <div className="r1">
             <MediaBin projectId={project.id} assets={assets} setAssets={setAssets} reload={loadMedia} readOnly={readOnly} onAdd={(a) => addAssetToTimeline(a)} fps={fps}
               uploadRef={uploadRef} onRecord={() => setRecording(true)} canLook={!!sel && sel.track.kind === "video" && !!selAsset?.has_video}
-              onLook={(i) => sel && edit(updateClip(tl, sel.clip.id, { color: withLook(LOOKS[i].grade) }))} />
+              onLook={(i) => sel && edit(updateClip(tl, sel.clip.id, { color: withLook(LOOKS[i].grade) }))}
+              tabReq={binReq} onTemplate={(t: TitleTemplate) => {
+                if (readOnly) return;
+                const r = insertTemplate(tl, t, playhead);
+                if (!r) { toast("No free space at the playhead for this title — move the playhead or add a track"); return; }
+                edit(r.tl); setSelected(r.id); setInspTab("text"); setPlaying(false); toast(`${t.name} added at the playhead`);
+              }} />
             <Viewer tl={tl} assets={assetMap} playhead={playhead} setPlayhead={setPlayhead} playing={playing} setPlaying={setPlaying} total={total}
               samplerRef={samplerRef} sequences={sequences} currentSeqId={seq.id} onSwitchSeq={switchSequence} autoAdjust={autoAdjust} analysed={analysed}
               onNewSeq={() => createSequence({ name: `Sequence ${sequences.length + 1}`, format: tl.width >= tl.height ? "landscape" : "vertical" }, "New empty sequence created")}
               onSnapshot={snapshot} />
             <AssistantPanel caps={caps} autoAdjust={autoAdjust} setAutoAdjust={setAutoAdjust} onMagic={() => action("magic")} readOnly={readOnly} pending={!analysed} />
-            <VoicePanel caps={caps} catalog={catalog} busy={dubBusy} onDub={startDub}
+            <VoicePanel caps={caps} catalog={catalog} busy={dubBusy} onDub={startDub} onLipSync={() => action("lipsync")}
               source={dubSource ? { name: assetMap.get(dubSource.asset_id)?.filename ?? "clip" } : null} />
           </div>
           <div className="r2">

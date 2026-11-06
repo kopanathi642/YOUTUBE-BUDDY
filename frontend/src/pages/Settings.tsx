@@ -4,11 +4,16 @@ import { api } from "../api";
 import { useAuth, useBrand } from "../App";
 import UniverseShell from "../components/UniverseShell";
 import TeamCard from "../components/TeamCard";
+import BillingCard from "../components/BillingCard";
+import YouTubeCard from "../components/YouTubeCard";
+import AdminPayments from "../components/AdminPayments";
+import { useEffect } from "react";
 
 export default function Settings() {
   const { me, workspace, setWorkspace, setMe } = useAuth();
   const brand = useBrand();
   const nav = useNavigate();
+  useEffect(() => { if (location.hash) setTimeout(() => document.querySelector(location.hash)?.scrollIntoView({ behavior: "smooth" }), 300); }, []);
   if (!me) return null;
   return (
     <UniverseShell u={null}>
@@ -29,11 +34,13 @@ export default function Settings() {
             {w.id === workspace?.id ? <span className="badge ok">current</span> : <button className="btn sm" onClick={() => setWorkspace(w.id)}>Switch</button>}</div>)}
           <div className="dim" style={{ fontSize: 12, marginTop: 8 }}>Create a team workspace and add members in the Team card.</div>
         </section>
+        <BillingCard />
+        <YouTubeCard />
         <TeamCard />
+        {me.is_platform_admin && <AdminPayments />}
         <section className="card" style={{ padding: 18 }}>
           <b>About</b>
           <div className="gb-kv"><span>Product</span><b>{brand}</b></div>
-          <div className="gb-kv"><span>Plan</span><b>Early access</b></div>
           <div className="dim" style={{ fontSize: 12, marginTop: 8 }}>Privacy policy and terms will be published after legal review.</div>
         </section>
       </div>

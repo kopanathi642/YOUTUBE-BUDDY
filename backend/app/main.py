@@ -10,7 +10,7 @@ from sqlalchemy import text
 from . import storage
 from .config import get_settings
 from .db import get_engine
-from .routers import tools, ai, auth, exports, media, projects, workspaces
+from .routers import tools, ai, auth, billing, exports, media, projects, stock, workspaces, youtube
 from .security import csrf_guard
 
 log = logging.getLogger("api")
@@ -49,7 +49,7 @@ def create_app() -> FastAPI:
         return response
 
     deps = [Depends(csrf_guard)]
-    for r in (ai.router, auth.router, workspaces.router, projects.router, media.router, exports.router, tools.router):
+    for r in (ai.router, auth.router, workspaces.router, projects.router, media.router, exports.router, tools.router, stock.router, billing.router, youtube.router):
         app.include_router(r, prefix="/api/v1", dependencies=deps)
 
     @app.get("/api/v1/health")

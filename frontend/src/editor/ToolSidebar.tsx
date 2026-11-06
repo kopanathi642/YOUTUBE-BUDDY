@@ -3,7 +3,9 @@ import {
   Image as ImageIcon, Scissors, Sparkles, Film, ChevronDown, ChevronUp, Zap, LayoutGrid, BarChart3, Layers, Smartphone, Crop, Wrench, AudioLines,
   Languages, Mic, Type, UserRoundX, FileText, Palette, Library, Wand, ArrowLeftRight, Workflow, Shapes, Upload, Crown, Coins, Lock,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import type { Caps } from "./AiPanels";
+import { useAuth } from "../App";
 
 type Item = { id: string; label: string; icon: any; cap?: string; soon?: boolean };
 
@@ -30,21 +32,22 @@ const MORE: Item[] = [
   { id: "subtitle", label: "Subtitle & Translate", icon: Languages, cap: "translate" },
   { id: "voice", label: "Voice & Dubbing", icon: Mic, cap: "dubbing" },
   { id: "tts", label: "Text to Speech (TTS)", icon: Type, cap: "tts" },
-  { id: "lipsync", label: "Lip Sync (AI)", icon: UserRoundX, cap: "lip_sync" },
+  { id: "lipsync", label: "Lip Sync (AI Generator)", icon: UserRoundX },
   { id: "transcribe", label: "AI Transcribe", icon: FileText, cap: "transcribe" },
   { id: "design", label: "Design & Thumbnail", icon: ImageIcon },
-  { id: "stock", label: "Stock Library", icon: Library, soon: true },
+  { id: "stock", label: "Stock Library", icon: Library },
   { id: "effects", label: "Effects & Filters", icon: Wand },
   { id: "transitions", label: "Transitions", icon: ArrowLeftRight },
   { id: "color", label: "Color Grading", icon: Palette },
   { id: "fusion", label: "VFX & Fusion", icon: Workflow },
   { id: "motion", label: "Motion Graphics (Titles)", icon: Shapes },
-  { id: "elements", label: "Elements", icon: Layers, soon: true },
+  { id: "elements", label: "Templates & Elements", icon: Layers },
   { id: "export", label: "Export & Share", icon: Upload },
 ];
 
 export default function ToolSidebar({ caps, onAction, readOnly }: { caps: Caps; onAction: (id: string) => void; readOnly: boolean }) {
   const [open, setOpen] = useState({ shorts: true, video: false, audio: false });
+  const plan = useAuth().workspace?.plan ?? "free";
   const row = (it: Item, sub = false) => {
     const c = it.cap ? caps.get(it.cap) : null;
     const locked = it.soon || (it.cap && !c?.ready);
@@ -75,9 +78,8 @@ export default function ToolSidebar({ caps, onAction, readOnly }: { caps: Caps; 
         {MORE.map((i) => row(i))}
       </nav>
       <div className="credits card">
-        <div className="row"><Coins size={22} color="#fbbf24" /><div><b>Buddy Credits</b><div className="dim" style={{ fontSize: 11.5 }}>Early access · cloud renders free</div></div></div>
-        <div className="progress" style={{ margin: "8px 0" }}><i style={{ width: "100%" }} /></div>
-        <button className="btn primary" style={{ width: "100%" }} disabled title="Plans & billing are planned (Phase 8)"><Crown size={15} />Upgrade Plan</button>
+        <div className="row"><Coins size={22} color="#fbbf24" /><div><b>{plan === "free" ? "Free plan" : plan === "pro" ? "Pro plan" : "Creator plan"}</b><div className="dim" style={{ fontSize: 11.5 }}>Editor, exports &amp; free AI included</div></div></div>
+        <Link className="btn primary" style={{ width: "100%", marginTop: 8 }} to="/settings#billing"><Crown size={15} />{plan === "free" ? "Upgrade Plan" : "Manage Plan"}</Link>
       </div>
     </aside>
   );

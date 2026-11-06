@@ -184,9 +184,11 @@ await step("Sidebar tools: every item gives working result or explicit reason", 
     const b = page.locator(".ed-side .tool", { hasText: label }).first();
     if (!(await b.count()) || (await b.isDisabled())) continue;
     const before = await page.evaluate(() => window.__toasts);
+    const url = page.url();
     await b.click(); await w(250);
+    if (page.url() !== url) { if (!page.url().includes("/ai-generator/tool/")) throw new Error(`"${label}" went to ${page.url()}`); await page.goBack(); await page.waitForSelector(".ed-side"); continue; }
     if (await page.locator(".modal").count()) { await page.click(".modal .btn.ghost"); continue; }
-    const scrollOnly = /^(Media|Edit|Color Grading|VFX & Fusion|Export & Share|Effects & Filters|Transitions|Voice & Dubbing)$/.test(label);
+    const scrollOnly = /^(Media|Edit|Color Grading|VFX & Fusion|Export & Share|Effects & Filters|Transitions|Voice & Dubbing|Stock Library|Templates & Elements)$/.test(label);
     if (!scrollOnly && (await page.evaluate(() => window.__toasts)) <= before) throw new Error(`no feedback from "${label}"`);
   }
   await page.locator(".tool:has-text('Video Tools')").click(); await page.locator(".tool:has-text('Audio Tools')").click();
@@ -224,6 +226,28 @@ await step("Titles: add title, edit text (Hindi), style, size, colour; renders i
   await page.click(".ed-insp .look-list button:has-text('Yellow pop')");
   await page.click("#f-Size"); await page.keyboard.press("Control+A"); await page.keyboard.type("90"); await page.keyboard.press("Enter");
   await page.waitForSelector(".title-layer:has-text('नमस्ते')");
+});
+await step("Templates: animated title card added at the playhead (keyframed)", async () => {
+  await page.click(".ed-side .tool:has-text('Templates & Elements')");
+  await page.waitForSelector(".tpl-card");
+  const n = (await tl()).length;
+  await scrubTo(4); await page.click(".tpl-card:has-text('Subscribe')");
+  await page.waitForFunction((n) => document.querySelectorAll(".clip").length > n, n);
+  if (!(await page.locator(".kf-mark").count())) throw new Error("template has no keyframe marks");
+});
+await step("Elements: sticker rendered to PNG, uploaded, placed on timeline", async () => {
+  const n = (await tl()).length;
+  await page.click(".el-grid button >> nth=0");
+  await page.waitForFunction((n) => document.querySelectorAll(".clip").length > n, n, { timeout: 40000 });
+});
+await step("Stock tab: explains the free key it needs (no key configured)", async () => {
+  await page.click(".ed-bin [role=tab]:has-text('Stock')");
+  await page.waitForSelector(".stock-empty:has-text('PEXELS_API_KEY'), .stock-search");
+});
+await step("AI Assets tab lists generator outputs or explains", async () => {
+  await page.click(".ed-bin [role=tab]:has-text('AI Assets')"); await w(200);
+  if (!(await page.locator(".ed-bin .bin-list").count())) throw new Error("AI tab empty");
+  await page.click(".ed-bin [role=tab]:has-text('Media')");
 });
 await step("Speed & Time: 2× preset changes clip length", async () => {
   await page.locator(".tl-scroll").evaluate((e) => (e.scrollLeft = 0));
@@ -300,6 +324,12 @@ await step("Export: tabs, queue, render, verified download", async () => {
   const href = await page.getAttribute(".q-row a:has-text('Download')", "href"); const r = await page.request.get(href);
   if (r.status() !== 200 || (await r.body()).length < 10000) throw new Error("download failed");
 });
+await step("Export → Publish to YouTube dialog (explains setup when no Google client is configured)", async () => {
+  await page.click(".export-dock [role=tab]:has-text('Queue')");
+  await page.click(".q-row button[aria-label='Publish to YouTube'] >> nth=0");
+  await page.waitForSelector(".modal:has-text('Publish to YouTube') >> text=/isn't set up|Connect your YouTube|Channel:/");
+  await page.click(".modal button[aria-label='Close']");
+});
 await step("Export cancel", async () => {
   await page.click("button.export-big"); await page.click(".export-dock [role=tab]:has-text('Queue')");
   await page.click("button[aria-label='Cancel export']", { timeout: 5000 });
@@ -313,6 +343,29 @@ await step("Delete media from bin", async () => {
    const n = await page.locator(".bin-item").count();
   await page.hover(".bin-item >> nth=0"); await page.click(".bin-item >> nth=0 >> .bin-del"); await w(600);
   if ((await page.locator(".bin-item").count()) !== n - 1) throw new Error("not removed");
+});
+await step("Upgrade Plan → UPI QR, UTR submitted, founder approves in admin, plan turns on", async () => {
+  // founder (ADMIN_EMAILS) sets up the QR through the admin card
+  const f = await browser.newContext({ viewport: { width: 1400, height: 900 } }); const fp = await f.newPage();
+  const H = { "x-requested-with": "creator-universe" };
+  let r = await fp.request.post(B + "/api/v1/auth/signup", { headers: H, data: { email: "founder@example.com", password: "correct horse battery", display_name: "Founder" } });
+  if (r.status() !== 201) r = await fp.request.post(B + "/api/v1/auth/login", { headers: H, data: { email: "founder@example.com", password: "correct horse battery" } });
+  if (!r.ok()) throw new Error("founder sign-in " + r.status());
+  await fp.goto(B + "/settings"); await fp.waitForSelector("#payments-admin");
+  await fp.fill("#payments-admin input[aria-label='UPI ID']", "founder@ybl"); await fp.fill("#payments-admin input[aria-label='Payee name']", "Founder");
+  await fp.click("#payments-admin button:has-text('Save details')"); await fp.waitForTimeout(600);
+  await fp.setInputFiles("#payments-admin input[type=file]", M + "/Subscribe_Badge.png"); await fp.waitForTimeout(1500);
+  // the user upgrades from the editor sidebar
+  await page.click(".credits a:has-text('Upgrade Plan')"); await page.waitForSelector("#billing .bill-plan");
+  await page.click("#billing .bill-plan:has-text('Creator')"); await page.waitForSelector(".bill-qr img");
+  const utr = String(Date.now()).slice(-12).padStart(12, "4");
+  await page.fill("#billing input[placeholder*='412345678901']", utr); await page.click("#billing button:has-text('Submit for verification')");
+  await page.waitForSelector("#billing .badge:has-text('checking')");
+  await fp.reload(); await fp.waitForSelector(`#payments-admin .gw-row:has-text('${utr}')`);
+  await fp.click(`#payments-admin .gw-row:has-text('${utr}') button:has-text('Approve')`); await fp.waitForTimeout(800); await f.close();
+  await page.reload(); await page.waitForSelector("#billing .badge.ok:has-text('Creator')");
+  if (!(await page.locator("#youtube").count())) throw new Error("YouTube card missing");
+  await page.goBack();
 });
 await step("Mobile layout renders editor + dashboard", async () => {
   const m = await browser.newContext({ viewport: { width: 390, height: 844 }, storageState: await ctx.storageState() }); const p = await m.newPage();

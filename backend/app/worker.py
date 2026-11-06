@@ -113,7 +113,7 @@ def handle_media_process(ctx: Ctx, tmp: str):
         # Analyse the proxy for video (much faster, same content); originals for audio-only.
         src_an = proxy if meta["kind"] == "video" else src
         try:
-            keep = {k: v for k, v in (asset.analysis or {}).items() if k in ("generation", "ai_generated", "transcript", "translations")}
+            keep = {k: v for k, v in (asset.analysis or {}).items() if k in ("generation", "ai_generated", "transcript", "translations", "stock")}
             asset.analysis = {**analysis.analyze(src_an, meta, lambda p, s: ctx.progress(0.88 + 0.1 * p, s, force=True)), **keep}
         except Cancelled:
             raise
@@ -217,6 +217,43 @@ def handle_media_derive(ctx: Ctx, tmp: str):
     sub = os.path.join(tmp, "process")
     os.makedirs(sub, exist_ok=True)
     return handle_media_process(ctx, sub)
+
+
+def handle_media_import(ctx: Ctx, tmp: str):
+    """Download a stock file from its provider's media host (URL resolved on the server), then process it like an upload."""
+    from . import stock
+    new = _load(ctx)
+    ctx.progress(0.03, "downloading from stock library", force=True)
+    path = os.path.join(tmp, "stock" + os.path.splitext(new.storage_key)[1])
+    try:
+        stock.download(ctx.job.payload["url"], path)
+    except stock.StockError as e:
+        raise Permanent(str(e))
+    return _finish_generated(ctx, tmp, new, path)
+
+
+def handle_youtube_upload(ctx: Ctx, tmp: str):
+    """Publish a finished export to the user's linked YouTube channel."""
+    from . import youtube
+    from .models import Export, YouTubeConnection
+    p = ctx.job.payload
+    e = ctx.db.get(Export, uuid.UUID(p["export_id"]))
+    c = ctx.db.scalar(select(YouTubeConnection).where(YouTubeConnection.user_id == uuid.UUID(p["user_id"])))
+    if e is None or not e.output_key:
+        raise Permanent("The export no longer exists")
+    if c is None:
+        raise Permanent("YouTube was disconnected — connect it again in Settings")
+    try:
+        ctx.progress(0.02, "connecting to YouTube", force=True)
+        token = youtube.access_token(youtube.decrypt(c.refresh_token_enc))
+        path = os.path.join(tmp, "video.mp4")
+        ctx.progress(0.05, "fetching the export", force=True)
+        storage.download(e.output_key, path)
+        res = youtube.upload(token, path, p["meta"], lambda f: ctx.progress(0.1 + 0.88 * f, "uploading to YouTube"))
+    except youtube.YouTubeError as x:
+        raise Permanent(str(x))
+    ctx.progress(1.0, "published", force=True)
+    return {**res, "channel_title": c.channel_title}
 
 
 # ------------------------------------------------------------------ AI: voice, transcription, translation, dubbing
@@ -359,7 +396,7 @@ def handle_ai_tool(ctx: Ctx, tmp: str):
         raise Permanent(str(e))
 
 
-HANDLERS = {"media.process": handle_media_process, "media.derive": handle_media_derive, "render.export": handle_render_export,
+HANDLERS = {"media.process": handle_media_process, "media.derive": handle_media_derive, "media.import": handle_media_import, "youtube.upload": handle_youtube_upload, "render.export": handle_render_export,
             "ai.transcribe": handle_ai_transcribe, "ai.translate": handle_ai_translate, "ai.tts": handle_ai_tts, "ai.dub": handle_ai_dub,
             "ai.tool": handle_ai_tool}
 

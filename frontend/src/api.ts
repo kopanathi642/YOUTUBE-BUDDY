@@ -32,8 +32,8 @@ export async function api<T = any>(path: string, opts: { method?: string; body?:
   return data as T;
 }
 
-export type Workspace = { id: string; name: string; is_personal: boolean; role: "owner" | "admin" | "editor" | "viewer" };
-export type Me = { user: { id: string; email: string; display_name: string; email_verified: boolean; avatar_url?: string | null; has_password?: boolean; google_linked?: boolean }; workspaces: Workspace[] };
+export type Workspace = { id: string; name: string; is_personal: boolean; role: "owner" | "admin" | "editor" | "viewer"; plan?: string };
+export type Me = { user: { id: string; email: string; display_name: string; email_verified: boolean; avatar_url?: string | null; has_password?: boolean; google_linked?: boolean }; workspaces: Workspace[]; is_platform_admin?: boolean };
 
 export type Job = {
   id: string; kind: string; status: "queued" | "running" | "succeeded" | "failed" | "canceled";

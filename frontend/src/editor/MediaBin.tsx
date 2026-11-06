@@ -1,18 +1,24 @@
 import { DragEvent, MutableRefObject, useEffect, useRef, useState } from "react";
-import { Upload, Search, Film, Music, ImageIcon, X, RotateCcw, Trash2, Plus, AlertCircle, Video } from "lucide-react";
+import { Upload, Search, Film, Music, ImageIcon, X, RotateCcw, Trash2, Plus, AlertCircle, Video, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
 import { LOOKS } from "../grade";
 import { api, Asset, fmtBytes, fmtDuration } from "../api";
 import { useToast } from "../App";
 import { uploadFile, UploadState } from "../upload";
+import TemplatesTab from "./Elements";
+import StockTab from "./StockTab";
+import { TitleTemplate } from "../templates";
 
 const ACCEPT = ".mp4,.m4v,.mov,.webm,.mkv,.mp3,.wav,.m4a,.aac,.ogg,.flac,.png,.jpg,.jpeg,.webp";
 
-export default function MediaBin({ projectId, assets, setAssets, reload, readOnly, onAdd, uploadRef, onRecord, onLook, canLook }: {
+export type BinTab = "media" | "effects" | "templates" | "stock" | "ai";
+export default function MediaBin({ projectId, assets, setAssets, reload, readOnly, onAdd, uploadRef, onRecord, onLook, canLook, onTemplate, tabReq }: {
   projectId: string; assets: Asset[]; setAssets: (f: (a: Asset[]) => Asset[]) => void; reload: () => void; readOnly: boolean;
   onAdd: (a: Asset) => void; fps: number; uploadRef: MutableRefObject<((f: File[]) => void) | null>; onRecord: () => void;
-  onLook: (i: number) => void; canLook: boolean;
+  onLook: (i: number) => void; canLook: boolean; onTemplate: (t: TitleTemplate) => void; tabReq?: { tab: BinTab; n: number } | null;
 }) {
-  const [binTab, setBinTab] = useState<"media" | "effects">("media");
+  const [binTab, setBinTab] = useState<BinTab>("media");
+  useEffect(() => { if (tabReq) setBinTab(tabReq.tab); }, [tabReq]);
   const toast = useToast();
   const [uploads, setUploads] = useState<UploadState[]>([]);
   const ctrls = useRef(new Map<string, AbortController>());
@@ -38,7 +44,7 @@ export default function MediaBin({ projectId, assets, setAssets, reload, readOnl
     }
   }
 
-  useEffect(() => { uploadRef.current = (f) => start(f); });
+  useEffect(() => { uploadRef.current = (f) => { setBinTab("media"); start(f); }; });
 
   function onDrop(e: DragEvent) {
     e.preventDefault(); setOver(false);
@@ -64,11 +70,20 @@ export default function MediaBin({ projectId, assets, setAssets, reload, readOnl
       <div className="tabs" role="tablist">
         <button role="tab" aria-selected={binTab === "media"} className={binTab === "media" ? "on" : ""} onClick={() => setBinTab("media")}>Media</button>
         <button role="tab" aria-selected={binTab === "effects"} className={binTab === "effects" ? "on" : ""} onClick={() => setBinTab("effects")}>Effects</button>
-        <button role="tab" aria-selected={false} disabled title="Planned">Templates</button>
-        <button role="tab" aria-selected={false} disabled title="Planned (needs licensed stock provider)">Stock</button>
-        <button role="tab" aria-selected={false} disabled title="Planned (needs generation provider)">AI Assets</button>
+        <button role="tab" aria-selected={binTab === "templates"} className={binTab === "templates" ? "on" : ""} onClick={() => setBinTab("templates")}>Templates</button>
+        <button role="tab" aria-selected={binTab === "stock"} className={binTab === "stock" ? "on" : ""} onClick={() => setBinTab("stock")}>Stock</button>
+        <button role="tab" aria-selected={binTab === "ai"} className={binTab === "ai" ? "on" : ""} onClick={() => setBinTab("ai")}>AI Assets</button>
       </div>
-      {binTab === "effects" ? <div className="bin-list" style={{ paddingTop: 10 }}>
+      {binTab === "templates" ? <TemplatesTab projectId={projectId} readOnly={readOnly} onTemplate={onTemplate} onElement={onAdd} reload={reload} />
+      : binTab === "stock" ? <StockTab projectId={projectId} readOnly={readOnly} onImported={onAdd} reload={reload} />
+      : binTab === "ai" ? <div className="bin-list" style={{ paddingTop: 8 }}>
+        {(() => { const gen = assets.filter((a) => a.kind !== "lut" && a.analysis?.generation); return gen.length === 0
+          ? <div className="dim" style={{ fontSize: 12 }}>Files you create in the AI Generator for this project appear here, ready to drop on the timeline. <Link to="/ai-generator" style={{ color: "#c4b5fd" }}>Open AI Generator</Link></div>
+          : <div className="bin-grid">{gen.map((a) => <button key={a.id} className="bin-item" disabled={readOnly || a.status !== "ready"} onClick={() => onAdd(a)} title={`${a.analysis.generation.tool_name ?? "AI"} · ${a.analysis.generation.model ?? "built-in"} — click to add`}>
+              <span className="bin-thumb">{a.thumbnail_url ? <img src={a.thumbnail_url} alt="" /> : <Sparkles size={20} />}<span className="badge info" style={{ position: "absolute", top: 3, left: 3, fontSize: 9 }}>AI</span></span>
+              <span className="ellipsis" style={{ fontSize: 11 }}>{a.filename}</span></button>)}</div>; })()}
+      </div>
+      : binTab === "effects" ? <div className="bin-list" style={{ paddingTop: 10 }}>
         <div className="dim" style={{ fontSize: 12, marginBottom: 8 }}>{canLook ? "Click a look to apply it to the selected clip." : "Select a video clip on the timeline, then pick a look."}</div>
         <div className="bin-grid">{LOOKS.map((l, i) => <button key={l.name} className="look" disabled={!canLook || readOnly} onClick={() => onLook(i)}><span className="look-ph" style={{ filter: `url(#look-${i})` }} /><span>{l.name}</span></button>)}</div>
       </div> : <>

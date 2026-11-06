@@ -38,6 +38,14 @@ class Settings(BaseSettings):
     ai_daily_paid_runs: int = 200
     ai_runs_per_10min: int = 60          # per-user AI run rate limit
     uploads_per_10min: int = 120         # per-user upload rate limit       # max paid-model runs per workspace per day, even when the cost estimate is unknown
+    # Billing (UPI QR + manual approval). Platform admins approve payments; list their emails, comma-separated.
+    admin_emails: str = ""
+    free_plan_paid_runs: int = 5         # paid AI runs per workspace per day on the Free plan (paid plans use their own limits)
+    # YouTube publishing: a free Google Cloud OAuth client (YouTube Data API v3). Tokens are encrypted at rest.
+    google_oauth_client_id: str | None = None
+    google_oauth_client_secret: str | None = None
+    public_base_url: str = "http://localhost:8000"   # where Google sends users back after connecting YouTube
+    token_encryption_key: str | None = None           # Fernet key; required in production for YouTube tokens
     cookie_samesite: str = "lax"  # use "none" (+ secure) only when frontend and API are on different sites
 
     # Upload limits (plan entitlements will replace these once billing exists)
@@ -59,6 +67,10 @@ class Settings(BaseSettings):
             if v.startswith(prefix):
                 return "postgresql+psycopg://" + v[len(prefix):]
         return v
+
+    @property
+    def admin_email_set(self) -> set[str]:
+        return {e.strip().lower() for e in self.admin_emails.split(",") if e.strip()}
 
     @property
     def cors_origin_list(self) -> list[str]:

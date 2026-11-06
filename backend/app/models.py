@@ -64,6 +64,8 @@ class Workspace(Base, Timestamped):
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     is_personal: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    plan: Mapped[str] = mapped_column(String(20), nullable=False, default="free", server_default="free")
+    plan_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class WorkspaceMember(Base, Timestamped):
@@ -241,3 +243,37 @@ class Generation(Base, Timestamped):
     est_cost_usd: Mapped[float | None] = mapped_column(Float)
     quality: Mapped[dict | None] = mapped_column(JSONB)
     rating: Mapped[int | None] = mapped_column(Integer)
+
+
+class PlatformSetting(Base):
+    """Small admin-editable settings (UPI payee details, QR storage key). Never secrets."""
+    __tablename__ = "platform_settings"
+    key: Mapped[str] = mapped_column(String(60), primary_key=True)
+    value: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class Payment(Base, Timestamped):
+    """A UPI payment a user reports (plan + UTR). An admin checks it against the bank app and approves or rejects it."""
+    __tablename__ = "payments"
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), index=True)
+    plan: Mapped[str] = mapped_column(String(20), nullable=False)
+    months: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    amount_inr: Mapped[int] = mapped_column(Integer, nullable=False)
+    utr: Mapped[str] = mapped_column(String(22), unique=True, nullable=False)
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="pending", index=True)  # pending|approved|rejected
+    note: Mapped[str | None] = mapped_column(String(300))
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class YouTubeConnection(Base, Timestamped):
+    """A user's linked YouTube channel. The refresh token is encrypted (Fernet) and never sent to the browser."""
+    __tablename__ = "youtube_connections"
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True)
+    channel_id: Mapped[str | None] = mapped_column(String(64))
+    channel_title: Mapped[str | None] = mapped_column(String(200))
+    refresh_token_enc: Mapped[str] = mapped_column(Text, nullable=False)

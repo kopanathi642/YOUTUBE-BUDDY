@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Rocket, Download, X, ShieldCheck, AlertTriangle } from "lucide-react";
+import { Rocket, Download, X, ShieldCheck, AlertTriangle, Youtube } from "lucide-react";
+import PublishModal from "./PublishModal";
 import { api, ExportRec, fmtBytes, fmtDuration } from "../api";
 import { useToast } from "../App";
 import { Timeline, duration } from "../timeline";
@@ -20,6 +21,7 @@ export default function ExportDock({ projectId, sequenceId, tl, flush, dirty, re
   const [preset, setPreset] = useState("match");
   const [list, setList] = useState<ExportRec[]>([]);
   const [busy, setBusy] = useState(false);
+  const [publish, setPublish] = useState<string | null>(null);
   const load = useCallback(async () => { try { setList(await api<ExportRec[]>(`/projects/${projectId}/exports`)); } catch { /* shown on retry */ } }, [projectId]);
   useEffect(() => { api<Preset[]>("/export-presets").then(setPresets).catch(() => {}); load(); }, [load]);
   useEffect(() => { if (focusSignal) setTab("export"); }, [focusSignal]);
@@ -63,7 +65,8 @@ export default function ExportDock({ projectId, sequenceId, tl, flush, dirty, re
                 {!readOnly && <button className="btn icon ghost xs" aria-label="Cancel export" onClick={async () => { await api(`/jobs/${j.id}/cancel`, { method: "POST" }); load(); }}><X size={12} /></button>}</>}
               {j.status === "succeeded" && <>{e.validation?.ok && <span className="badge ok" title={Object.entries(e.validation.checks).map(([k, v]) => `${v ? "✓" : "✗"} ${k}`).join("\n")}><ShieldCheck size={11} />Verified</span>}
                 <span className="dim" style={{ fontSize: 11 }}>{e.output_size_bytes ? fmtBytes(e.output_size_bytes) : ""}</span>
-                {e.download_url && <a className="btn sm" href={e.download_url}><Download size={12} />Download</a>}</>}
+                {e.download_url && <a className="btn sm" href={e.download_url}><Download size={12} />Download</a>}
+                {e.download_url && !readOnly && <button className="btn sm" onClick={() => setPublish(e.id)} aria-label="Publish to YouTube"><Youtube size={12} />YouTube</button>}</>}
               {j.status === "failed" && <span className="badge err" title={j.error ?? ""}><AlertTriangle size={11} />failed</span>}
               {j.status === "canceled" && <span className="badge">canceled</span>}
             </div>); })}
@@ -76,6 +79,7 @@ export default function ExportDock({ projectId, sequenceId, tl, flush, dirty, re
       <button className="btn primary export-big" onClick={start} disabled={busy || readOnly || total === 0} title={total === 0 ? "Add a clip first" : `${w}×${h} · ${tl.fps} fps · MP4`}>
         {busy ? <span className="spinner" /> : <Rocket size={20} />}Export Video
       </button>
+      {publish && <PublishModal exportId={publish} defaultTitle={document.title.split("·")[0].trim() || "My video"} onClose={() => setPublish(null)} />}
     </div>
   );
 }

@@ -121,8 +121,13 @@ def _check_daily_budget(db: Session, workspace_id, est: float) -> None:
         Generation.workspace_id == workspace_id, Generation.created_at >= day, Generation.engine.in_(PAID_ENGINES),
         Generation.status != "canceled")
     runs, spent = db.execute(q).one()
-    if runs >= s.ai_daily_paid_runs:
-        raise HTTPException(429, f"Daily limit of {s.ai_daily_paid_runs} paid AI runs reached for this workspace — resets at 05:30 IST")
+    from ..billing import active_plan, paid_runs_limit
+    from ..models import Workspace
+    ws = db.get(Workspace, workspace_id)
+    limit = paid_runs_limit(ws)
+    if runs >= limit:
+        up = " — upgrade your plan for more" if active_plan(ws) != "pro" else ""
+        raise HTTPException(429, f"Daily limit of {limit} premium AI runs reached for this workspace{up}. Resets at 05:30 IST")
     if float(spent) + est > s.ai_daily_budget_usd:
         raise HTTPException(429, f"Daily paid-AI budget (${s.ai_daily_budget_usd:.2f}) would be exceeded — "
                                  f"${float(spent):.2f} used today, this run is about ${est:.2f}. Resets at 05:30 IST")
