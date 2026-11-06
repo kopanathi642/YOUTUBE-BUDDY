@@ -11,7 +11,8 @@ os.environ["ENV"] = "test"
 os.environ["MULTIPART_PART_SIZE"] = str(5 * 1024 * 1024)
 os.environ["SCRATCH_DIR"] = "/tmp/creator-worker-test"
 os.environ.setdefault("AI_DAILY_BUDGET_USD", "1000")
-os.environ.setdefault("FREE_PLAN_PAID_RUNS", "1000")  # plan limits are tested in test_billing.py
+os.environ.setdefault("FREE_PLAN_PAID_RUNS", "1000")
+os.environ.setdefault("FREE_PLAN_WATERMARK", "false")  # pixel tests elsewhere; the watermark is tested in test_growth.py  # plan limits are tested in test_billing.py
 os.environ.setdefault("ADMIN_EMAILS", "founder@example.com")  # the budget itself is tested in test_security_hardening.py
 
 from moto.server import ThreadedMotoServer  # noqa: E402
@@ -76,6 +77,7 @@ def database():
 def _reset_limits():
     from app.security import ai_limiter, auth_limiter, upload_limiter
     from app.routers.stock import search_limiter
+    from app.routers.growth import fb_limiter; fb_limiter.reset()
     auth_limiter.reset(); ai_limiter.reset(); upload_limiter.reset(); search_limiter.reset()
 
 

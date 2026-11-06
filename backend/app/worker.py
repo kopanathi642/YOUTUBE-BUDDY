@@ -155,7 +155,15 @@ def handle_render_export(ctx: Ctx, tmp: str):
                                 duration_s=a.duration_s)
     ow, oh = preset_dimensions(tl, exp.preset)
     out = os.path.join(tmp, "export.mp4")
-    argv, dur = compile_ffmpeg(tl, infos, out, ow, oh, crf=EXPORT_PRESETS[exp.preset]["crf"], workdir=tmp)
+    from .billing import active_plan
+    from .models import Workspace
+    wm = None
+    if active_plan(ctx.db.get(Workspace, exp.workspace_id)) == "free" and get_settings().free_plan_watermark:
+        from .titles import render_watermark_png
+        wm = os.path.join(tmp, "watermark.png")
+        render_watermark_png(f"Made with {get_settings().brand_name}", wm)
+    exp.settings = {**exp.settings, "watermark": bool(wm)}
+    argv, dur = compile_ffmpeg(tl, infos, out, ow, oh, crf=EXPORT_PRESETS[exp.preset]["crf"], workdir=tmp, watermark=wm)
     ctx.progress(0.1, "rendering", force=True)
     proc = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     stderr_buf: list[str] = []
@@ -186,6 +194,10 @@ def handle_render_export(ctx: Ctx, tmp: str):
     key = f"ws/{exp.workspace_id}/proj/{exp.project_id}/exports/{exp.id}.mp4"
     storage.upload(out, key, "video/mp4")
     exp.output_key, exp.output_size_bytes = key, os.path.getsize(out)
+    if ctx.job.created_by:   # a friend's first finished export earns their inviter free Creator days
+        from .billing import reward_referral
+        from .models import User
+        reward_referral(db, db.get(User, ctx.job.created_by))
     db.commit()
     return {"export_id": str(exp.id), "duration_s": dur, "width": ow, "height": oh, "bytes": exp.output_size_bytes}
 

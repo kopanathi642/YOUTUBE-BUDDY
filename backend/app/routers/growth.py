@@ -1,0 +1,62 @@
+"""Founder metrics (from data we already keep) and in-app feedback."""
+from datetime import datetime, timedelta, timezone
+
+from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel, Field
+from sqlalchemy import distinct, func, select
+from sqlalchemy.orm import Session
+
+from ..db import get_db
+from ..models import AuditLog, Export, Job, Payment, User, Workspace
+from ..security import RateLimiter, audit, current_user
+from .billing import admin_user
+
+router = APIRouter(tags=["growth"])
+fb_limiter = RateLimiter(limit=10, window_s=3600)
+
+
+class FeedbackIn(BaseModel):
+    message: str = Field(min_length=3, max_length=2000)
+    page: str = Field("", max_length=200)
+    rating: int | None = Field(None, ge=1, le=5)
+
+
+@router.post("/feedback", status_code=201)
+def feedback(body: FeedbackIn, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    fb_limiter.check(f"fb:{user.id}")
+    audit(db, request, "feedback", user=user, message=body.message.strip(), page=body.page, rating=body.rating)
+    db.commit()
+    return {"ok": True}
+
+
+@router.get("/admin/metrics")
+def metrics(user: User = Depends(admin_user), db: Session = Depends(get_db)):
+    now = datetime.now(timezone.utc)
+    d1, d7, d30 = now - timedelta(days=1), now - timedelta(days=7), now - timedelta(days=30)
+    count = lambda q: db.scalar(q) or 0  # noqa: E731
+    active = lambda since: count(select(func.count(distinct(AuditLog.user_id))).where(AuditLog.created_at >= since, AuditLog.user_id.is_not(None)))  # noqa: E731
+    exporters = count(select(func.count(distinct(Job.created_by))).where(Job.kind == "render.export", Job.status == "succeeded"))
+    users = count(select(func.count()).select_from(User))
+    paying = count(select(func.count()).select_from(Workspace).where(Workspace.plan != "free", Workspace.plan_expires_at > now))
+    top = db.execute(select(AuditLog.action, func.count()).where(AuditLog.created_at >= d30, AuditLog.action.not_like("auth.%"),
+                                                                 AuditLog.action != "feedback")
+                     .group_by(AuditLog.action).order_by(func.count().desc()).limit(15)).all()
+    fb = db.execute(select(AuditLog, User.email).join(User, User.id == AuditLog.user_id, isouter=True)
+                    .where(AuditLog.action == "feedback").order_by(AuditLog.created_at.desc()).limit(30)).all()
+    day = func.date_trunc("day", User.created_at)
+    daily = db.execute(select(day, func.count()).where(User.created_at >= d30).group_by(day).order_by(day)).all()
+    return {
+        "users": users, "signups_7d": count(select(func.count()).select_from(User).where(User.created_at >= d7)),
+        "active_1d": active(d1), "active_7d": active(d7), "active_30d": active(d30),
+        "users_with_export": exporters, "activation_rate": round(exporters / users, 3) if users else 0,
+        "exports_7d": count(select(func.count()).select_from(Export).join(Job, Job.id == Export.job_id)
+                            .where(Export.created_at >= d7, Job.status == "succeeded")),
+        "paying_workspaces": paying, "conversion_rate": round(paying / users, 3) if users else 0,
+        "revenue_30d_inr": count(select(func.coalesce(func.sum(Payment.amount_inr), 0)).where(Payment.status == "approved", Payment.reviewed_at >= d30)),
+        "pending_payments": count(select(func.count()).select_from(Payment).where(Payment.status == "pending")),
+        "referred_users": count(select(func.count()).select_from(User).where(User.referred_by.is_not(None))),
+        "top_features_30d": [{"action": a, "count": n} for a, n in top],
+        "signups_daily_30d": [{"day": d.date().isoformat(), "count": n} for d, n in daily],
+        "feedback": [{"at": a.created_at.isoformat(), "email": e, "message": a.meta.get("message"), "page": a.meta.get("page"),
+                      "rating": a.meta.get("rating")} for a, e in fb],
+    }

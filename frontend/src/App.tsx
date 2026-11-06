@@ -1,3 +1,4 @@
+import Legal from "./pages/Legal";
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { api, ApiError, Me, Workspace } from "./api";
@@ -98,6 +99,8 @@ export default function App() {
           <Route path="/super" element={<Private bare>{universeById("super").locked ? <SuperLocked /> : <Super />}</Private>} />
           <Route path="/library" element={<Private bare><Library /></Private>} />
           <Route path="/settings" element={<Private bare><Settings /></Private>} />
+          <Route path="/privacy" element={<Legal kind="privacy" />} />
+          <Route path="/terms" element={<Legal kind="terms" />} />
           <Route path="/home" element={<Navigate to="/editor" replace />} />
           <Route path="/ai-creation/*" element={<LegacyAi />} />
           <Route path="/projects" element={<LegacyProjects />} />

@@ -28,6 +28,7 @@ class Settings(BaseSettings):
 
     # Product name shown in the app. Change in one place (env BRAND_NAME) — see DEPLOYMENT.md naming warning.
     brand_name: str = "Creator Universe"
+    contact_email: str | None = None   # shown on the privacy/terms pages (CONTACT_EMAIL)
 
     # Web
     cors_origins: str = "http://localhost:5173"
@@ -40,7 +41,8 @@ class Settings(BaseSettings):
     uploads_per_10min: int = 120         # per-user upload rate limit       # max paid-model runs per workspace per day, even when the cost estimate is unknown
     # Billing (UPI QR + manual approval). Platform admins approve payments; list their emails, comma-separated.
     admin_emails: str = ""
-    free_plan_paid_runs: int = 5         # paid AI runs per workspace per day on the Free plan (paid plans use their own limits)
+    free_plan_paid_runs: int = 5
+    free_plan_watermark: bool = True     # small "Made with <brand>" badge on Free-plan exports (growth loop; paid plans remove it)         # paid AI runs per workspace per day on the Free plan (paid plans use their own limits)
     # YouTube publishing: a free Google Cloud OAuth client (YouTube Data API v3). Tokens are encrypted at rest.
     google_oauth_client_id: str | None = None
     google_oauth_client_secret: str | None = None

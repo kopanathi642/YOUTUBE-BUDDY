@@ -1,3 +1,4 @@
+import { getRef } from "./referral";
 // Google sign-in through Firebase Authentication. The Firebase SDK is loaded on demand only.
 // After Google confirms the user, we send the ID token to our backend, which verifies it and
 // starts our own session. We then sign out of the Firebase client so there is one session only.
@@ -16,7 +17,7 @@ export async function signInWithGoogle(cfg: NonNullable<AuthConfig["firebase"]>)
   const cred = await signInWithPopup(auth, provider);
   try {
     const idToken = await cred.user.getIdToken();
-    return await api<Me>("/auth/google", { method: "POST", body: { id_token: idToken } });
+    return await api<Me>("/auth/google", { method: "POST", body: { id_token: idToken, ref: getRef() } });
   } finally {
     await signOut(auth).catch(() => {});
   }

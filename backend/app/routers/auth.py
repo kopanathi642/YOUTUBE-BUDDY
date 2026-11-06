@@ -20,6 +20,7 @@ class SignupIn(BaseModel):
     email: str = Field(max_length=320)
     password: str = Field(min_length=10, max_length=200)
     display_name: str = Field(min_length=1, max_length=120)
+    ref: str | None = Field(None, max_length=20)
 
     @field_validator("email")
     @classmethod
@@ -32,6 +33,7 @@ class SignupIn(BaseModel):
 
 class GoogleIn(BaseModel):
     id_token: str = Field(min_length=20, max_length=8000)
+    ref: str | None = Field(None, max_length=20)
 
 
 class LoginIn(BaseModel):
@@ -45,7 +47,7 @@ def _set_cookie(resp: Response, token: str):
                     samesite=s.cookie_samesite, max_age=s.session_ttl_hours * 3600, path="/")
 
 
-from ..billing import active_plan, is_platform_admin  # noqa: E402
+from ..billing import active_plan, find_referrer, is_platform_admin, referral_code  # noqa: E402
 
 
 def me_payload(db: Session, user: User) -> dict:
@@ -55,7 +57,7 @@ def me_payload(db: Session, user: User) -> dict:
     return {"user": {"id": str(user.id), "email": user.email, "display_name": user.display_name,
                      "email_verified": user.email_verified, "avatar_url": user.avatar_url,
                      "has_password": user.password_hash is not None, "google_linked": user.firebase_uid is not None},
-            "is_platform_admin": is_platform_admin(user),
+            "is_platform_admin": is_platform_admin(user), "referral_code": referral_code(user.id),
             "workspaces": [{"id": str(w.id), "name": w.name, "is_personal": w.is_personal, "role": m.role.value, "plan": active_plan(w)}
                            for m, w in rows]}
 
@@ -76,7 +78,7 @@ def auth_config():
     """Public sign-in options for the web app. Firebase web config values are public identifiers by design."""
     s = get_settings()
     enabled = bool(s.firebase_project_id and s.firebase_api_key and s.firebase_auth_domain)
-    return {"brand": s.brand_name, "password": True, "google": enabled,
+    return {"brand": s.brand_name, "contact_email": s.contact_email, "password": True, "google": enabled,
             "firebase": {"apiKey": s.firebase_api_key, "authDomain": s.firebase_auth_domain,
                          "projectId": s.firebase_project_id, "appId": s.firebase_app_id} if enabled else None}
 
@@ -107,8 +109,9 @@ def google_sign_in(body: GoogleIn, request: Request, response: Response, db: Ses
             user.email_verified = True
         else:
             name = (claims.get("name") or email.split("@")[0])[:120]
+            inviter = find_referrer(db, getattr(body, "ref", None))
             user, _ = _create_user(db, email=email, display_name=name, password_hash=None, firebase_uid=uid,
-                                   email_verified=True)
+                                   email_verified=True, referred_by=inviter and inviter.id)
             created = True
     if not user.is_active:
         raise HTTPException(403, "Account disabled")
@@ -127,7 +130,9 @@ def signup(body: SignupIn, request: Request, response: Response, db: Session = D
     auth_limiter.check(f"signup:{request.client.host if request.client else '-'}")
     if db.scalar(select(func.count()).select_from(User).where(User.email == body.email)):
         raise HTTPException(409, "An account with this email already exists")
-    user, ws = _create_user(db, email=body.email, display_name=body.display_name.strip(), password_hash=hash_password(body.password))
+    inviter = find_referrer(db, body.ref)
+    user, ws = _create_user(db, email=body.email, display_name=body.display_name.strip(), password_hash=hash_password(body.password),
+                            referred_by=inviter and inviter.id)
     token = create_session(db, user, request.headers.get("user-agent"))
     audit(db, request, "auth.signup", user=user, workspace_id=ws.id)
     db.commit()

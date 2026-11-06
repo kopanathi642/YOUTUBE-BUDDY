@@ -44,6 +44,8 @@ class User(Base, Timestamped):
     avatar_url: Mapped[str | None] = mapped_column(String(500))
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    referred_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))          # who invited this user
+    referral_rewarded: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
 
 
 class UserSession(Base):

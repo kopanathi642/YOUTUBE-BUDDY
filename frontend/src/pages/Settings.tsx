@@ -7,6 +7,7 @@ import TeamCard from "../components/TeamCard";
 import BillingCard from "../components/BillingCard";
 import YouTubeCard from "../components/YouTubeCard";
 import AdminPayments from "../components/AdminPayments";
+import { InviteCard, MetricsCard } from "../components/GrowthCards";
 import { useEffect } from "react";
 
 export default function Settings() {
@@ -34,7 +35,9 @@ export default function Settings() {
             {w.id === workspace?.id ? <span className="badge ok">current</span> : <button className="btn sm" onClick={() => setWorkspace(w.id)}>Switch</button>}</div>)}
           <div className="dim" style={{ fontSize: 12, marginTop: 8 }}>Create a team workspace and add members in the Team card.</div>
         </section>
+        {me.is_platform_admin && <MetricsCard />}
         <BillingCard />
+        <InviteCard />
         <YouTubeCard />
         <TeamCard />
         {me.is_platform_admin && <AdminPayments />}

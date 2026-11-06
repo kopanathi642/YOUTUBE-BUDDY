@@ -28,9 +28,9 @@ export default function Landing() {
         </>}
       </header>
       <section className="hero">
-        <span className="badge info">Early access · Editor Universe</span>
-        <h1>Edit videos in the cloud.<br /><span className="grad-text">One studio, three universes.</span></h1>
-        <p>Upload footage, cut it on a real multitrack timeline, and render on cloud workers that keep running after you close the tab.</p>
+        <span className="badge info">Free for creators · made in India</span>
+        <h1>Make one video.<br /><span className="grad-text">Reach every language.</span></h1>
+        <p>Edit in your browser, add captions automatically, dub into Hindi and more, and turn long videos into Shorts — then publish straight to YouTube. Free to start, pay by UPI.</p>
         <div className="row" style={{ justifyContent: "center", gap: 12 }}>
           <Link className="btn primary lg" to={me ? "/universes" : "/signup"}>Start editing</Link>
           <a className="btn lg" href="#status">See what works today</a>
@@ -40,17 +40,17 @@ export default function Landing() {
         <div className="card uni-card live">
           <span className="badge ok">Live now</span>
           <h3 className="row" style={{ marginTop: 12 }}><Film size={20} />Editor Universe</h3>
-          <p className="muted">Professional editing: media library, multitrack timeline, cloud render and export.</p>
+          <p className="muted">Multitrack timeline, colour grading, curves &amp; LUTs, keyframes, transitions, titles, captions, dubbing, Shorts, cloud export and YouTube publishing.</p>
         </div>
         <div className="card uni-card">
           <span className="badge ok">Early access</span>
           <h3 className="row" style={{ marginTop: 12 }}><Orbit size={20} />AI Generator Universe</h3>
-          <p className="muted">AI voice, captions, translation, dubbing, background removal and stabilisation. Image/video generation is planned.</p>
+          <p className="muted">120 AI tools in 12 studios — video, images, voice, music, thumbnails, scripts — with built-in free tools and premium models on paid plans.</p>
         </div>
         <div className="card uni-card">
-          <span className="badge ok">Early access</span>
+          <span className="badge">Coming later</span>
           <h3 className="row" style={{ marginTop: 12 }}><Atom size={20} />Super Universe</h3>
-          <p className="muted">Command center: all jobs, engines, team members and projects in one place. Automation and API are planned.</p>
+          <p className="muted">Command center for teams and agencies: automation, scheduling and an API.</p>
         </div>
       </section>
       <section id="features" className="feat-grid" aria-label="Features">
@@ -65,7 +65,7 @@ export default function Landing() {
             Planned: lip sync, object removal, image/video generation, publishing to YouTube. We mark each one live only when it really works.</p>
         </div>
       </section>
-      <footer className="land-foot"><span>© {new Date().getFullYear()} Creator Universe (working name)</span><span>Privacy policy and terms: pending legal review</span></footer>
+      <footer className="land-foot"><span>© {new Date().getFullYear()} Creator Universe (working name)</span><span><Link to="/privacy">Privacy</Link> · <Link to="/terms">Terms</Link></span></footer>
     </div>
   );
 }

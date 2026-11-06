@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { getRef } from "../referral";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { api, Me } from "../api";
 import { useAuth } from "../App";
@@ -30,7 +31,7 @@ export default function AuthPage({ mode }: { mode: "signin" | "signup" }) {
     e.preventDefault();
     setBusy(true); setErr(null);
     try {
-      const body = mode === "signup" ? { email, password, display_name: name } : { email, password };
+      const body = mode === "signup" ? { email, password, display_name: name, ref: getRef() } : { email, password };
       const m = await api<Me>(`/auth/${mode === "signup" ? "signup" : "login"}`, { method: "POST", body });
       setMe(m);
       nav(next, { replace: true });
@@ -67,6 +68,7 @@ export default function AuthPage({ mode }: { mode: "signin" | "signup" }) {
             {mode === "signup" && <div className="dim" style={{ fontSize: 12, marginTop: 6 }}>At least 10 characters.</div>}</div>
           {err && <div className="error-box" role="alert">{err}</div>}
           <button className="btn primary lg" disabled={busy}>{busy ? <span className="spinner" /> : mode === "signup" ? "Create account" : "Sign in"}</button>
+          {mode === "signup" && <div className="dim" style={{ fontSize: 11.5, textAlign: "center" }}>By creating an account you agree to the <Link to="/terms">Terms</Link> and <Link to="/privacy">Privacy policy</Link>.</div>}
           <div className="muted" style={{ textAlign: "center", fontSize: 13 }}>
             {mode === "signup" ? <>Already have an account? <Link to="/signin" style={{ color: "#c4b5fd" }}>Sign in</Link></> : <>New here? <Link to="/signup" style={{ color: "#c4b5fd" }}>Create an account</Link></>}
           </div>

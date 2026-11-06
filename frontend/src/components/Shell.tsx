@@ -5,6 +5,8 @@ import {
   Download, LogOut, ChevronDown, Bell, Wand2, Orbit, Atom, Scissors, ArrowLeft, Library as LibraryIcon, Lock } from "lucide-react";
 import { api } from "../api";
 import { useAuth, useBrand } from "../App";
+import { FeedbackModal } from "./GrowthCards";
+import { MessageSquareHeart, Gift } from "lucide-react";
 
 export function Brand({ small, sub = "EDITOR UNIVERSE" }: { small?: boolean; sub?: string }) {
   const brand = useBrand();
@@ -33,7 +35,7 @@ export const EDITOR_TOOLS: { label: string; icon: any }[] = [
 
 export function UserMenu() {
   const { me, setMe, workspace, setWorkspace } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false), [fb, setFb] = useState(false);
   const nav = useNavigate();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -58,11 +60,14 @@ export function UserMenu() {
             </button>
           ))}
           <hr style={{ border: 0, borderTop: "1px solid var(--line)", margin: "6px 0" }} />
+          <button role="menuitem" className="menu-item" onClick={() => { setFb(true); setOpen(false); }}><MessageSquareHeart size={15} /> Send feedback</button>
+          <button role="menuitem" className="menu-item" onClick={() => { setOpen(false); nav("/settings#invite"); }}><Gift size={15} /> Invite &amp; earn</button>
           <button role="menuitem" className="menu-item" onClick={async () => { await api("/auth/logout", { method: "POST" }); setMe(null); nav("/"); }}>
             <LogOut size={15} /> Sign out
           </button>
         </div>
       )}
+      {fb && <FeedbackModal onClose={() => setFb(false)} />}
     </div>
   );
 }

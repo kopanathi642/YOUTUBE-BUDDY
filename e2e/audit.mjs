@@ -351,7 +351,7 @@ await step("Upgrade Plan → UPI QR, UTR submitted, founder approves in admin, p
   let r = await fp.request.post(B + "/api/v1/auth/signup", { headers: H, data: { email: "founder@example.com", password: "correct horse battery", display_name: "Founder" } });
   if (r.status() !== 201) r = await fp.request.post(B + "/api/v1/auth/login", { headers: H, data: { email: "founder@example.com", password: "correct horse battery" } });
   if (!r.ok()) throw new Error("founder sign-in " + r.status());
-  await fp.goto(B + "/settings"); await fp.waitForSelector("#payments-admin");
+  await fp.goto(B + "/settings"); await fp.waitForSelector("#payments-admin"); await fp.waitForSelector("#metrics .met-tile");
   await fp.fill("#payments-admin input[aria-label='UPI ID']", "founder@ybl"); await fp.fill("#payments-admin input[aria-label='Payee name']", "Founder");
   await fp.click("#payments-admin button:has-text('Save details')"); await fp.waitForTimeout(600);
   await fp.setInputFiles("#payments-admin input[aria-label='Upload UPI QR']", M + "/Subscribe_Badge.png"); await fp.waitForTimeout(1500);
@@ -366,6 +366,16 @@ await step("Upgrade Plan → UPI QR, UTR submitted, founder approves in admin, p
   await page.reload(); await page.waitForSelector("#billing .badge.ok:has-text('Creator')");
   if (!(await page.locator("#youtube").count())) throw new Error("YouTube card missing");
   await page.goBack();
+});
+await step("Growth: feedback sent, invite link shown, privacy & terms pages", async () => {
+  await page.click("button[aria-haspopup=menu]"); await page.click(".menu-item:has-text('Send feedback')");
+  await page.fill("textarea[aria-label=Feedback]", "Audit: please add more fonts"); await page.click("button[aria-label='4 stars']");
+  await page.click(".modal button:has-text('Send')"); await page.waitForSelector(".modal", { state: "detached" });
+  const url = page.url();
+  await page.goto(B + "/settings"); await page.waitForSelector("#invite input[value*='/signup?ref=']");
+  await page.goto(B + "/privacy"); await page.waitForSelector("h1:has-text('Privacy policy')");
+  await page.goto(B + "/terms"); await page.waitForSelector("h1:has-text('Terms of service')");
+  await page.goto(url); await page.waitForSelector(".ed-side");
 });
 await step("Mobile layout renders editor + dashboard", async () => {
   const m = await browser.newContext({ viewport: { width: 390, height: 844 }, storageState: await ctx.storageState() }); const p = await m.newPage();

@@ -416,7 +416,7 @@ def transition_links(clips: list["Clip"]) -> dict[str, tuple[int, int]]:
 
 def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: str,
                    out_w: int | None = None, out_h: int | None = None, crf: int = 20,
-                   workdir: str | None = None) -> tuple[list[str], float]:
+                   workdir: str | None = None, watermark: str | None = None) -> tuple[list[str], float]:
     """Return (ffmpeg argv, duration seconds). Raises ValueError for un-renderable timelines."""
     fps = tl.fps
     D = tl.duration_frames / fps
@@ -601,11 +601,23 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
             idx = add_input(clip, a)
             audio_labels.append(_audio_chain(graph, idx, clip, fps))
 
+    final = "vout"
+    if watermark:   # Free plan: small "Made with …" badge, bottom-right, sized to the output
+        final = "vpre"
     if out_w and out_h and (out_w, out_h) != (W, H):
         graph.append(f"[{vlabel}]scale={out_w}:{out_h}:force_original_aspect_ratio=decrease:force_divisible_by=2,"
-                     f"pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1[vout]")
+                     f"pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1[{final}]")
     else:
-        graph.append(f"[{vlabel}]null[vout]")
+        graph.append(f"[{vlabel}]null[{final}]")
+    if watermark:
+        ow_, oh_ = (out_w or W), (out_h or H)
+        wm_w = max(120, int(min(ow_, oh_) * 0.32)) // 2 * 2
+        args.extend(["-i", watermark])
+        wi = n_inputs
+        n_inputs += 1
+        m = max(8, int(min(ow_, oh_) * 0.03))
+        graph.append(f"[{wi}:v]scale={wm_w}:-2,format=rgba[wm]")
+        graph.append(f"[vpre][wm]overlay=W-w-{m}:H-h-{m}:eof_action=repeat:format=auto,format=yuv420p[vout]")
     mix_in = "".join(f"[{l}]" for l in ["abase", *audio_labels])
     graph.append(f"{mix_in}amix=inputs={1 + len(audio_labels)}:duration=first:normalize=0:dropout_transition=0,"
                  f"alimiter=limit=0.98[aout]")

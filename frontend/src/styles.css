@@ -185,3 +185,15 @@ footer.land-foot { border-top: 1px solid var(--line); padding: 24px 32px; color:
 .bill-qr { width: 150px; height: 150px; background: #fff; border-radius: 10px; display: grid; place-items: center; color: #111; overflow: hidden; }
 .bill-qr img { width: 100%; height: 100%; object-fit: contain; }
 @media (max-width: 560px) { .bill-plans { grid-template-columns: 1fr; } .bill-pay { grid-template-columns: 1fr; } .bill-qr { margin: 0 auto; } }
+/* Founder metrics */
+.met-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.met-tile { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 11.5px; }
+.met-tile b { font-size: 22px; }
+.met-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 14px; }
+.met-bar { display: grid; grid-template-columns: 140px 1fr 40px; gap: 8px; align-items: center; font-size: 11.5px; margin: 3px 0; }
+.met-bar i { height: 8px; border-radius: 4px; background: #60a5fa; min-width: 2px; }
+.met-bar b { text-align: right; }
+.met-fb { font-size: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); } .met-fb .dim { font-size: 10.5px; }
+.legal { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; line-height: 1.65; font-size: 14.5px; }
+.legal h1 { margin: 16px 0 4px; } .legal h2 { font-size: 17px; margin: 24px 0 6px; }
+.legal a { color: #c4b5fd; } .legal ul { padding-left: 20px; }

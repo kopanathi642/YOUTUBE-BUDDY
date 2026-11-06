@@ -87,3 +87,17 @@ def render_title_png(title, transform, W: int, H: int, path: str) -> None:
     cx, cy = W / 2 + transform.x, H / 2 + transform.y
     canvas.paste(layer, (round(cx - layer.width / 2), round(cy - layer.height / 2)), layer)  # clips safely at edges
     canvas.save(path, optimize=False)
+
+
+def render_watermark_png(text: str, path: str) -> None:
+    """A translucent pill with the product name, used on Free-plan exports."""
+    from PIL import Image, ImageDraw, ImageFont
+    f = ImageFont.truetype(str(FONTS / font_for(text)), 44)
+    d = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    x0, y0, x1, y1 = d.textbbox((0, 0), text, font=f)
+    w, h = x1 - x0 + 56, y1 - y0 + 30
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    dr = ImageDraw.Draw(img)
+    dr.rounded_rectangle((0, 0, w - 1, h - 1), radius=h // 2, fill=(0, 0, 0, 120))
+    dr.text((28 - x0, 15 - y0), text, font=f, fill=(255, 255, 255, 220))
+    img.save(path)

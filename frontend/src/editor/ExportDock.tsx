@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Rocket, Download, X, ShieldCheck, AlertTriangle, Youtube } from "lucide-react";
 import PublishModal from "./PublishModal";
 import { api, ExportRec, fmtBytes, fmtDuration } from "../api";
-import { useToast } from "../App";
+import { useAuth, useToast } from "../App";
+import { Link } from "react-router-dom";
 import { Timeline, duration } from "../timeline";
 
 type Preset = { id: string; label: string; short_side: number | null };
@@ -22,6 +23,7 @@ export default function ExportDock({ projectId, sequenceId, tl, flush, dirty, re
   const [list, setList] = useState<ExportRec[]>([]);
   const [busy, setBusy] = useState(false);
   const [publish, setPublish] = useState<string | null>(null);
+  const plan = useAuth().workspace?.plan ?? "free";
   const load = useCallback(async () => { try { setList(await api<ExportRec[]>(`/projects/${projectId}/exports`)); } catch { /* shown on retry */ } }, [projectId]);
   useEffect(() => { api<Preset[]>("/export-presets").then(setPresets).catch(() => {}); load(); }, [load]);
   useEffect(() => { if (focusSignal) setTab("export"); }, [focusSignal]);
@@ -55,6 +57,7 @@ export default function ExportDock({ projectId, sequenceId, tl, flush, dirty, re
           <label>Resolution<select className="select sm" value={preset} onChange={(e) => setPreset(e.target.value)} disabled={readOnly}>
             {presets.map((p) => <option key={p.id} value={p.id}>{dims(tl, p).join("×")} · {p.label.split("·")[0].trim()}</option>)}</select></label>
           <label>Frame Rate<select className="select sm" disabled><option>{tl.fps} FPS</option></select></label>
+          {plan === "free" && <span className="dim" style={{ fontSize: 11, alignSelf: "end" }}>Free plan adds a small badge · <Link to="/settings#billing" style={{ color: "#c4b5fd" }}>remove it</Link></span>}
         </div>}
         {tab === "queue" && <div className="exp-queue">
           {list.length === 0 && <span className="dim" style={{ fontSize: 12 }}>No exports yet.</span>}
