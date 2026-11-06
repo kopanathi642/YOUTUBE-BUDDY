@@ -17,6 +17,26 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: pip install -r requirements.txt -r requirements-dev.txt
       - run: python -m pytest -q
+  real-models:
+    # Free AI models for real (Whisper captions, Argos translation, Piper voices incl. Hindi, full dub through the API).
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: creator, POSTGRES_PASSWORD: creator, POSTGRES_DB: creator_test }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U creator" --health-interval 5s --health-retries 10
+    defaults: { run: { working-directory: backend } }
+    env: { REAL_MODELS: "1", MODEL_CACHE: /tmp/models, WHISPER_MODEL: small }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - uses: actions/cache@v4
+        with: { path: /tmp/models, key: free-models-v1 }
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: python -m pytest -q -s tests/test_real_models.py
   frontend:
     runs-on: ubuntu-24.04
     defaults: { run: { working-directory: frontend } }
