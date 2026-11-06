@@ -7,6 +7,14 @@ import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import Editor from "./editor/Editor";
 import Shell from "./components/Shell";
+import Gateway from "./pages/Gateway";
+import AiCreation from "./pages/AiCreation";
+import Super from "./pages/Super";
+import Library from "./pages/Library";
+import Settings from "./pages/Settings";
+
+const BrandCtx = createContext("Creator Universe");
+export const useBrand = () => useContext(BrandCtx);
 
 type AuthCtx = {
   me: Me | null; loading: boolean; workspace: Workspace | null;
@@ -24,6 +32,8 @@ function Providers({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [wsId, setWsId] = useState<string | null>(() => { try { return localStorage.getItem("cu.ws"); } catch { return null; } });
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [brand, setBrand] = useState("Creator Universe");
+  useEffect(() => { api<{ brand?: string }>("/auth/config").then((c) => c.brand && setBrand(c.brand)).catch(() => {}); }, []);
 
   const refresh = useCallback(async () => {
     try { setMe(await api<Me>("/auth/me")); }
@@ -41,12 +51,12 @@ function Providers({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ me, loading, workspace, setWorkspace, refresh, setMe }}>
+    <BrandCtx.Provider value={brand}><Ctx.Provider value={{ me, loading, workspace, setWorkspace, refresh, setMe }}>
       <ToastCtx.Provider value={toast}>
         {children}
         <div className="toast-wrap" role="status" aria-live="polite">{toasts.map((t) => <div key={t.id} className="toast">{t.text}</div>)}</div>
       </ToastCtx.Provider>
-    </Ctx.Provider>
+    </Ctx.Provider></BrandCtx.Provider>
   );
 }
 
@@ -58,6 +68,11 @@ function Private({ children, bare }: { children: ReactNode; bare?: boolean }) {
   return bare ? <>{children}</> : <Shell>{children}</Shell>;
 }
 
+function LegacyProjects() {
+  const loc = useLocation();
+  return <Navigate to={`/editor/projects${loc.search}`} replace />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -66,10 +81,17 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/signin" element={<AuthPage mode="signin" />} />
           <Route path="/signup" element={<AuthPage mode="signup" />} />
-          <Route path="/home" element={<Private><Dashboard /></Private>} />
-          <Route path="/projects" element={<Private><Projects /></Private>} />
+          <Route path="/universes" element={<Private bare><Gateway /></Private>} />
+          <Route path="/editor" element={<Private><Dashboard /></Private>} />
+          <Route path="/editor/projects" element={<Private><Projects /></Private>} />
+          <Route path="/ai-creation" element={<Private bare><AiCreation /></Private>} />
+          <Route path="/super" element={<Private bare><Super /></Private>} />
+          <Route path="/library" element={<Private bare><Library /></Private>} />
+          <Route path="/settings" element={<Private bare><Settings /></Private>} />
+          <Route path="/home" element={<Navigate to="/editor" replace />} />
+          <Route path="/projects" element={<LegacyProjects />} />
           <Route path="/edit/:projectId" element={<Private bare><Editor /></Private>} />
-          <Route path="*" element={<div className="auth-wrap"><div className="card auth-card"><h2>Page not found</h2><a className="btn" href="/home">Go home</a></div></div>} />
+          <Route path="*" element={<div className="auth-wrap"><div className="card auth-card"><h2>Page not found</h2><a className="btn" href="/universes">Go to universes</a></div></div>} />
         </Routes>
       </Providers>
     </BrowserRouter>

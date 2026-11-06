@@ -22,7 +22,7 @@ export default function Landing() {
         <Brand />
         <nav aria-label="Site"><a href="#universes">Universes</a><a href="#features">Features</a><a href="#status">What's live</a></nav>
         <div className="grow" />
-        {me ? <Link className="btn primary" to="/home">Open studio</Link> : <>
+        {me ? <Link className="btn primary" to="/universes">Open studio</Link> : <>
           <Link className="btn ghost" to="/signin">Sign in</Link>
           <Link className="btn primary" to="/signup">Get started</Link>
         </>}
@@ -32,7 +32,7 @@ export default function Landing() {
         <h1>Edit videos in the cloud.<br /><span className="grad-text">One studio, three universes.</span></h1>
         <p>Upload footage, cut it on a real multitrack timeline, and render on cloud workers that keep running after you close the tab.</p>
         <div className="row" style={{ justifyContent: "center", gap: 12 }}>
-          <Link className="btn primary lg" to={me ? "/home" : "/signup"}>Start editing</Link>
+          <Link className="btn primary lg" to={me ? "/universes" : "/signup"}>Start editing</Link>
           <a className="btn lg" href="#status">See what works today</a>
         </div>
       </section>
@@ -43,14 +43,14 @@ export default function Landing() {
           <p className="muted">Professional editing: media library, multitrack timeline, cloud render and export.</p>
         </div>
         <div className="card uni-card">
-          <span className="badge soon">Planned</span>
+          <span className="badge ok">Early access</span>
           <h3 className="row" style={{ marginTop: 12 }}><Orbit size={20} />AI Creation Universe</h3>
-          <p className="muted">AI Magic, shorts, captions, translation, dubbing and generation tools.</p>
+          <p className="muted">AI voice, captions, translation, dubbing, background removal and stabilisation. Image/video generation is planned.</p>
         </div>
         <div className="card uni-card">
-          <span className="badge soon">Planned</span>
+          <span className="badge ok">Early access</span>
           <h3 className="row" style={{ marginTop: 12 }}><Atom size={20} />Super Universe</h3>
-          <p className="muted">Teams, automation, developer API and everything combined.</p>
+          <p className="muted">Command center: all jobs, engines, team members and projects in one place. Automation and API are planned.</p>
         </div>
       </section>
       <section id="features" className="feat-grid" aria-label="Features">
@@ -61,8 +61,8 @@ export default function Landing() {
       <section id="status" className="land-shot" style={{ marginBottom: 60 }}>
         <div className="card" style={{ padding: 24 }}>
           <h3 style={{ marginTop: 0 }}>What's live, honestly</h3>
-          <p className="muted">Live: accounts, workspaces, projects, cloud uploads, media processing, the multitrack editor, autosave with history, and cloud MP4 export.
-            Planned next: AI Magic, Shorts Maker, Clips & Reels, captions, translation, colour, audio and VFX studios. We'll mark each one live only when it really works.</p>
+          <p className="muted">Live: accounts (email + Google), workspaces and teams, cloud uploads, the multitrack editor with titles, speed, crop, colour grading and scopes, smart silence/scene cuts, autosave with history, cloud MP4 export, AI voice, captions, translation, dubbing, background removal and stabilisation.
+            Planned: lip sync, object removal, image/video generation, publishing to YouTube. We mark each one live only when it really works.</p>
         </div>
       </section>
       <footer className="land-foot"><span>© {new Date().getFullYear()} Creator Universe (working name)</span><span>Privacy policy and terms: pending legal review</span></footer>

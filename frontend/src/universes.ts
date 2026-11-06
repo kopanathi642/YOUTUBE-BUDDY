@@ -1,0 +1,15 @@
+export type UniverseId = "editor" | "ai" | "super";
+export type Universe = { id: UniverseId; route: string; title: string; subtitle: string; description: string; cta: string; hue: string; c1: string; c2: string; c3: string };
+
+export const UNIVERSES: Universe[] = [
+  { id: "editor", route: "/editor", title: "EDITOR UNIVERSE", subtitle: "Professional Editing & Post-Production",
+    description: "Professional video editing, AI editing, magic editing, VFX, animation, audio, colour grading and rendering.",
+    cta: "ENTER EDITOR UNIVERSE", hue: "blue", c1: "#2563eb", c2: "#22d3ee", c3: "#60a5fa" },
+  { id: "ai", route: "/ai-creation", title: "AI CREATION UNIVERSE", subtitle: "AI Generation & Creative Intelligence",
+    description: "AI voices, captions, translation, dubbing and media intelligence today — image, video and audio generation, Director LLM and agents on the roadmap.",
+    cta: "ENTER AI CREATION UNIVERSE", hue: "violet", c1: "#7c3aed", c2: "#d946ef", c3: "#a78bfa" },
+  { id: "super", route: "/super", title: "SUPER UNIVERSE", subtitle: "Ultimate AI Creative Command Center",
+    description: "Unified command center: every project, job, model and teammate across universes — with orchestration and automation on the roadmap.",
+    cta: "ENTER SUPER UNIVERSE", hue: "emerald", c1: "#10b981", c2: "#06b6d4", c3: "#f59e0b" },
+];
+export const universeById = (id: UniverseId) => UNIVERSES.find((u) => u.id === id)!;

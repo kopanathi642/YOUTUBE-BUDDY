@@ -94,3 +94,32 @@ def remove_member(workspace_id: uuid.UUID, user_id: uuid.UUID, request: Request,
     audit(db, request, "workspace.member_remove", user=user, workspace_id=workspace_id, target_type="user", target_id=user_id)
     db.commit()
     return {"ok": True}
+
+
+@router.get("/{workspace_id}/media")
+def workspace_media(workspace_id: uuid.UUID, q: str | None = None, kind: str | None = None, limit: int = 60,
+                    user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Shared asset library: every ready media file in the workspace, across projects."""
+    from ..deps import ser_asset
+    from ..models import MediaStatus
+    require_member(db, user, workspace_id)
+    stmt = (select(MediaAsset, Project.name).join(Project, Project.id == MediaAsset.project_id)
+            .where(MediaAsset.workspace_id == workspace_id, MediaAsset.deleted_at.is_(None), Project.deleted_at.is_(None),
+                   MediaAsset.status == MediaStatus.ready))
+    if q:
+        stmt = stmt.where(MediaAsset.filename.ilike(f"%{q.replace('%', '').replace('_', '')}%"))
+    if kind in ("video", "audio", "image"):
+        stmt = stmt.where(MediaAsset.kind == kind)
+    rows = db.execute(stmt.order_by(MediaAsset.created_at.desc()).limit(min(200, max(1, limit)))).all()
+    return [ser_asset(a) | {"project_name": pn} for a, pn in rows]
+
+
+@router.get("/{workspace_id}/exports")
+def workspace_exports(workspace_id: uuid.UUID, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    from ..deps import ser_export
+    from ..models import Export
+    require_member(db, user, workspace_id)
+    rows = db.execute(select(Export, Job, Project.name).join(Job, Job.id == Export.job_id).join(Project, Project.id == Export.project_id)
+                      .where(Export.workspace_id == workspace_id, Project.deleted_at.is_(None))
+                      .order_by(Export.created_at.desc()).limit(12)).all()
+    return [ser_export(e, j) | {"project_id": str(e.project_id), "project_name": pn} for e, j, pn in rows]

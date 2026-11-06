@@ -45,12 +45,14 @@ await step("Sign-up validation shows errors", async () => {
 const email = `audit${Date.now()}@example.com`;
 await step("Sign up", async () => {
   await page.fill("#n", "Audit Bot"); await page.fill("#e", email); await page.fill("#p", "audit-password-123");
-  await page.click("button:has-text('Create account')"); await page.waitForURL("**/home");
+  await page.click("button:has-text('Create account')"); await page.waitForURL("**/universes"); await page.waitForSelector(".portal");
+  await page.goto(B + "/editor"); await page.waitForSelector(".stat b");
 });
 await step("Sign out and sign in again", async () => {
   await page.click(".topbar .btn.ghost:has(.avatar)"); await page.click("text=Sign out"); await page.waitForURL(B + "/");
   await page.goto(B + "/signin"); await page.fill("#e", email); await page.fill("#p", "audit-password-123");
-  await page.click("button:has-text('Sign in')"); await page.waitForURL("**/home");
+  await page.click("button:has-text('Sign in')"); await page.waitForURL("**/universes");
+  await page.goto(B + "/editor");
 });
 await step("Dashboard: stats, quick tiles, jobs list render", async () => {
   await page.waitForSelector(".stat b"); await page.waitForSelector("text=Recent cloud jobs");

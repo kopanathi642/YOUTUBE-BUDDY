@@ -16,7 +16,7 @@ export default function AuthPage({ mode }: { mode: "signin" | "signup" }) {
   const [err, setErr] = useState<string | null>(null);
   const [cfg, setCfg] = useState<AuthConfig | null>(null);
   useEffect(() => { api<AuthConfig>("/auth/config").then(setCfg).catch(() => {}); }, []);
-  const next = params.get("next")?.startsWith("/") ? params.get("next")! : "/home";
+  const next = params.get("next")?.startsWith("/") ? params.get("next")! : "/universes";
   if (me) return <Navigate to={next} replace />;
 
   async function submit(e: FormEvent) {

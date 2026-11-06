@@ -1,4 +1,4 @@
-# Feature Status Matrix — Editor Universe (v0.4)
+# Feature Status Matrix — Creator Universe (v0.5)
 
 Whole-app check: `e2e/audit.mjs` drives a real browser through **55 steps covering every enabled control** — last run 55/55 passed.
 
@@ -16,7 +16,7 @@ Evidence: `backend/tests/test_editor_flow.py` (pytest, real Postgres + S3 protoc
 | Auth | YouTube OAuth scopes | NOT_IMPLEMENTED | deliberately deferred: restricted scope needs Google verification; request only when a YouTube feature exists |
 | Auth | MFA | NOT_IMPLEMENTED | Phase 1b |
 | Workspaces | Personal workspace on sign-up, team workspaces, roles (owner/admin/editor/viewer) | WORKING | `test_viewer_cannot_edit` |
-| Workspaces | Add existing user as member, remove member | WORKING | API only; no UI page yet |
+| Workspaces | Add existing user as member, remove member, create team workspace | WORKING | UI in Super Universe → Team |
 | Workspaces | Email invitations, ownership transfer, workspace deletion | NOT_IMPLEMENTED | needs email provider |
 | Tenancy | Cross-workspace isolation (404 on every foreign ID) | WORKING | `test_tenant_isolation` (6 GET + 3 write routes) |
 | Projects | Create (16:9 / 9:16 / 1:1, 24–60 fps), list, search, sort, rename, archive, restore, soft-delete | WORKING | browser E2E, API |
@@ -68,3 +68,18 @@ Evidence: `backend/tests/test_editor_flow.py` (pytest, real Postgres + S3 protoc
 | Ops | Health endpoint (DB + storage), worker alive file, structured logs with request IDs | WORKING | |
 | Ops | Docker image, Render blueprint, CI | PARTIAL | written; image builds in CI (no Docker daemon in build sandbox); first deploy pending founder accounts |
 | Ops | Metrics/alerts, backups restore drill | NOT_IMPLEMENTED | Render Postgres has daily backups on paid plans; drill not yet run |
+
+## v0.5 — Three Universe Gateway
+
+| Area | Feature | Status | Evidence / notes |
+|---|---|---|---|
+| Gateway | `/universes` — 3 floating portals (Editor blue, AI Creation violet, Super emerald/cyan/gold), CSS 3D + mouse parallax, glow rings, particle canvas, hover focus/dim, cinematic warp entry | WORKING | `scratchpad e2e/gw.mjs`: each portal routes correctly, 0 console errors |
+| Gateway | Reduced-motion mode (instant entry, no particles/float) and low-end tuning (adaptive particle count, pauses when tab hidden) | WORKING | gw.mjs reduced-motion check |
+| Gateway | Bottom dock: continue working, recent projects, recent exports, processing jobs, model availability | WORKING | real API data, no placeholders |
+| Global bar | Global project search, notifications (finished/failed jobs), usage, model status, settings, profile, switch universe, return to gateway | WORKING | on every universe page |
+| Shared | Asset library `/library` across all projects (search, kind filter, preview, open in editor) | WORKING | `test_workspace_library_and_exports_are_tenant_scoped` |
+| AI Creation | `/ai-creation` — AI voice, transcribe & translate (+ .srt), dubbing, background removal, stabilisation, AI job list | WORKING (voice, bg, stabilise) / needs live check (Whisper, Argos, Hindi voices download from Hugging Face on first use — blocked in the build sandbox) | |
+| AI Creation | Image/video generation, music/SFX, director LLM, agents | NOT_IMPLEMENTED | shown as non-clickable roadmap |
+| Super | `/super` — stats, universe status, job board (filter, cancel), engines list, team, all projects | WORKING | |
+| Super | Automation, scheduled publishing, developer API | NOT_IMPLEMENTED | roadmap, non-clickable |
+| Routing | `/editor`, `/editor/projects`, `/edit/:id`; old `/home` and `/projects` redirect | WORKING | |

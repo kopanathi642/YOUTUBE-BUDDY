@@ -80,6 +80,12 @@ Everything below runs on your own render worker with open-source models — no A
 
 Optional: add `OPENAI_API_KEY` in Render → Environment to use OpenAI for captions and translation instead (better accuracy for Hindi/Hinglish; costs per minute). Not available yet: lip sync and object removal (need GPU providers).
 
+## After going live — 5-minute check
+1. Open https://youtubebuddy.com → sign up → you land on **/universes** (the three portals).
+2. Enter each universe: Editor (`/editor`), AI Creation (`/ai-creation`), Super (`/super`).
+3. In AI Creation run **Transcribe** once on a short clip — the first run downloads the Whisper model to the worker disk (a few minutes). Super → Models should then show it ready.
+4. Export a short clip in the editor and download it.
+
 ## Operating it
 * **Deploys:** every push to `main` → CI runs tests → Render auto-deploys. Roll back from Render → *Deploys → Rollback*.
 * **Scaling renders:** increase the worker instance count (each worker renders one job at a time) or size. Per-workspace concurrency is capped by `MAX_CONCURRENT_EXPORTS_PER_WORKSPACE` (default 2).

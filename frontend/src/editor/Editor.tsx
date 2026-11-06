@@ -346,7 +346,7 @@ export default function Editor() {
     return () => window.removeEventListener("keydown", h);
   }, [tl, playhead, selected, fps, total, hist, edit, doSave]);
 
-  if (loadErr) return <div className="auth-wrap"><div className="card auth-card"><h2>Can't open this project</h2><p className="muted">{loadErr}</p><Link className="btn" to="/projects">Back to projects</Link></div></div>;
+  if (loadErr) return <div className="auth-wrap"><div className="card auth-card"><h2>Can't open this project</h2><p className="muted">{loadErr}</p><Link className="btn" to="/editor/projects">Back to projects</Link></div></div>;
   if (!project || !tl || !seq) return <div className="auth-wrap"><div className="spinner" aria-label="Loading editor" /></div>;
 
   const sel = selected ? findClip(tl, selected) : null;
@@ -363,8 +363,8 @@ export default function Editor() {
       <header className="ed-top">
         <Brand small />
         <nav className="topnav ed-nav" aria-label="Studios">
-          <Link to="/home"><Home size={17} />Home</Link>
-          <Link to="/projects"><FolderOpen size={17} />Project</Link>
+          <Link to="/editor"><Home size={17} />Home</Link>
+          <Link to="/editor/projects"><FolderOpen size={17} />Project</Link>
           <a className="active" aria-current="page"><Scissors size={17} />Edit</a>
           {NAV.map(([l, I, act]) => act
             ? <a key={l} role="button" tabIndex={0} onClick={() => act === "loudness-nav" ? setInspTab("inspector") : action(act)}><I size={17} />{l}</a>

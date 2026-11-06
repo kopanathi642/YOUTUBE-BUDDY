@@ -237,3 +237,18 @@ def test_crashed_worker_job_is_reclaimed(make_client, fixtures_media):
     drain()
     got = c.get(f"/api/v1/media/{a['id']}").json()
     assert got["status"] == "ready" and got["job"]["attempts"] == 2
+
+
+def test_workspace_library_and_exports_are_tenant_scoped(make_client, fixtures_media):
+    a, b = make_client(), make_client()
+    wa = signup(a)["workspaces"][0]["id"]
+    wb = signup(b)["workspaces"][0]["id"]
+    p = new_project(a, wa)
+    upload(a, p["id"], fixtures_media["tone_wav"], "audio/wav")
+    drain()
+    lib = a.get(f"/api/v1/workspaces/{wa}/media?kind=audio").json()
+    assert len(lib) == 1 and lib[0]["project_name"] == "Test project"
+    assert a.get(f"/api/v1/workspaces/{wa}/media?q=nomatch").json() == []
+    assert b.get(f"/api/v1/workspaces/{wa}/media").status_code == 404
+    assert b.get(f"/api/v1/workspaces/{wa}/exports").status_code == 404
+    assert b.get(f"/api/v1/workspaces/{wb}/media").json() == []
