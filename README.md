@@ -1,4 +1,4 @@
-# Creator Universe — Editor Universe (v0.1)
+# Creator Universe — Editor Universe (v0.4)
 
 Cloud video editor for creators. First of three universes (Editor · AI Creation · Super).
 Working name only — see `docs/DEPLOYMENT.md` → *Naming warning*.

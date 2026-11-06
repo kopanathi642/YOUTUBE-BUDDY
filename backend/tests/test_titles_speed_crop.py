@@ -85,3 +85,19 @@ def test_title_png_picks_script_font_and_draws(tmp_path):
     assert im.size == (640, 360) and im.getbbox() is not None
     l, t, r, b = im.getbbox()
     assert (l + r) / 2 > 320 + 60   # shifted right by x=100
+
+
+def test_mixed_hindi_english_title_uses_two_fonts_and_no_missing_glyphs(tmp_path):
+    from PIL import Image
+    from app.timeline import Title, Transform
+    from app.titles import render_title_png, runs
+    r = runs("गोवा Trip 2026 की यात्रा!")
+    assert [f for f, _ in r] == ["NotoSansDevanagari-Bold.ttf", "InterDisplay-Bold.otf", "NotoSansDevanagari-Bold.ttf", "InterDisplay-Bold.otf"] or \
+        "InterDisplay-Bold.otf" in [f for f, _ in r] and "NotoSansDevanagari-Bold.ttf" in [f for f, _ in r]
+    assert "".join(t for _, t in r) == "गोवा Trip 2026 की यात्रा!"
+    # English run must draw ink (Noto Devanagari alone would draw empty boxes / nothing for Latin letters)
+    p1, p2 = tmp_path / "a.png", tmp_path / "b.png"
+    render_title_png(Title(text="Trip"), Transform(), 400, 200, str(p1))
+    render_title_png(Title(text="गोवा\nTrip"), Transform(), 400, 300, str(p2))
+    a, b = Image.open(p1).getbbox(), Image.open(p2).getbbox()
+    assert a and b and (b[2] - b[0]) >= (a[2] - a[0]) * 0.9

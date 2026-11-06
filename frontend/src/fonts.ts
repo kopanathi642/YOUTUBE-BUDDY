@@ -5,6 +5,7 @@ const SCRIPTS: [number, number, string][] = [
   [0x0d00, 0x0d7f, "CU Malayalam"], [0x0600, 0x06ff, "CU Arabic"],
 ];
 export function titleFont(text: string): string {
-  for (const ch of text) { const cp = ch.codePointAt(0)!; for (const [a, b, f] of SCRIPTS) if (cp >= a && cp <= b) return `"${f}"`; }
+  // Noto script fonts have no Latin letters, so list Inter second: the browser then picks per letter (like the server).
+  for (const ch of text) { const cp = ch.codePointAt(0)!; for (const [a, b, f] of SCRIPTS) if (cp >= a && cp <= b) return `"CU Inter", "${f}"`; }
   return `"CU Inter"`;
 }

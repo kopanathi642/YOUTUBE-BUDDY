@@ -1,0 +1,59 @@
+PASS  Landing page loads, nav anchors work
+PASS  Sign-up validation shows errors
+PASS  Sign up
+PASS  Sign out and sign in again
+PASS  Dashboard: stats, quick tiles, jobs list render
+PASS  Projects page: create, search, archive, restore, rename via editor, delete
+PASS  Workspace menu opens
+PASS  Create project and open editor
+PASS  Upload 5 files and wait for analysis
+PASS  Media bin: search + type filters
+PASS  Add clips with + buttons
+PASS  Drag image from bin onto V2 at 9s
+PASS  Inspector: type transform values (Enter applies)
+PASS  Inspector tabs: Effects / Transition / Text / Metadata
+PASS  Undo / redo buttons and keyboard
+PASS  Timeline: split (S), select, ripple delete, snapping toggle, zoom
+PASS  Timeline: track lock / hide / mute / add tracks
+PASS  Timeline: trim right edge by dragging
+PASS  Monitor: play/pause, frame/second steps, loop, mute, safe area, fit/50%, fullscreen
+PASS  Colour: wheels drag, master slider, tone sliders, looks, bypass, reset
+PASS  Scopes render pixels (not blank)
+PASS  Fusion node: ColorCorrect bypass toggle
+PASS  Media bin Effects tab applies a look
+PASS  Autosave reaches Cloud Saved
+PASS  AI Magic: plan dialog, untick one, apply
+PASS  AI Auto-Adjust toggle
+PASS  Recommendations: Apply All
+PASS  Quick action: Silence Remove
+PASS  Quick action: Scene Detect
+PASS  Quick action: Clips & Highlights
+PASS  Quick action: Auto Edit
+PASS  Storyboard strip tabs + jump + notes save
+PASS  Add Scene (split at playhead) from storyboard
+PASS  Sidebar tools: every item gives working result or explicit reason
+PASS  Snapshot to media bin
+PASS  Record from (fake) camera and add to project
+PASS  Translate & Voice / Lip Sync panels: controls respond, locked buttons explain
+PASS  Sequence menu: new sequence, switch back
+PASS  Shorts Maker creates 9:16 sequence
+PASS  Titles: add title, edit text (Hindi), style, size, colour; renders in preview
+PASS  Speed & Time: 2× preset changes clip length
+PASS  Cropping sliders
+PASS  Version history: open, restore an earlier version
+PASS  AI voice (text to speech) → voice-over added to timeline
+NOTE  Captions engine blocked in this sandbox: Could not load the Whisper speech model (first use downloads it from huggingface.co): ProxyError
+PASS  Captions: transcription runs on the worker and reports its engine status honestly
+PASS  Stabilize selected clip → stabilized copy swapped in
+PASS  Background removal on selected clip → transparent copy swapped in
+PASS  Highlight finder → 2 shorts created
+PASS  Thumbnail designer → saved to media bin
+NOTE  Dubbing engine blocked in this sandbox: Swapped in “Vlog_Intro (no background).mov” on 2 clips — Ctrl+Z to go back to the original | Created 1 short — switch between them with the 
+PASS  Translate & Dub runs (pipeline) and reports engine status honestly
+PASS  Export: tabs, queue, render, verified download
+PASS  Export cancel
+PASS  Reload keeps the edit (persistence)
+PASS  Delete media from bin
+PASS  Mobile layout renders editor + dashboard
+
+55/55 steps passed

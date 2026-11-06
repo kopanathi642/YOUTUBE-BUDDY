@@ -351,7 +351,7 @@ export default function Editor() {
 
   const sel = selected ? findClip(tl, selected) : null;
   const selAsset = sel ? assetMap.get(sel.clip.asset_id) : undefined;
-  const onTl = new Set(tl.tracks.flatMap((t) => t.clips.map((c) => c.asset_id)));
+  const onTl = new Set(tl.tracks.flatMap((t) => t.clips.map((c) => c.asset_id)).filter((id): id is string => !!id)); // titles have no media
   const analysed = [...onTl].every((id) => { const a = assetMap.get(id); return a && a.status === "ready" && (a.kind === "image" || a.analysis); });
   const NAV: [string, any, string | null][] = [["Fusion (Nodes)", Workflow, "fusion"], ["Color", Palette, "color"], ["Audio", AudioLines, "loudness-nav"], ["VFX", Activity, "fusion"], ["Motion", Type, "motion"], ["Graphics", ImageIcon, "media"], ["Design", ImageIcon, "design"], ["AI Studio", Sparkles, "magic"], ["Templates", LayoutTemplate, "templates"], ["YouTube", Youtube, null], ["Automation", Bot, null]];
 
