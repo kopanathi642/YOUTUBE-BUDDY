@@ -15,7 +15,7 @@ export type Tool = {
   engine: "local" | "fal" | "llm" | "youtube" | "pipeline" | "unbuilt"; models: Model[]; consent: boolean; notice?: string | null; status: ToolStatus; premium_models?: boolean;
 };
 export type Studio = { id: string; code: string; name: string; tagline: string };
-export type Catalogue = { studios: Studio[]; tools: Tool[]; keys: { fal: boolean; llm: boolean; youtube: boolean }; counts: Record<string, number> };
+export type Catalogue = { studios: Studio[]; tools: Tool[]; keys: { fal: boolean; llm: boolean; youtube: boolean }; counts: Record<string, number>; hidden: number };
 export type Generation = {
   id: string; tool_id: string; tool_name: string; studio: string; project_id: string; status: string; engine: string; model: string | null;
   params: Record<string, any>; version: number; root_id: string; parent_id: string | null; outputs: Asset[]; result: any; files: { key: string; name: string; kind: string; url: string }[];
@@ -26,7 +26,12 @@ let cache: Catalogue | null = null;
 let inflight: Promise<Catalogue> | null = null;
 export function loadCatalogue(force = false): Promise<Catalogue> {
   if (cache && !force) return Promise.resolve(cache);
-  if (!inflight || force) inflight = api<Catalogue>("/ai/tools").then((c) => (cache = c)).finally(() => { inflight = null; });
+  // Only tools that can run right now are shown. Tools waiting for a key/model reappear automatically once it's added.
+  if (!inflight || force) inflight = api<Catalogue>("/ai/tools").then((c) => {
+    const tools = c.tools.filter((t) => t.status.state === "ready");
+    const studios = c.studios.filter((s) => tools.some((t) => t.studio === s.id));
+    return (cache = { ...c, tools, studios, hidden: c.tools.length - tools.length });
+  }).finally(() => { inflight = null; });
   return inflight;
 }
 export function useCatalogue() {

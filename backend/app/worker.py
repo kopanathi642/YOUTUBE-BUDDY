@@ -479,10 +479,19 @@ def main():
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
     signal.signal(signal.SIGINT, lambda *_: stop.set())
     log.info(f"worker {worker_id} started queues={queues}")
+    agent_t = 0.0
     while not stop.is_set():
         with open(ALIVE_FILE, "w") as f:
             f.write(str(time.time()))
         did = process_one(worker_id, queues)
+        if not did and not a.once and time.monotonic() - agent_t > 60:   # idle: let the background agent check in
+            agent_t = time.monotonic()
+            try:
+                from . import agent
+                with session_factory()() as adb:
+                    agent.maybe_run(adb)
+            except Exception:  # noqa: BLE001
+                log.exception("agent check failed")
         if a.once and not did:
             break
         if not did:

@@ -8,6 +8,7 @@ import BillingCard from "../components/BillingCard";
 import YouTubeCard from "../components/YouTubeCard";
 import AdminPayments from "../components/AdminPayments";
 import { InviteCard, MetricsCard } from "../components/GrowthCards";
+import AgentCard from "../components/AgentCard";
 import { useEffect } from "react";
 
 export default function Settings() {
@@ -36,9 +37,10 @@ export default function Settings() {
           <div className="dim" style={{ fontSize: 12, marginTop: 8 }}>Create a team workspace and add members in the Team card.</div>
         </section>
         {me.is_platform_admin && <MetricsCard />}
+        {me.is_platform_admin && <AgentCard />}
         <BillingCard />
         <InviteCard />
-        <YouTubeCard />
+        <YouTubeCard admin={!!me.is_platform_admin} />
         <TeamCard />
         {me.is_platform_admin && <AdminPayments />}
         <section className="card" style={{ padding: 18 }}>

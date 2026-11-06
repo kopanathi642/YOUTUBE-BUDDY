@@ -100,14 +100,14 @@ export function VoicePanel({ caps, catalog, source, onDub, busy, onLipSync }: {
       </> : <>
         <div className="row" style={{ fontSize: 13, fontWeight: 600 }}><UserRoundX size={15} />AI Lip Sync</div>
         <div className="provider-note" style={{ marginTop: 4 }}>Lip sync changes a real person's face. It will require the person's recorded consent and adds a visible “AI-altered” label to exports.</div>
-        <button className="btn primary dub" disabled={!onLipSync || !source} onClick={onLipSync}><Play size={15} />Open Lip Sync (AI Generator)</button>
+        {onLipSync && <button className="btn primary dub" disabled={!source} onClick={onLipSync}><Play size={15} />Open Lip Sync (AI Generator)</button>}
         <div className="provider-note">Runs on a hosted lip-sync model (Sync / Kling) once the server has a fal.ai key{ls?.ready ? "" : " — not added yet"}. The result comes back with Edit in Timeline.</div>
       </>}
     </section>
   );
 }
 
-export function QuickActions({ caps, onAction, readOnly }: { caps: Caps; onAction: (id: string) => void; readOnly: boolean }) {
+export function QuickActions({ caps, onAction, readOnly, hide }: { caps: Caps; onAction: (id: string) => void; readOnly: boolean; hide: Set<string> }) {
   const A: [string, string, any, string][] = [
     ["magic", "Auto Edit (Full Video)", Sparkles, "silence_remove"], ["short916", "Shorts Maker (9:16)", Smartphone, "smart_reframe"],
     ["clips", "Clips & Highlights", Clapperboard, "scene_detect"], ["scenes", "Scene Detect", ScanLine, "scene_detect"],
@@ -118,7 +118,7 @@ export function QuickActions({ caps, onAction, readOnly }: { caps: Caps; onActio
     <section className="panel strip-panel" aria-label="AI quick actions">
       <div className="strip-head"><Sparkles size={15} /><b>AI Quick Actions</b></div>
       <div className="quick-grid">
-        {A.map(([id, label, I, cap]) => { const c = cap ? caps.get(cap) : null; const ok = (!cap || !!c?.ready) && !readOnly; return (
+        {A.filter(([id, , , cap]) => !hide.has(id) && !(cap && caps.get(cap) && !caps.get(cap)!.ready)).map(([id, label, I, cap]) => { const c = cap ? caps.get(cap) : null; const ok = (!cap || !!c?.ready) && !readOnly; return (
           <button key={id} className="qa" disabled={!ok} onClick={() => onAction(id)} title={!cap ? "Opens in the AI Generator with this clip" : c?.ready ? c.needs : `Needs: ${c?.needs ?? "provider"}`}>
             <I size={18} /><span>{label}</span>{cap && !c?.ready && <Lock size={10} className="qa-lock" />}
           </button>); })}

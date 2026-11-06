@@ -280,3 +280,14 @@ class YouTubeConnection(Base, Timestamped):
     channel_id: Mapped[str | None] = mapped_column(String(64))
     channel_title: Mapped[str | None] = mapped_column(String(200))
     refresh_token_enc: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class AgentReport(Base):
+    """Output of the background Creator Scout agent: 'research' (creator problems + tool ideas) or 'health' (self-check)."""
+    __tablename__ = "agent_reports"
+    id: Mapped[uuid.UUID] = uuid_pk()
+    kind: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="ok")   # ok | warn | error
+    summary: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)

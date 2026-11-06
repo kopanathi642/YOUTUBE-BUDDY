@@ -7,7 +7,7 @@ export type YtStatus = { configured: boolean; missing: string[]; connected: bool
 const MSG: Record<string, string> = { connected: "YouTube channel connected", denied: "YouTube connection was cancelled", bad_state: "That YouTube sign-in link expired — try again",
   no_refresh: "Google didn't grant offline access — remove the app at myaccount.google.com/permissions and connect again", failed: "Couldn't connect YouTube — try again" };
 
-export default function YouTubeCard() {
+export default function YouTubeCard({ admin }: { admin: boolean }) {
   const toast = useToast();
   const [s, setS] = useState<YtStatus | null>(null), [busy, setBusy] = useState(false);
   const load = useCallback(() => api<YtStatus>("/youtube/status").then(setS).catch(() => {}), []);
@@ -25,6 +25,7 @@ export default function YouTubeCard() {
     setBusy(true);
     try { await api("/youtube/connection", { method: "DELETE" }); toast("YouTube disconnected"); load(); } catch (e) { toast((e as Error).message); } finally { setBusy(false); }
   }
+  if (s && !s.configured && !admin) return null;   // hidden for users until the founder sets it up
   return (
     <section className="card" style={{ padding: 18 }} id="youtube">
       <div className="row" style={{ marginBottom: 8 }}><Youtube size={16} color="#f87171" /><b className="grow">YouTube publishing</b>

@@ -24,6 +24,8 @@ export default function ExportDock({ projectId, sequenceId, tl, flush, dirty, re
   const [busy, setBusy] = useState(false);
   const [publish, setPublish] = useState<string | null>(null);
   const plan = useAuth().workspace?.plan ?? "free";
+  const [yt, setYt] = useState(false);   // YouTube button only when publishing is set up on the server
+  useEffect(() => { api<{ configured: boolean }>("/youtube/status").then((s) => setYt(s.configured)).catch(() => {}); }, []);
   const load = useCallback(async () => { try { setList(await api<ExportRec[]>(`/projects/${projectId}/exports`)); } catch { /* shown on retry */ } }, [projectId]);
   useEffect(() => { api<Preset[]>("/export-presets").then(setPresets).catch(() => {}); load(); }, [load]);
   useEffect(() => { if (focusSignal) setTab("export"); }, [focusSignal]);
@@ -69,7 +71,7 @@ export default function ExportDock({ projectId, sequenceId, tl, flush, dirty, re
               {j.status === "succeeded" && <>{e.validation?.ok && <span className="badge ok" title={Object.entries(e.validation.checks).map(([k, v]) => `${v ? "✓" : "✗"} ${k}`).join("\n")}><ShieldCheck size={11} />Verified</span>}
                 <span className="dim" style={{ fontSize: 11 }}>{e.output_size_bytes ? fmtBytes(e.output_size_bytes) : ""}</span>
                 {e.download_url && <a className="btn sm" href={e.download_url}><Download size={12} />Download</a>}
-                {e.download_url && !readOnly && <button className="btn sm" onClick={() => setPublish(e.id)} aria-label="Publish to YouTube"><Youtube size={12} />YouTube</button>}</>}
+                {e.download_url && !readOnly && yt && <button className="btn sm" onClick={() => setPublish(e.id)} aria-label="Publish to YouTube"><Youtube size={12} />YouTube</button>}</>}
               {j.status === "failed" && <span className="badge err" title={j.error ?? ""}><AlertTriangle size={11} />failed</span>}
               {j.status === "canceled" && <span className="badge">canceled</span>}
             </div>); })}

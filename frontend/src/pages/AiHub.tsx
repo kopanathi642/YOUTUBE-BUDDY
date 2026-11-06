@@ -38,12 +38,11 @@ export function AiHub() {
       <div className="hub">
         <div className="hub-head">
           <div><h1><Sparkles size={22} /> AI Generator Universe</h1>
-            <p className="muted">12 studios · 120 tools. Each tool shows exactly what powers it and whether it can run right now.</p></div>
-          {cat && <div className="hub-counts"><span className="st ready"><CheckCircle2 size={12} />{cat.counts.ready} ready</span>
-            <span className="st key"><KeyRound size={12} />{cat.counts.needs_key} need a key</span><span className="st unbuilt"><Lock size={12} />{cat.counts.unbuilt} not built</span>
+            <p className="muted">{cat ? `${cat.studios.length} studios · ${cat.tools.length} tools ready to use` : "Loading tools…"}</p></div>
+          {cat && <div className="hub-counts"><span className="st ready"><CheckCircle2 size={12} />{cat.tools.length} ready</span>
             <Link className="btn sm" to="/ai-generator/explore"><Rows3 size={13} />Tool explorer</Link></div>}
         </div>
-        <div className="hub-search"><Search size={16} /><input placeholder="Search all 120 tools — e.g. lip sync, thumbnail, dub, slow motion" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search tools" /></div>
+        <div className="hub-search"><Search size={16} /><input placeholder="Search tools — e.g. thumbnail, dub, captions, slow motion" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search tools" /></div>
         {hits.length > 0 && <div className="tgrid">{hits.map((t) => <ToolCard key={t.id} t={t} />)}</div>}
         {cat && !cat.keys.fal && <div className="keys-banner"><KeyRound size={16} /><div><b>Hosted AI models are switched off on this server.</b>
           <span> Video, image, music, lip-sync and 3D generation run on fal.ai (Veo 3.1, Kling 3, Seedance, MiniMax, FLUX, ElevenLabs). Add <code>FAL_KEY</code> in the host's secret settings to turn on {cat.tools.filter((t) => t.status.needs.some((n) => n.startsWith("FAL"))).length} tools.

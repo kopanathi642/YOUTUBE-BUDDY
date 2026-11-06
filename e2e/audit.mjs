@@ -240,9 +240,8 @@ await step("Elements: sticker rendered to PNG, uploaded, placed on timeline", as
   await page.click(".el-grid button >> nth=0");
   await page.waitForFunction((n) => document.querySelectorAll(".clip").length > n, n, { timeout: 40000 });
 });
-await step("Stock tab: explains the free key it needs (no key configured)", async () => {
-  await page.click(".ed-bin [role=tab]:has-text('Stock')");
-  await page.waitForSelector(".stock-empty:has-text('PEXELS_API_KEY'), .stock-search");
+await step("Stock tab hidden until a free stock key is set", async () => {
+  if (await page.locator(".ed-bin [role=tab]:has-text('Stock')").count()) throw new Error("Stock tab shown without a key");
 });
 await step("AI Assets tab lists generator outputs or explains", async () => {
   await page.click(".ed-bin [role=tab]:has-text('AI Assets')"); await w(200);
@@ -324,11 +323,9 @@ await step("Export: tabs, queue, render, verified download", async () => {
   const href = await page.getAttribute(".q-row a:has-text('Download')", "href"); const r = await page.request.get(href);
   if (r.status() !== 200 || (await r.body()).length < 10000) throw new Error("download failed");
 });
-await step("Export → Publish to YouTube dialog (explains setup when no Google client is configured)", async () => {
+await step("Export queue: YouTube button hidden while publishing isn't set up", async () => {
   await page.click(".export-dock [role=tab]:has-text('Queue')");
-  await page.click(".q-row button[aria-label='Publish to YouTube'] >> nth=0");
-  await page.waitForSelector(".modal:has-text('Publish to YouTube') >> text=/isn't set up|Connect your YouTube|Channel:/");
-  await page.click(".modal button[aria-label='Close']");
+  if (await page.locator(".q-row button[aria-label='Publish to YouTube']").count()) throw new Error("YouTube button shown without setup");
 });
 await step("Export cancel", async () => {
   await page.click("button.export-big"); await page.click(".export-dock [role=tab]:has-text('Queue')");
@@ -352,6 +349,7 @@ await step("Upgrade Plan → UPI QR, UTR submitted, founder approves in admin, p
   if (r.status() !== 201) r = await fp.request.post(B + "/api/v1/auth/login", { headers: H, data: { email: "founder@example.com", password: "correct horse battery" } });
   if (!r.ok()) throw new Error("founder sign-in " + r.status());
   await fp.goto(B + "/settings"); await fp.waitForSelector("#payments-admin"); await fp.waitForSelector("#metrics .met-tile");
+  await fp.click("#agent button:has-text('Check health now')"); await fp.waitForSelector("#agent .agent-health");
   await fp.fill("#payments-admin input[aria-label='UPI ID']", "founder@ybl"); await fp.fill("#payments-admin input[aria-label='Payee name']", "Founder");
   await fp.click("#payments-admin button:has-text('Save details')"); await fp.waitForTimeout(600);
   await fp.setInputFiles("#payments-admin input[aria-label='Upload UPI QR']", M + "/Subscribe_Badge.png"); await fp.waitForTimeout(1500);
@@ -364,8 +362,9 @@ await step("Upgrade Plan → UPI QR, UTR submitted, founder approves in admin, p
   await fp.reload(); await fp.waitForSelector(`#payments-admin .gw-row:has-text('${utr}')`);
   await fp.click(`#payments-admin .gw-row:has-text('${utr}') button:has-text('Approve')`); await fp.waitForTimeout(800); await f.close();
   await page.reload(); await page.waitForSelector("#billing .badge.ok:has-text('Creator')");
-  if (!(await page.locator("#youtube").count())) throw new Error("YouTube card missing");
-  await page.goBack();
+  const yt = await page.locator("#youtube").count();
+  await page.goBack(); await page.waitForSelector(".ed-side");
+  if (yt) throw new Error("YouTube card shown to a user before it is set up");
 });
 await step("Growth: feedback sent, invite link shown, privacy & terms pages", async () => {
   await page.click("button[aria-haspopup=menu]"); await page.click(".menu-item:has-text('Send feedback')");

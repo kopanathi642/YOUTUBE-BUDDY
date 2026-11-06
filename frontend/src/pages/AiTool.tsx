@@ -16,6 +16,7 @@ export default function AiTool() {
   const { cat, err } = useCatalogue();
   const t = cat?.tools.find((x) => x.id === id || x.slug === id);
   if (err) return <Frame><div className="error-box" style={{ margin: 24 }}>{err}</div></Frame>;
+  if (cat && !t) return <Frame><div className="empty" style={{ margin: 40 }}>This tool isn't available yet. <Link to="/ai-generator" style={{ color: "#c4b5fd" }}>See the tools you can use now</Link></div></Frame>;
   if (!cat || !t) return <Frame><div className="ws-loading"><span className="spinner" /></div></Frame>;
   return <Workspace key={t.id} t={t} tools={cat.tools} studios={cat.studios} />;
 }

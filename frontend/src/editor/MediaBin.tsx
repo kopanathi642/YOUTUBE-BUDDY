@@ -12,10 +12,10 @@ import { TitleTemplate } from "../templates";
 const ACCEPT = ".mp4,.m4v,.mov,.webm,.mkv,.mp3,.wav,.m4a,.aac,.ogg,.flac,.png,.jpg,.jpeg,.webp";
 
 export type BinTab = "media" | "effects" | "templates" | "stock" | "ai";
-export default function MediaBin({ projectId, assets, setAssets, reload, readOnly, onAdd, uploadRef, onRecord, onLook, canLook, onTemplate, tabReq }: {
+export default function MediaBin({ projectId, assets, setAssets, reload, readOnly, onAdd, uploadRef, onRecord, onLook, canLook, onTemplate, tabReq, hideStock }: {
   projectId: string; assets: Asset[]; setAssets: (f: (a: Asset[]) => Asset[]) => void; reload: () => void; readOnly: boolean;
   onAdd: (a: Asset) => void; fps: number; uploadRef: MutableRefObject<((f: File[]) => void) | null>; onRecord: () => void;
-  onLook: (i: number) => void; canLook: boolean; onTemplate: (t: TitleTemplate) => void; tabReq?: { tab: BinTab; n: number } | null;
+  onLook: (i: number) => void; canLook: boolean; onTemplate: (t: TitleTemplate) => void; tabReq?: { tab: BinTab; n: number } | null; hideStock?: boolean;
 }) {
   const [binTab, setBinTab] = useState<BinTab>("media");
   useEffect(() => { if (tabReq) setBinTab(tabReq.tab); }, [tabReq]);
@@ -71,7 +71,7 @@ export default function MediaBin({ projectId, assets, setAssets, reload, readOnl
         <button role="tab" aria-selected={binTab === "media"} className={binTab === "media" ? "on" : ""} onClick={() => setBinTab("media")}>Media</button>
         <button role="tab" aria-selected={binTab === "effects"} className={binTab === "effects" ? "on" : ""} onClick={() => setBinTab("effects")}>Effects</button>
         <button role="tab" aria-selected={binTab === "templates"} className={binTab === "templates" ? "on" : ""} onClick={() => setBinTab("templates")}>Templates</button>
-        <button role="tab" aria-selected={binTab === "stock"} className={binTab === "stock" ? "on" : ""} onClick={() => setBinTab("stock")}>Stock</button>
+        {!hideStock && <button role="tab" aria-selected={binTab === "stock"} className={binTab === "stock" ? "on" : ""} onClick={() => setBinTab("stock")}>Stock</button>}
         <button role="tab" aria-selected={binTab === "ai"} className={binTab === "ai" ? "on" : ""} onClick={() => setBinTab("ai")}>AI Assets</button>
       </div>
       {binTab === "templates" ? <TemplatesTab projectId={projectId} readOnly={readOnly} onTemplate={onTemplate} onElement={onAdd} reload={reload} />

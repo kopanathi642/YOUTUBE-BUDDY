@@ -45,11 +45,12 @@ const MORE: Item[] = [
   { id: "export", label: "Export & Share", icon: Upload },
 ];
 
-export default function ToolSidebar({ caps, onAction, readOnly }: { caps: Caps; onAction: (id: string) => void; readOnly: boolean }) {
+export default function ToolSidebar({ caps, onAction, readOnly, hide }: { caps: Caps; onAction: (id: string) => void; readOnly: boolean; hide: Set<string> }) {
   const [open, setOpen] = useState({ shorts: true, video: false, audio: false });
   const plan = useAuth().workspace?.plan ?? "free";
   const row = (it: Item, sub = false) => {
     const c = it.cap ? caps.get(it.cap) : null;
+    if (hide.has(it.id) || it.soon || (c && !c.ready)) return null;   // only tools that work right now are shown
     const locked = it.soon || (it.cap && !c?.ready);
     const title = it.soon ? "Planned — not available yet" : c && !c.ready ? `Needs: ${c.needs}` : it.label;
     return (

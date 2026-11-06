@@ -12,6 +12,7 @@ import HistoryPanel from "./HistoryPanel";
 import { LOOKS, svgFilterBody, withLook, sanitizeGrade } from "../grade";
 import { buildPlan, applyCuts, silenceCuts, applySceneSplits, sceneSplits, loudnessGain } from "../smart";
 import MediaBin, { BinTab } from "./MediaBin";
+import { loadCatalogue } from "../ai/core";
 import { insertTemplate, TitleTemplate } from "../templates";
 import Viewer, { Sampler } from "./Viewer";
 import TimelinePanel from "./TimelinePanel";
@@ -53,6 +54,18 @@ export default function Editor() {
   const [playhead, setPlayhead] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  // Features that depend on a server key/model are hidden until it is set up (see docs/HIDDEN_FEATURES.md)
+  const [hide, setHide] = useState<Set<string>>(new Set(["obj", "lipsync", "stock"]));
+  useEffect(() => {
+    Promise.all([loadCatalogue().catch(() => null), api<{ pexels: boolean; pixabay: boolean }>("/stock/status").catch(() => null)]).then(([cat, st]) => {
+      const ready = new Set((cat?.tools ?? []).map((t) => t.id));
+      const h = new Set<string>();
+      if (!ready.has("024")) h.add("obj");
+      if (!ready.has("033")) h.add("lipsync");
+      if (!st?.pexels && !st?.pixabay) h.add("stock");
+      setHide(h);
+    });
+  }, []);
   const [binReq, setBinReq] = useState<{ tab: BinTab; n: number } | null>(null);
   const openBin = (tab: BinTab) => { setBinReq((r) => ({ tab, n: (r?.n ?? 0) + 1 })); document.querySelector(".ed-bin")?.scrollIntoView({ behavior: "smooth", block: "nearest" }); };
   const [inspTab, setInspTab] = useState<"inspector" | "effects" | "transition" | "text" | "metadata">("inspector");
@@ -397,13 +410,13 @@ export default function Editor() {
           <button className="btn sm" onClick={() => resolveConflict(true)}>Keep mine (overwrite)</button></div>
       )}
       <div className="ed2-body">
-        <ToolSidebar caps={caps} onAction={action} readOnly={readOnly} />
+        <ToolSidebar caps={caps} onAction={action} readOnly={readOnly} hide={hide} />
         <div className="ed2-main">
           <div className="r1">
             <MediaBin projectId={project.id} assets={assets} setAssets={setAssets} reload={loadMedia} readOnly={readOnly} onAdd={(a) => addAssetToTimeline(a)} fps={fps}
               uploadRef={uploadRef} onRecord={() => setRecording(true)} canLook={!!sel && sel.track.kind === "video" && !!selAsset?.has_video}
               onLook={(i) => sel && edit(updateClip(tl, sel.clip.id, { color: withLook(LOOKS[i].grade) }))}
-              tabReq={binReq} onTemplate={(t: TitleTemplate) => {
+              tabReq={binReq} hideStock={hide.has("stock")} onTemplate={(t: TitleTemplate) => {
                 if (readOnly) return;
                 const r = insertTemplate(tl, t, playhead);
                 if (!r) { toast("No free space at the playhead for this title — move the playhead or add a track"); return; }
@@ -414,14 +427,14 @@ export default function Editor() {
               onNewSeq={() => createSequence({ name: `Sequence ${sequences.length + 1}`, format: tl.width >= tl.height ? "landscape" : "vertical" }, "New empty sequence created")}
               onSnapshot={snapshot} />
             <AssistantPanel caps={caps} autoAdjust={autoAdjust} setAutoAdjust={setAutoAdjust} onMagic={() => action("magic")} readOnly={readOnly} pending={!analysed} />
-            <VoicePanel caps={caps} catalog={catalog} busy={dubBusy} onDub={startDub} onLipSync={() => action("lipsync")}
+            <VoicePanel caps={caps} catalog={catalog} busy={dubBusy} onDub={startDub} onLipSync={hide.has("lipsync") ? undefined : () => action("lipsync")}
               source={dubSource ? { name: assetMap.get(dubSource.asset_id)?.filename ?? "clip" } : null} />
           </div>
           <div className="r2">
             <div className="color-panel-anchor"><ColorPanel tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly} luts={assets.filter((a) => a.kind === "lut")} projectId={projectId!} onLutUploaded={loadMedia} /></div>
             <ScopesPanel samplerRef={samplerRef} tick={playhead} />
             <div className="nodes-anchor"><NodesPanel tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly} /></div>
-            <QuickActions caps={caps} onAction={action} readOnly={readOnly} />
+            <QuickActions caps={caps} onAction={action} readOnly={readOnly} hide={hide} />
           </div>
           <div className="r3">
             <TimelinePanel tl={tl} assets={assetMap} edit={edit} playhead={playhead} setPlayhead={(f) => { setPlaying(false); setPlayhead(f); }}

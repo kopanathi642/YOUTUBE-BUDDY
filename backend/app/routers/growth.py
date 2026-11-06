@@ -1,13 +1,16 @@
 """Founder metrics (from data we already keep) and in-app feedback."""
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Request
+import threading
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import distinct, func, select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import AuditLog, Export, Job, Payment, User, Workspace
+from ..models import AgentReport, AuditLog, Export, Job, Payment, User, Workspace
 from ..security import RateLimiter, audit, current_user
 from .billing import admin_user
 
@@ -60,3 +63,64 @@ def metrics(user: User = Depends(admin_user), db: Session = Depends(get_db)):
         "feedback": [{"at": a.created_at.isoformat(), "email": e, "message": a.meta.get("message"), "page": a.meta.get("page"),
                       "rating": a.meta.get("rating")} for a, e in fb],
     }
+
+
+
+# ------------------------------------------------------------------ Creator Scout agent (founder only)
+def ser_report(r: AgentReport | None) -> dict | None:
+    return r and {"id": str(r.id), "kind": r.kind, "status": r.status, "summary": r.summary, "data": r.data, "created_at": r.created_at.isoformat()}
+
+
+@router.get("/admin/agent")
+def agent_reports(user: User = Depends(admin_user), db: Session = Depends(get_db)):
+    from ..tools.providers import llm_ready
+    latest = lambda k: db.scalar(select(AgentReport).where(AgentReport.kind == k).order_by(AgentReport.created_at.desc()).limit(1))  # noqa: E731
+    hist = db.scalars(select(AgentReport).order_by(AgentReport.created_at.desc()).limit(30)).all()
+    return {"research": ser_report(latest("research")), "health": ser_report(latest("health")), "ai_mode": llm_ready(),
+            "history": [{"id": str(h.id), "kind": h.kind, "status": h.status, "summary": h.summary, "created_at": h.created_at.isoformat()} for h in hist]}
+
+
+_running: set[str] = set()
+
+
+class RunIn(BaseModel):
+    kind: str = Field(pattern="^(health|research)$")
+
+
+@router.post("/admin/agent/run", status_code=202)
+def agent_run(body: RunIn, request: Request, user: User = Depends(admin_user), db: Session = Depends(get_db)):
+    if body.kind in _running:
+        raise HTTPException(409, "Already running")
+    audit(db, request, "agent.run", user=user, kind=body.kind)
+    db.commit()
+    from .. import agent
+    from ..db import session_factory
+
+    def go():
+        _running.add(body.kind)
+        try:
+            with session_factory()() as s:
+                agent.run(s, body.kind)
+        finally:
+            _running.discard(body.kind)
+    if body.kind == "health":   # quick: answer with the result
+        go()
+        return {"started": True, "done": True}
+    threading.Thread(target=go, daemon=True).start()
+    return {"started": True, "done": False}
+
+
+class DecideIn(BaseModel):
+    index: int = Field(ge=0, le=200)
+    decision: str = Field(pattern="^(accepted|dismissed|open)$")
+
+
+@router.post("/admin/agent/reports/{rid}/decide")
+def agent_decide(rid: uuid.UUID, body: DecideIn, user: User = Depends(admin_user), db: Session = Depends(get_db)):
+    r = db.get(AgentReport, rid)
+    if not r or r.kind != "research" or body.index >= len(r.data.get("problems") or []):
+        raise HTTPException(404, "Not found")
+    d = dict(r.data); probs = list(d["problems"]); probs[body.index] = {**probs[body.index], "decision": body.decision}
+    d["problems"] = probs; r.data = d
+    db.commit()
+    return ser_report(r)
