@@ -4,16 +4,16 @@ import { api } from "../api";
 import { useAuth, useToast } from "../App";
 
 type Plan = { id: string; name: string; price_inr: number; paid_runs: number | null; blurb: string };
-type Pay = { id: string; plan: string; months: number; amount_inr: number; utr: string; status: "pending" | "approved" | "rejected"; note: string | null; created_at: string };
+type Pay = { id: string; method?: string; plan: string; months: number; amount_inr: number; utr: string; status: "pending" | "approved" | "rejected"; note: string | null; created_at: string };
 export type Billing = { plans: Plan[]; plan: string; plan_expires_at: string | null; paid_runs_per_day: number;
-  upi: { upi_id: string | null; payee_name: string | null; qr_url: string | null; configured: boolean }; payments: Pay[]; is_platform_admin: boolean };
+  upi: { upi_id: string | null; payee_name: string | null; qr_url: string | null; configured: boolean; paypal: { link: string | null; qr_url: string | null; configured: boolean } }; payments: Pay[]; is_platform_admin: boolean };
 
 /** Plans & payment by UPI: scan the QR, pay, paste the 12-digit UTR; the plan switches on after the admin checks it. */
 export default function BillingCard() {
   const { workspace } = useAuth();
   const toast = useToast();
   const [b, setB] = useState<Billing | null>(null);
-  const [pick, setPick] = useState<string | null>(null), [months, setMonths] = useState(1), [utr, setUtr] = useState(""), [busy, setBusy] = useState(false);
+  const [pick, setPick] = useState<string | null>(null), [months, setMonths] = useState(1), [utr, setUtr] = useState(""), [busy, setBusy] = useState(false), [method, setMethod] = useState<"upi" | "paypal">("upi");
   const canPay = workspace?.role === "owner" || workspace?.role === "admin";
   const load = useCallback(() => { if (workspace) api<Billing>(`/billing?workspace_id=${workspace.id}`).then(setB).catch(() => {}); }, [workspace]);
   useEffect(load, [load]);
@@ -24,7 +24,7 @@ export default function BillingCard() {
   async function submit(e: FormEvent) {
     e.preventDefault(); setBusy(true);
     try {
-      await api("/billing/payments", { method: "POST", body: { workspace_id: workspace!.id, plan: pick, months, utr } });
+      await api("/billing/payments", { method: "POST", body: { workspace_id: workspace!.id, plan: pick, months, utr, method } });
       toast("Payment submitted — your plan switches on as soon as it's verified (usually within a few hours)");
       setUtr(""); setPick(null); load();
     } catch (x) { toast((x as Error).message); } finally { setBusy(false); }
@@ -43,24 +43,29 @@ export default function BillingCard() {
           <span className="dim">{p.blurb}</span>{b.plan === p.id && <span className="badge ok"><Check size={10} />current</span>}</button>)}
       </div>
       {!canPay && <div className="dim" style={{ fontSize: 12, marginTop: 8 }}>Only the workspace owner or an admin can upgrade.</div>}
-      {chosen && (!b.upi.configured ? <div className="error-box" style={{ marginTop: 12 }}>Payments aren't set up yet — the founder needs to add the UPI QR in Settings → Payments admin.</div> :
-        <form className="bill-pay" onSubmit={submit}>
-          <div className="bill-qr">{b.upi.qr_url ? <img src={b.upi.qr_url} alt="UPI QR code to pay" /> : <QrCode size={64} />}</div>
+      {chosen && b.upi.configured && b.upi.paypal.configured && <div className="row" role="radiogroup" style={{ gap: 6, marginTop: 12 }}>
+        <button type="button" className={`btn sm ${method === "upi" ? "primary" : "ghost"}`} onClick={() => { setMethod("upi"); setUtr(""); }}>UPI (India)</button>
+        <button type="button" className={`btn sm ${method === "paypal" ? "primary" : "ghost"}`} onClick={() => { setMethod("paypal"); setUtr(""); }}>PayPal (international)</button></div>}
+      {chosen && (!b.upi.configured && !b.upi.paypal.configured ? <div className="error-box" style={{ marginTop: 12 }}>Payments aren't set up yet — the founder needs to add a UPI or PayPal QR in Settings → Payments admin.</div> :
+        <form className="bill-pay" onSubmit={submit}>{(() => { const pp = method === "paypal" || !b.upi.configured; return <>
+          <div className="bill-qr">{(pp ? b.upi.paypal.qr_url : b.upi.qr_url) ? <img src={(pp ? b.upi.paypal.qr_url : b.upi.qr_url)!} alt={pp ? "PayPal QR code to pay" : "UPI QR code to pay"} /> : <QrCode size={64} />}</div>
           <div className="grid" style={{ gap: 8 }}>
+            {pp ? <><div style={{ fontSize: 13 }}>1. Pay the equivalent of <b>₹{chosen.price_inr * months}</b> with PayPal{b.upi.payee_name ? <> to <b>{b.upi.payee_name}</b></> : null}.</div>
+              {b.upi.paypal.link && <a className="btn sm" href={b.upi.paypal.link} target="_blank" rel="noreferrer noopener">Open PayPal</a>}</> : <>
             <div style={{ fontSize: 13 }}>1. Pay <b>₹{chosen.price_inr * months}</b> by any UPI app (PhonePe, GPay, Paytm, BHIM){b.upi.payee_name ? <> to <b>{b.upi.payee_name}</b></> : null}.</div>
             {b.upi.upi_id && <div className="mono" style={{ fontSize: 12 }}>UPI ID: {b.upi.upi_id}</div>}
-            {upiLink && <a className="btn sm" href={upiLink}>Open UPI app (on phone)</a>}
+            {upiLink && <a className="btn sm" href={upiLink}>Open UPI app (on phone)</a>}</>}
             <label style={{ fontSize: 12 }}>Months<select className="select" value={months} onChange={(e) => setMonths(+e.target.value)}>{[1, 3, 6, 12].map((m) => <option key={m} value={m}>{m} month{m > 1 ? "s" : ""} — ₹{chosen.price_inr * m}</option>)}</select></label>
-            <label style={{ fontSize: 12 }}>2. Paste the 12-digit UPI transaction ID (UTR / UPI Ref No.)
-              <input className="input" value={utr} onChange={(e) => setUtr(e.target.value)} inputMode="numeric" placeholder="e.g. 412345678901" maxLength={16} required /></label>
-            <button className="btn primary" disabled={busy || utr.replace(/\s/g, "").length !== 12}>{busy ? <span className="spinner" /> : null}Submit for verification</button>
-          </div>
+            <label style={{ fontSize: 12 }}>2. {pp ? "Paste the 17-character PayPal transaction ID (from the receipt)" : "Paste the 12-digit UPI transaction ID (UTR / UPI Ref No.)"}
+              <input className="input" value={utr} onChange={(e) => setUtr(e.target.value)} inputMode={pp ? "text" : "numeric"} placeholder={pp ? "e.g. 8AB12345CD678901E" : "e.g. 412345678901"} maxLength={pp ? 20 : 16} required /></label>
+            <button className="btn primary" disabled={busy || utr.replace(/\s/g, "").length !== (pp ? 17 : 12)}>{busy ? <span className="spinner" /> : null}Submit for verification</button>
+          </div></>; })()}
         </form>)}
       {b.payments.length > 0 && <div style={{ marginTop: 12 }}>
         <div className="label">Payments</div>
         {b.payments.slice(0, 5).map((p) => <div key={p.id} className="gw-row" style={{ padding: "4px 0", fontSize: 12 }}>
           {p.status === "approved" ? <CheckCircle2 size={13} color="#4ade80" /> : p.status === "rejected" ? <XCircle size={13} color="#f87171" /> : <Clock size={13} color="#fbbf24" />}
-          <span className="grow">{p.plan} · {p.months} mo · ₹{p.amount_inr} · UTR …{p.utr.slice(-4)}</span>
+          <span className="grow">{p.plan} · {p.months} mo · ₹{p.amount_inr} · {p.method === "paypal" ? "PayPal" : "UTR"} …{p.utr.slice(-4)}</span>
           <span className="badge" title={p.note ?? ""}>{p.status === "pending" ? "checking" : p.status}</span></div>)}
       </div>}
     </section>

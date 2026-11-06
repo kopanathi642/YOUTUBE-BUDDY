@@ -13,7 +13,7 @@ export default function Settings() {
   const { me, workspace, setWorkspace, setMe } = useAuth();
   const brand = useBrand();
   const nav = useNavigate();
-  useEffect(() => { if (location.hash) setTimeout(() => document.querySelector(location.hash)?.scrollIntoView({ behavior: "smooth" }), 300); }, []);
+  useEffect(() => { const h = location.hash; if (h.length > 1) setTimeout(() => document.getElementById(h.slice(1))?.scrollIntoView({ behavior: "smooth" }), 300); }, []);
   if (!me) return null;
   return (
     <UniverseShell u={null}>

@@ -21,6 +21,7 @@ from ..security import RateLimiter, audit, current_user
 router = APIRouter(tags=["billing"])
 pay_limiter = RateLimiter(limit=10, window_s=3600)
 QR_KEY = "platform/upi-qr.png"
+PAYPAL_QR_KEY = "platform/paypal-qr.png"
 
 
 def _setting(db: Session, key: str) -> dict:
@@ -39,7 +40,9 @@ def _put_setting(db: Session, key: str, value: dict) -> None:
 def _upi(db: Session) -> dict:
     v = _setting(db, "upi")
     return {"upi_id": v.get("upi_id"), "payee_name": v.get("payee_name"),
-            "qr_url": storage.signed_get(QR_KEY) if v.get("qr_version") else None, "configured": bool(v.get("qr_version") or v.get("upi_id"))}
+            "qr_url": storage.signed_get(QR_KEY) if v.get("qr_version") else None, "configured": bool(v.get("qr_version") or v.get("upi_id")),
+            "paypal": {"link": v.get("paypal_link"), "qr_url": storage.signed_get(PAYPAL_QR_KEY) if v.get("paypal_qr_version") else None,
+                       "configured": bool(v.get("paypal_link") or v.get("paypal_qr_version"))}}
 
 
 def _member_ws(db: Session, user: User, ws_id: uuid.UUID, min_role: Role = Role.viewer) -> Workspace:
@@ -55,7 +58,7 @@ def _member_ws(db: Session, user: User, ws_id: uuid.UUID, min_role: Role = Role.
 
 def ser_payment(p: Payment) -> dict:
     return {"id": str(p.id), "workspace_id": str(p.workspace_id), "plan": p.plan, "months": p.months, "amount_inr": p.amount_inr,
-            "utr": p.utr, "status": p.status, "note": p.note, "created_at": p.created_at.isoformat(),
+            "method": p.method, "utr": p.utr, "status": p.status, "note": p.note, "created_at": p.created_at.isoformat(),
             "reviewed_at": p.reviewed_at.isoformat() if p.reviewed_at else None}
 
 
@@ -75,19 +78,22 @@ class PayIn(BaseModel):
     plan: str = Field(pattern="^(creator|pro)$")
     months: int = Field(1, ge=1, le=12)
     utr: str = Field(min_length=12, max_length=22)
+    method: str = Field("upi", pattern="^(upi|paypal)$")
 
 
 @router.post("/billing/payments", status_code=201)
 def submit_payment(body: PayIn, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
     pay_limiter.check(f"pay:{user.id}")
     ws = _member_ws(db, user, body.workspace_id, Role.admin)
-    utr = re.sub(r"\s", "", body.utr)
-    if not re.fullmatch(r"\d{12}", utr):
+    utr = re.sub(r"\s", "", body.utr).upper()
+    if body.method == "upi" and not re.fullmatch(r"\d{12}", utr):
         raise HTTPException(422, "Enter the 12-digit UPI transaction ID (UTR) from your payment app")
+    if body.method == "paypal" and not re.fullmatch(r"[0-9A-Z]{17}", utr):
+        raise HTTPException(422, "Enter the 17-character PayPal transaction ID (from the PayPal receipt)")
     if db.scalar(select(func.count()).select_from(Payment).where(Payment.user_id == user.id, Payment.status == "pending")) >= 3:
         raise HTTPException(429, "You already have 3 payments waiting for approval")
     p = Payment(user_id=user.id, workspace_id=ws.id, plan=body.plan, months=body.months,
-                amount_inr=PLANS[body.plan]["price_inr"] * body.months, utr=utr, status="pending")
+                amount_inr=PLANS[body.plan]["price_inr"] * body.months, utr=utr, method=body.method, status="pending")
     db.add(p)
     try:
         db.flush()
@@ -155,6 +161,8 @@ class UpiIn(BaseModel):
     upi_id: str | None = Field(None, max_length=80, pattern=r"^[A-Za-z0-9.\-_]{2,60}@[A-Za-z][A-Za-z0-9.]{1,30}$")
     payee_name: str | None = Field(None, max_length=80)
     qr_data_url: str | None = Field(None, max_length=3_000_000)
+    paypal_link: str | None = Field(None, max_length=120, pattern=r"^(https://(www\.)?paypal\.(me|com)/[A-Za-z0-9/._-]{1,80})?$")
+    paypal_qr_data_url: str | None = Field(None, max_length=3_000_000)
 
 
 @router.put("/admin/billing/upi")
@@ -164,26 +172,35 @@ def set_upi(body: UpiIn, request: Request, user: User = Depends(admin_user), db:
         v["upi_id"] = body.upi_id
     if body.payee_name is not None:
         v["payee_name"] = body.payee_name.strip()
+    if body.paypal_link is not None:
+        v["paypal_link"] = body.paypal_link or None
     if body.qr_data_url:
-        m = re.fullmatch(r"data:image/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)", body.qr_data_url)
-        if not m:
-            raise HTTPException(422, "QR must be a PNG, JPEG or WebP image")
-        from PIL import Image
-        try:
-            img = Image.open(io.BytesIO(base64.b64decode(m.group(2))))
-            img.load()
-        except Exception:
-            raise HTTPException(422, "That file is not a readable image")
-        if img.width < 100 or img.height < 100:
-            raise HTTPException(422, "QR image is too small to scan")
-        img = img.convert("RGB")
-        img.thumbnail((1024, 1024))
-        import tempfile
-        with tempfile.NamedTemporaryFile(suffix=".png") as f:   # re-encoded: strips metadata and anything hidden in the file
-            img.save(f.name, "PNG")
-            storage.upload(f.name, QR_KEY, "image/png")
+        _save_qr(body.qr_data_url, QR_KEY)
         v["qr_version"] = int(v.get("qr_version", 0)) + 1
+    if body.paypal_qr_data_url:
+        _save_qr(body.paypal_qr_data_url, PAYPAL_QR_KEY)
+        v["paypal_qr_version"] = int(v.get("paypal_qr_version", 0)) + 1
     _put_setting(db, "upi", v)
-    audit(db, request, "billing.upi.update", user=user, qr=bool(body.qr_data_url))
+    audit(db, request, "billing.upi.update", user=user, qr=bool(body.qr_data_url), paypal_qr=bool(body.paypal_qr_data_url))
     db.commit()
     return _upi(db)
+
+
+def _save_qr(data_url: str, key: str) -> None:
+    m = re.fullmatch(r"data:image/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)", data_url)
+    if not m:
+        raise HTTPException(422, "QR must be a PNG, JPEG or WebP image")
+    from PIL import Image
+    try:
+        img = Image.open(io.BytesIO(base64.b64decode(m.group(2))))
+        img.load()
+    except Exception:
+        raise HTTPException(422, "That file is not a readable image")
+    if img.width < 100 or img.height < 100:
+        raise HTTPException(422, "QR image is too small to scan")
+    img = img.convert("RGB")
+    img.thumbnail((1024, 1024))
+    import tempfile
+    with tempfile.NamedTemporaryFile(suffix=".png") as f:   # re-encoded: strips metadata and anything hidden in the file
+        img.save(f.name, "PNG")
+        storage.upload(f.name, key, "image/png")

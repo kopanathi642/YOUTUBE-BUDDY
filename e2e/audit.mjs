@@ -354,7 +354,7 @@ await step("Upgrade Plan → UPI QR, UTR submitted, founder approves in admin, p
   await fp.goto(B + "/settings"); await fp.waitForSelector("#payments-admin");
   await fp.fill("#payments-admin input[aria-label='UPI ID']", "founder@ybl"); await fp.fill("#payments-admin input[aria-label='Payee name']", "Founder");
   await fp.click("#payments-admin button:has-text('Save details')"); await fp.waitForTimeout(600);
-  await fp.setInputFiles("#payments-admin input[type=file]", M + "/Subscribe_Badge.png"); await fp.waitForTimeout(1500);
+  await fp.setInputFiles("#payments-admin input[aria-label='Upload UPI QR']", M + "/Subscribe_Badge.png"); await fp.waitForTimeout(1500);
   // the user upgrades from the editor sidebar
   await page.click(".credits a:has-text('Upgrade Plan')"); await page.waitForSelector("#billing .bill-plan");
   await page.click("#billing .bill-plan:has-text('Creator')"); await page.waitForSelector(".bill-qr img");

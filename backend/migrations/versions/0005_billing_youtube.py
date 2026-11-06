@@ -32,6 +32,7 @@ def upgrade() -> None:
         sa.Column('plan', sa.String(20), nullable=False),
         sa.Column('months', sa.Integer(), nullable=False),
         sa.Column('amount_inr', sa.Integer(), nullable=False),
+        sa.Column('method', sa.String(10), nullable=False, server_default='upi'),
         sa.Column('utr', sa.String(22), nullable=False, unique=True),
         sa.Column('status', sa.String(12), nullable=False, index=True),
         sa.Column('note', sa.String(300)),

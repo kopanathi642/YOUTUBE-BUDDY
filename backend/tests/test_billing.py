@@ -90,3 +90,17 @@ def test_free_plan_paid_run_limit(make_client, monkeypatch):
     from datetime import datetime, timedelta, timezone
     assert paid_runs_limit(Workspace(plan="pro", plan_expires_at=datetime.now(timezone.utc) + timedelta(days=1))) == 200
     assert paid_runs_limit(Workspace(plan="pro", plan_expires_at=datetime.now(timezone.utc) - timedelta(days=1))) == 5   # expired
+
+
+def test_paypal_option(make_client):
+    admin = _admin(make_client)
+    r = admin.put("/api/v1/admin/billing/upi", json={"paypal_link": "https://paypal.me/founder", "paypal_qr_data_url": _qr_data_url()})
+    assert r.status_code == 200, r.text
+    assert r.json()["paypal"]["configured"] and httpx.get(r.json()["paypal"]["qr_url"]).status_code == 200
+    assert admin.put("/api/v1/admin/billing/upi", json={"paypal_link": "https://evil.example/pay"}).status_code == 422
+    u = make_client(); ws = signup(u)["workspaces"][0]["id"]
+    assert u.post("/api/v1/billing/payments", json={"workspace_id": ws, "plan": "pro", "method": "paypal", "utr": "123456789012"}).status_code == 422
+    import uuid
+    tid = uuid.uuid4().hex[:17].upper()
+    r = u.post("/api/v1/billing/payments", json={"workspace_id": ws, "plan": "pro", "method": "paypal", "utr": tid})
+    assert r.status_code == 201 and r.json()["method"] == "paypal", r.text

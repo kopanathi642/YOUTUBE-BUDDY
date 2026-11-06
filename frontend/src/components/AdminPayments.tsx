@@ -3,17 +3,17 @@ import { ShieldCheck, Upload, Check, X } from "lucide-react";
 import { api } from "../api";
 import { useToast } from "../App";
 
-type Row = { id: string; plan: string; months: number; amount_inr: number; utr: string; status: string; created_at: string; user_email: string; user_name: string; workspace_name: string };
+type Row = { id: string; method?: string; plan: string; months: number; amount_inr: number; utr: string; status: string; created_at: string; user_email: string; user_name: string; workspace_name: string };
 
 /** Founder-only: set the UPI QR and approve payments after checking them in the bank/UPI app. */
 export default function AdminPayments() {
   const toast = useToast();
   const [rows, setRows] = useState<Row[]>([]), [status, setStatus] = useState("pending");
-  const [upi, setUpi] = useState(""), [payee, setPayee] = useState(""), [busy, setBusy] = useState(false);
+  const [upi, setUpi] = useState(""), [payee, setPayee] = useState(""), [pp, setPp] = useState(""), [busy, setBusy] = useState(false);
   const load = useCallback(() => { api<{ payments: Row[] }>(`/admin/payments?status=${status}`).then((r) => setRows(r.payments)).catch(() => {}); }, [status]);
   useEffect(load, [load]);
 
-  async function save(file?: File) {
+  async function save(file?: File, paypal = false) {
     setBusy(true);
     try {
       let qr: string | undefined;
@@ -21,8 +21,8 @@ export default function AdminPayments() {
         if (file.size > 2_000_000) throw new Error("QR image must be under 2 MB");
         qr = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(file); });
       }
-      await api("/admin/billing/upi", { method: "PUT", body: { upi_id: upi || undefined, payee_name: payee || undefined, qr_data_url: qr } });
-      toast(file ? "QR code saved — users now see it on the plan page" : "UPI details saved");
+      await api("/admin/billing/upi", { method: "PUT", body: { upi_id: upi || undefined, payee_name: payee || undefined, paypal_link: pp || undefined, [paypal ? "paypal_qr_data_url" : "qr_data_url"]: qr } });
+      toast(file ? `${paypal ? "PayPal" : "UPI"} QR saved — users now see it on the plan page` : "Payment details saved");
     } catch (e) { toast((e as Error).message); } finally { setBusy(false); }
   }
   async function review(id: string, ok: boolean) {
@@ -36,10 +36,12 @@ export default function AdminPayments() {
       <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <input className="input" placeholder="UPI ID (e.g. name@ybl)" value={upi} onChange={(e) => setUpi(e.target.value)} aria-label="UPI ID" />
         <input className="input" placeholder="Payee name shown to users" value={payee} onChange={(e) => setPayee(e.target.value)} aria-label="Payee name" />
+        <input className="input" style={{ gridColumn: "1 / -1" }} placeholder="PayPal link (https://paypal.me/yourname)" value={pp} onChange={(e) => setPp(e.target.value)} aria-label="PayPal link" />
       </div>
       <div className="row" style={{ marginTop: 8, gap: 8 }}>
-        <button className="btn sm" disabled={busy || (!upi && !payee)} onClick={() => save()}>Save details</button>
-        <label className="btn sm"><Upload size={13} />Upload QR image<input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => e.target.files?.[0] && save(e.target.files[0])} /></label>
+        <button className="btn sm" disabled={busy || (!upi && !payee && !pp)} onClick={() => save()}>Save details</button>
+        <label className="btn sm"><Upload size={13} />UPI QR<input type="file" accept="image/png,image/jpeg,image/webp" hidden aria-label="Upload UPI QR" onChange={(e) => e.target.files?.[0] && save(e.target.files[0])} /></label>
+        <label className="btn sm"><Upload size={13} />PayPal QR<input type="file" accept="image/png,image/jpeg,image/webp" hidden aria-label="Upload PayPal QR" onChange={(e) => e.target.files?.[0] && save(e.target.files[0], true)} /></label>
       </div>
       <div className="dim" style={{ fontSize: 11, marginTop: 6 }}>Tip: a PhonePe/Paytm <b>Business</b> QR is better than a personal one (higher limits, payment alerts). Approve only after the money shows in your UPI app with the same UTR.</div>
       <div className="row" style={{ marginTop: 12, gap: 6 }}>
@@ -47,7 +49,7 @@ export default function AdminPayments() {
       </div>
       {rows.length === 0 ? <div className="dim" style={{ fontSize: 12, marginTop: 8 }}>No {status === "all" ? "" : status} payments.</div> :
         rows.map((r) => <div key={r.id} className="gw-row" style={{ padding: "6px 0", fontSize: 12, alignItems: "center" }}>
-          <span className="grow"><b>₹{r.amount_inr}</b> · {r.plan} {r.months}mo · <span className="mono">{r.utr}</span><br /><span className="dim">{r.user_email} · {r.workspace_name} · {new Date(r.created_at).toLocaleString()}</span></span>
+          <span className="grow"><b>₹{r.amount_inr}</b> · {r.plan} {r.months}mo · {r.method === "paypal" ? "PayPal" : "UPI"} <span className="mono">{r.utr}</span><br /><span className="dim">{r.user_email} · {r.workspace_name} · {new Date(r.created_at).toLocaleString()}</span></span>
           {r.status === "pending" ? <><button className="btn sm primary" onClick={() => review(r.id, true)}><Check size={12} />Approve</button>
             <button className="btn sm ghost" onClick={() => review(r.id, false)}><X size={12} />Reject</button></> : <span className="badge">{r.status}</span>}
         </div>)}

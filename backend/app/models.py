@@ -262,7 +262,8 @@ class Payment(Base, Timestamped):
     plan: Mapped[str] = mapped_column(String(20), nullable=False)
     months: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     amount_inr: Mapped[int] = mapped_column(Integer, nullable=False)
-    utr: Mapped[str] = mapped_column(String(22), unique=True, nullable=False)
+    method: Mapped[str] = mapped_column(String(10), nullable=False, default="upi", server_default="upi")  # upi | paypal
+    utr: Mapped[str] = mapped_column(String(22), unique=True, nullable=False)  # UPI UTR or PayPal transaction ID
     status: Mapped[str] = mapped_column(String(12), nullable=False, default="pending", index=True)  # pending|approved|rejected
     note: Mapped[str | None] = mapped_column(String(300))
     reviewed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
