@@ -216,3 +216,28 @@ class AuditLog(Base):
     ip: Mapped[str | None] = mapped_column(String(64))
     meta: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class Generation(Base, Timestamped):
+    """One run of an AI Generator Universe tool. Versions of the same idea share a root_id; outputs are media assets
+    (with provenance in their analysis["generation"]) or a JSON result (reports, scripts, subtitles)."""
+    __tablename__ = "generations"
+    id: Mapped[uuid.UUID] = uuid_pk()
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), index=True)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    tool_id: Mapped[str] = mapped_column(String(3), nullable=False, index=True)
+    engine: Mapped[str] = mapped_column(String(20), nullable=False)
+    model: Mapped[str | None] = mapped_column(String(200))
+    params: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="queued")  # queued|running|succeeded|failed|canceled|awaiting_approval
+    job_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("jobs.id", ondelete="SET NULL"))
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("generations.id", ondelete="SET NULL"))
+    root_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), index=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    output_asset_ids: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    result: Mapped[dict | None] = mapped_column(JSONB)
+    error: Mapped[str | None] = mapped_column(Text)
+    est_cost_usd: Mapped[float | None] = mapped_column(Float)
+    quality: Mapped[dict | None] = mapped_column(JSONB)
+    rating: Mapped[int | None] = mapped_column(Integer)

@@ -42,7 +42,7 @@ export default function Dashboard() {
       <div className="quick" style={{ marginBottom: 22 }}>
         <button className="quick-tile" onClick={() => setCreating(true)} disabled={!canEdit}><span className="qi"><Film size={22} /></span><b>New Project</b><span className="dim" style={{ fontSize: 12 }}>Video editing</span></button>
         <Link className="quick-tile" to="/editor/projects"><span className="qi"><FolderOpen size={22} /></span><b>Open Project</b><span className="dim" style={{ fontSize: 12 }}>Continue editing</span></Link>
-        {[["AI Voice", Mic, "/ai-creation?tool=voice", "Text to speech"], ["Translate & Dub", Languages, "/ai-creation?tool=dub", "AI Creation"], ["Captions", Captions, "/ai-creation?tool=transcribe", "Speech to text"], ["Remove background", Eraser, "/ai-creation?tool=bg", "AI Creation"], ["Asset library", Image, "/library", "All your media"]].map(([l, I, to, sub]: any) => (
+        {[["AI Voice", Mic, "/ai-generator/tool/041", "Text to speech"], ["Translate & Dub", Languages, "/ai-generator/tool/104", "AI Generator"], ["Captions", Captions, "/ai-generator/tool/101", "Speech to text"], ["Remove background", Eraser, "/ai-generator/tool/023", "AI Generator"], ["Asset library", Image, "/library", "All your media"]].map(([l, I, to, sub]: any) => (
           <Link key={l} className="quick-tile" to={to}><span className="qi"><I size={22} /></span><b>{l}</b><span className="dim" style={{ fontSize: 12 }}>{sub}</span></Link>
         ))}
       </div>

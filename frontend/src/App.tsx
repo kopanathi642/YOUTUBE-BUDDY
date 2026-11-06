@@ -8,7 +8,8 @@ import Projects from "./pages/Projects";
 import Editor from "./editor/Editor";
 import Shell from "./components/Shell";
 import Gateway from "./pages/Gateway";
-import AiCreation from "./pages/AiCreation";
+import { AiHub, AiStudio, AiExplorer } from "./pages/AiHub";
+import AiTool from "./pages/AiTool";
 import Super from "./pages/Super";
 import Library from "./pages/Library";
 import Settings from "./pages/Settings";
@@ -68,6 +69,11 @@ function Private({ children, bare }: { children: ReactNode; bare?: boolean }) {
   return bare ? <>{children}</> : <Shell>{children}</Shell>;
 }
 
+function LegacyAi() {
+  const loc = useLocation();
+  return <Navigate to={loc.pathname.replace(/^\/ai-creation/, "/ai-generator") + loc.search} replace />;
+}
+
 function LegacyProjects() {
   const loc = useLocation();
   return <Navigate to={`/editor/projects${loc.search}`} replace />;
@@ -84,11 +90,15 @@ export default function App() {
           <Route path="/universes" element={<Private bare><Gateway /></Private>} />
           <Route path="/editor" element={<Private><Dashboard /></Private>} />
           <Route path="/editor/projects" element={<Private><Projects /></Private>} />
-          <Route path="/ai-creation" element={<Private bare><AiCreation /></Private>} />
+          <Route path="/ai-generator" element={<Private bare><AiHub /></Private>} />
+          <Route path="/ai-generator/studio/:sid" element={<Private bare><AiStudio /></Private>} />
+          <Route path="/ai-generator/explore" element={<Private bare><AiExplorer /></Private>} />
+          <Route path="/ai-generator/tool/:id" element={<Private bare><AiTool /></Private>} />
           <Route path="/super" element={<Private bare><Super /></Private>} />
           <Route path="/library" element={<Private bare><Library /></Private>} />
           <Route path="/settings" element={<Private bare><Settings /></Private>} />
           <Route path="/home" element={<Navigate to="/editor" replace />} />
+          <Route path="/ai-creation/*" element={<LegacyAi />} />
           <Route path="/projects" element={<LegacyProjects />} />
           <Route path="/edit/:projectId" element={<Private bare><Editor /></Private>} />
           <Route path="*" element={<div className="auth-wrap"><div className="card auth-card"><h2>Page not found</h2><a className="btn" href="/universes">Go to universes</a></div></div>} />

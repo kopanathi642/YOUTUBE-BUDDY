@@ -45,6 +45,12 @@ services:
         sync: false
       - key: OPENAI_API_KEY           # optional: use OpenAI for captions/translation instead of the free models
         sync: false
+      - key: FAL_KEY                  # turns on hosted video/image/music/lip-sync/3D models (fal.ai, pay per use)
+        sync: false
+      - key: ANTHROPIC_API_KEY        # writing + strategy tools (or use OPENAI_API_KEY)
+        sync: false
+      - key: YOUTUBE_API_KEY          # channel research tools (free Google Cloud API key, YouTube Data API v3)
+        sync: false
       - key: SCRATCH_DIR
         value: /tmp/creator-worker
 

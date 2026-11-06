@@ -89,7 +89,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         <Link to="/universes" className="side-link"><ArrowLeft size={16} />Universe gateway</Link>
         <div className="universe-switch" aria-label="Switch universe">
           <Link to="/editor" className="universe on"><Film size={16} />Editor Universe</Link>
-          <Link to="/ai-creation" className="universe"><Orbit size={16} />AI Creation Universe</Link>
+          <Link to="/ai-generator" className="universe"><Orbit size={16} />AI Generator Universe</Link>
           <Link to="/super" className="universe"><Atom size={16} />Super Universe</Link>
         </div>
         <div className="side-h">Workspace</div>

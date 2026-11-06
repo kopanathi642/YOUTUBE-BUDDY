@@ -44,7 +44,7 @@ export default function Landing() {
         </div>
         <div className="card uni-card">
           <span className="badge ok">Early access</span>
-          <h3 className="row" style={{ marginTop: 12 }}><Orbit size={20} />AI Creation Universe</h3>
+          <h3 className="row" style={{ marginTop: 12 }}><Orbit size={20} />AI Generator Universe</h3>
           <p className="muted">AI voice, captions, translation, dubbing, background removal and stabilisation. Image/video generation is planned.</p>
         </div>
         <div className="card uni-card">

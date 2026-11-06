@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { History as HistoryIcon, X as XIcon, Cloud, CloudOff, Loader2, AlertTriangle, Undo2, Redo2, Home, FolderOpen, Scissors, Workflow, Palette, AudioLines, Sparkles, Activity, Type, Image as ImageIcon, LayoutTemplate, Youtube, Bot, Bell } from "lucide-react";
 import { api, ApiError, Asset, Project, SequenceDoc } from "../api";
 import { useToast } from "../App";
@@ -34,6 +34,7 @@ export function assetFrames(a: Asset | undefined, fps: number): number {
 
 export default function Editor() {
   const { projectId } = useParams();
+  const [search] = useSearchParams();
   const toast = useToast();
   const [project, setProject] = useState<Project | null>(null);
   const [sequences, setSequences] = useState<SequenceDoc[]>([]);
@@ -82,7 +83,7 @@ export default function Editor() {
       try {
         const p = await api<Project>(`/projects/${projectId}`);
         setProject(p); setSequences(p.sequences ?? []);
-        openSequence(p.sequences![0]);
+        openSequence(p.sequences!.find((x) => x.id === search.get("seq")) ?? p.sequences![0]);
         await loadMedia();
       } catch (e) { setLoadErr((e as Error).message); }
     })();

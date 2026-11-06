@@ -113,11 +113,12 @@ def handle_media_process(ctx: Ctx, tmp: str):
         # Analyse the proxy for video (much faster, same content); originals for audio-only.
         src_an = proxy if meta["kind"] == "video" else src
         try:
-            asset.analysis = analysis.analyze(src_an, meta, lambda p, s: ctx.progress(0.88 + 0.1 * p, s, force=True))
+            keep = {k: v for k, v in (asset.analysis or {}).items() if k in ("generation", "ai_generated", "transcript", "translations")}
+            asset.analysis = {**analysis.analyze(src_an, meta, lambda p, s: ctx.progress(0.88 + 0.1 * p, s, force=True)), **keep}
         except Cancelled:
             raise
         except Exception as e:  # analysis is helpful, not essential: never fail the upload over it
-            asset.analysis = {"version": 1, "error": f"{type(e).__name__}"}
+            asset.analysis = {**(asset.analysis or {}), "version": 1, "error": f"{type(e).__name__}"}
     asset.status, asset.status_detail = MediaStatus.ready, None
     db.commit()
     return {"asset_id": str(asset.id), "duration_s": meta["duration_s"], "width": meta["width"], "height": meta["height"]}
@@ -309,12 +310,10 @@ def handle_ai_tts(ctx: Ctx, tmp: str):
     return _finish_generated(ctx, tmp, new, out)
 
 
-def handle_ai_dub(ctx: Ctx, tmp: str):
+def dub_to_wav(ctx: Ctx, tmp: str, src: MediaAsset, target: str, voice_id: str, out: str) -> str:
     """Transcribe -> translate -> speak each line in the target voice at its original time -> one aligned audio track."""
     from . import ai_engines
-    new, src = _load(ctx), _load(ctx, "source_id")
-    p = ctx.job.payload
-    tr = _ensure_translation(ctx, tmp, src, p["target"])
+    tr = _ensure_translation(ctx, tmp, src, target)
     segs = [s for s in tr["segments"] if s["text"].strip()]
     if not segs:
         raise Permanent("No speech found to dub")
@@ -324,11 +323,10 @@ def handle_ai_dub(ctx: Ctx, tmp: str):
         ctx.progress(0.6 + 0.3 * i / len(segs), f"voicing line {i + 1}/{len(segs)}", force=True)
         slot = max(0.4, (segs[i + 1]["start"] if i + 1 < len(segs) else total) - s["start"])
         wav = os.path.join(tmp, f"line{i}.wav")
-        d = _engine(ai_engines.tts, s["text"], p["voice_id"], wav)
+        d = _engine(ai_engines.tts, s["text"], voice_id, wav)
         if d > slot * 1.02:  # speak faster to fit the original timing (never more than ~1.5x)
-            d = _engine(ai_engines.tts, s["text"], p["voice_id"], wav, max(0.66, slot / d * 0.98))
+            d = _engine(ai_engines.tts, s["text"], voice_id, wav, max(0.66, slot / d * 0.98))
         parts.append((wav, s["start"]))
-    out = os.path.join(tmp, "dub.wav")
     cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-t", f"{total:.3f}", "-i", "anullsrc=r=48000:cl=stereo"]
     for wav, _ in parts:
         cmd += ["-i", wav]
@@ -337,11 +335,33 @@ def handle_ai_dub(ctx: Ctx, tmp: str):
     r = media.run(cmd + ["-filter_complex", ";".join(fl), "-map", "[o]", "-c:a", "pcm_s16le", out], timeout=1800)
     if r.returncode:
         raise RuntimeError("dub mix failed: " + r.stderr[-300:])
+    return out
+
+
+def handle_ai_dub(ctx: Ctx, tmp: str):
+    new, src = _load(ctx), _load(ctx, "source_id")
+    p = ctx.job.payload
+    out = dub_to_wav(ctx, tmp, src, p["target"], p["voice_id"], os.path.join(tmp, "dub.wav"))
     return _finish_generated(ctx, tmp, new, out)
 
 
+# ------------------------------------------------------------------ AI Generator Universe tools
+
+def handle_ai_tool(ctx: Ctx, tmp: str):
+    from .models import Generation
+    from .tools.run import ToolError, execute
+    gen = ctx.db.get(Generation, uuid.UUID(ctx.job.payload["generation_id"]))
+    if gen is None:
+        raise Permanent("generation no longer exists")
+    try:
+        return execute(ctx, gen, tmp)
+    except ToolError as e:
+        raise Permanent(str(e))
+
+
 HANDLERS = {"media.process": handle_media_process, "media.derive": handle_media_derive, "render.export": handle_render_export,
-            "ai.transcribe": handle_ai_transcribe, "ai.translate": handle_ai_translate, "ai.tts": handle_ai_tts, "ai.dub": handle_ai_dub}
+            "ai.transcribe": handle_ai_transcribe, "ai.translate": handle_ai_translate, "ai.tts": handle_ai_tts, "ai.dub": handle_ai_dub,
+            "ai.tool": handle_ai_tool}
 
 
 def process_one(worker_id: str, queues: list[str]) -> bool:
@@ -363,6 +383,7 @@ def process_one(worker_id: str, queues: list[str]) -> bool:
         except Cancelled:
             db.rollback(); db.refresh(job)
             jobs.fail(db, job, "cancelled by user", retryable=False)
+            _mark_media_failed(db, job, "cancelled by user")
             log.info(f"job {job.id} cancelled")
         except Permanent as e:
             db.rollback(); db.refresh(job)
@@ -383,6 +404,14 @@ def process_one(worker_id: str, queues: list[str]) -> bool:
 
 
 def _mark_media_failed(db, job: Job, msg: str):
+    if job.kind == "ai.tool":
+        from .models import Generation
+        g = db.get(Generation, uuid.UUID(job.payload["generation_id"]))
+        if g and g.status not in ("succeeded", "awaiting_approval"):
+            g.status = "canceled" if msg == "cancelled by user" else "failed"
+            g.error = msg[:1000]
+            db.commit()
+        return
     if job.kind in ("media.process", "media.derive", "ai.tts", "ai.dub"):
         a = db.get(MediaAsset, uuid.UUID(job.payload["asset_id"]))
         if a and a.status not in (MediaStatus.rejected, MediaStatus.ready):

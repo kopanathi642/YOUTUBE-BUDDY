@@ -1,0 +1,5036 @@
+[
+ {
+  "id": "001",
+  "name": "Text to Video",
+  "studio": "video",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/veo3.1",
+   "fal-ai/veo3.1/fast",
+   "fal-ai/kling-video/v3/pro/text-to-video",
+   "bytedance/seedance-2.0/fast/text-to-video",
+   "minimax/h3/text-to-video",
+   "fal-ai/kling-video/v2.5-turbo/pro/text-to-video",
+   "alibaba/wan-3.0/text-to-video"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "002",
+  "name": "Image to Video",
+  "studio": "video",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/kling-video/v3/pro/image-to-video",
+   "fal-ai/veo3.1/image-to-video",
+   "bytedance/seedance-2.0/fast/image-to-video",
+   "minimax/h3/image-to-video",
+   "fal-ai/kling-video/v2.5-turbo/pro/image-to-video"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "003",
+  "name": "First & Last Frame",
+  "studio": "video",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/kling-video/v3/pro/image-to-video",
+   "fal-ai/veo3.1/first-last-frame-to-video"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "004",
+  "name": "Reference to Video",
+  "studio": "video",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/kling-video/o3/pro/reference-to-video",
+   "minimax/h3/reference-to-video",
+   "alibaba/wan-3.0-prime/reference-to-video"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "005",
+  "name": "Multi-Shot Film Builder",
+  "studio": "video",
+  "engine": "pipeline",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/veo3.1",
+   "fal-ai/veo3.1/fast",
+   "fal-ai/kling-video/v3/pro/text-to-video",
+   "bytedance/seedance-2.0/fast/text-to-video",
+   "minimax/h3/text-to-video",
+   "fal-ai/kling-video/v2.5-turbo/pro/text-to-video",
+   "alibaba/wan-3.0/text-to-video"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "006",
+  "name": "Talking Avatar",
+  "studio": "video",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/kling-video/ai-avatar/v2/pro",
+   "fal-ai/bytedance/omnihuman/v1.5"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "007",
+  "name": "Video Extend",
+  "studio": "video",
+  "engine": "pipeline",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/kling-video/v3/pro/image-to-video",
+   "fal-ai/veo3.1/image-to-video",
+   "bytedance/seedance-2.0/fast/image-to-video",
+   "minimax/h3/image-to-video",
+   "fal-ai/kling-video/v2.5-turbo/pro/image-to-video"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "008",
+  "name": "Product Ad Video",
+  "studio": "video",
+  "engine": "pipeline",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/kling-video/v3/pro/image-to-video",
+   "fal-ai/veo3.1/image-to-video",
+   "bytedance/seedance-2.0/fast/image-to-video",
+   "minimax/h3/image-to-video",
+   "fal-ai/kling-video/v2.5-turbo/pro/image-to-video"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "009",
+  "name": "Motion Transfer",
+  "studio": "video",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/kling-video/v3/pro/motion-control"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "010",
+  "name": "Music to Video",
+  "studio": "video",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/ltx-2.3/audio-to-video"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "011",
+  "name": "Text to Image",
+  "studio": "image",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/nano-banana-pro",
+   "fal-ai/flux-2-pro",
+   "openai/gpt-image-2",
+   "fal-ai/flux/schnell"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "012",
+  "name": "Thumbnail Generator",
+  "studio": "image",
+  "engine": "pipeline",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/nano-banana-pro",
+   "fal-ai/flux-2-pro",
+   "openai/gpt-image-2",
+   "fal-ai/flux/schnell"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "013",
+  "name": "Consistent Character",
+  "studio": "image",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/nano-banana-pro/edit",
+   "openai/gpt-image-2/edit",
+   "fal-ai/nano-banana/edit"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "014",
+  "name": "Style Transfer",
+  "studio": "image",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/nano-banana-pro/edit",
+   "openai/gpt-image-2/edit",
+   "fal-ai/nano-banana/edit"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "015",
+  "name": "Poster & Social Post",
+  "studio": "image",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/nano-banana-pro",
+   "openai/gpt-image-2"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "016",
+  "name": "Logo & Icon Concepts",
+  "studio": "image",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/nano-banana-pro",
+   "fal-ai/flux-2-pro",
+   "openai/gpt-image-2",
+   "fal-ai/flux/schnell"
+  ],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "017",
+  "name": "Product Photography",
+  "studio": "image",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/nano-banana-pro/edit",
+   "openai/gpt-image-2/edit",
+   "fal-ai/nano-banana/edit"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "018",
+  "name": "Storyboard Frames",
+  "studio": "image",
+  "engine": "pipeline",
+  "state": "needs_key",
+  "needs": [
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY",
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/nano-banana-pro",
+   "fal-ai/flux-2-pro",
+   "openai/gpt-image-2",
+   "fal-ai/flux/schnell"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs ANTHROPIC_API_KEY or OPENAI_API_KEY + FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "019",
+  "name": "Pattern & Texture",
+  "studio": "image",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/nano-banana-pro",
+   "fal-ai/flux-2-pro",
+   "openai/gpt-image-2",
+   "fal-ai/flux/schnell"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "020",
+  "name": "Image Variations",
+  "studio": "image",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/nano-banana-pro/edit",
+   "openai/gpt-image-2/edit",
+   "fal-ai/nano-banana/edit"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "021",
+  "name": "Video Restyle",
+  "studio": "transform",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/kling-video/o3/pro/video-to-video/edit"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "022",
+  "name": "Background Replace",
+  "studio": "transform",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 118,
+   "outputs": 1,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "023",
+  "name": "Background Removal",
+  "studio": "transform",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 117,
+   "outputs": 1,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "024",
+  "name": "Object Removal",
+  "studio": "transform",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/kling-video/o3/pro/video-to-video/edit"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "025",
+  "name": "Relight & Weather",
+  "studio": "transform",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/kling-video/o3/pro/video-to-video/edit"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "026",
+  "name": "Video Upscale",
+  "studio": "transform",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/bytedance-upscaler/upscale/video"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "027",
+  "name": "Stabilization",
+  "studio": "transform",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 16,
+   "outputs": 1,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "028",
+  "name": "Slow Motion & Frame Interpolation",
+  "studio": "transform",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 589,
+   "outputs": 1,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "029",
+  "name": "Denoise & Sharpen",
+  "studio": "transform",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 8,
+   "outputs": 1,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "030",
+  "name": "Auto Colour Grade",
+  "studio": "transform",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 8,
+   "outputs": 1,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "031",
+  "name": "Photo Animate",
+  "studio": "animation",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/kling-video/v3/pro/image-to-video",
+   "fal-ai/veo3.1/image-to-video",
+   "bytedance/seedance-2.0/fast/image-to-video",
+   "minimax/h3/image-to-video",
+   "fal-ai/kling-video/v2.5-turbo/pro/image-to-video"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "032",
+  "name": "Character Performance",
+  "studio": "animation",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/kling-video/v3/pro/image-to-video",
+   "fal-ai/veo3.1/image-to-video",
+   "bytedance/seedance-2.0/fast/image-to-video",
+   "minimax/h3/image-to-video",
+   "fal-ai/kling-video/v2.5-turbo/pro/image-to-video"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "033",
+  "name": "Lip Sync",
+  "studio": "animation",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/sync-lipsync/v3",
+   "fal-ai/kling-video/lipsync/audio-to-video"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "034",
+  "name": "Text to 3D Model",
+  "studio": "animation",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "tripo3d/h3.1/text-to-3d"
+  ],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "035",
+  "name": "Image to 3D Model",
+  "studio": "animation",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/hunyuan-3d/v3.1/pro/image-to-3d",
+   "fal-ai/trellis-2"
+  ],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "036",
+  "name": "Auto Rig",
+  "studio": "animation",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/meshy/rigging"
+  ],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "037",
+  "name": "Text to Motion",
+  "studio": "animation",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/hunyuan-motion"
+  ],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "038",
+  "name": "Kinetic Typography",
+  "studio": "animation",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 4,
+   "outputs": 1,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "039",
+  "name": "Ken Burns & Parallax",
+  "studio": "animation",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 4,
+   "outputs": 1,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "040",
+  "name": "Animated Captions",
+  "studio": "animation",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "failed",
+   "error": "Could not load the Whisper speech model (first use downloads it from huggingface.co): ProxyError",
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "blocked": "model download blocked in this build sandbox"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "041",
+  "name": "Voice Studio (Text to Speech)",
+  "studio": "audio",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [
+   "elevenlabs/tts/eleven-v4",
+   "fal-ai/minimax/speech-2.8-hd"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 1,
+   "sequences": 0,
+   "model": "piper:en-female",
+   "resultKind": null,
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "042",
+  "name": "Music Generator",
+  "studio": "audio",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/elevenlabs/music"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "043",
+  "name": "Sound Effects",
+  "studio": "audio",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/elevenlabs/sound-effects/v2"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "044",
+  "name": "Video to Sound",
+  "studio": "audio",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "mirelo-ai/sfx-v1.5/video-to-audio",
+   "sonilo/v1.1/video-to-sound-effects"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "045",
+  "name": "Voice Changer",
+  "studio": "audio",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "resemble-ai/chatterboxhd/speech-to-speech"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "046",
+  "name": "Stem Splitter",
+  "studio": "audio",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/demucs"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "047",
+  "name": "Noise Removal",
+  "studio": "audio",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 1,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "048",
+  "name": "Loudness Mastering",
+  "studio": "audio",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 1,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "049",
+  "name": "Silence Trimmer",
+  "studio": "audio",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 1,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "050",
+  "name": "Beat & Tempo Detector",
+  "studio": "audio",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "051",
+  "name": "Script Writer",
+  "studio": "writing",
+  "engine": "llm",
+  "state": "needs_key",
+  "needs": [
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "052",
+  "name": "Hook Generator",
+  "studio": "writing",
+  "engine": "llm",
+  "state": "needs_key",
+  "needs": [
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "053",
+  "name": "Title Lab",
+  "studio": "writing",
+  "engine": "llm",
+  "state": "needs_key",
+  "needs": [
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "054",
+  "name": "Description & Tags",
+  "studio": "writing",
+  "engine": "llm",
+  "state": "needs_key",
+  "needs": [
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "055",
+  "name": "Story Structure",
+  "studio": "writing",
+  "engine": "llm",
+  "state": "needs_key",
+  "needs": [
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "056",
+  "name": "Dialogue Writer",
+  "studio": "writing",
+  "engine": "llm",
+  "state": "needs_key",
+  "needs": [
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "057",
+  "name": "Script to Shot List",
+  "studio": "writing",
+  "engine": "llm",
+  "state": "needs_key",
+  "needs": [
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "058",
+  "name": "Prompt Director",
+  "studio": "writing",
+  "engine": "llm",
+  "state": "needs_key",
+  "needs": [
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "059",
+  "name": "Social Post Writer",
+  "studio": "writing",
+  "engine": "llm",
+  "state": "needs_key",
+  "needs": [
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "060",
+  "name": "Rewrite & Tone Shift",
+  "studio": "writing",
+  "engine": "llm",
+  "state": "needs_key",
+  "needs": [
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "061",
+  "name": "Scene Breakdown",
+  "studio": "content",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": "scenes"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "062",
+  "name": "Transcript",
+  "studio": "content",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "failed",
+   "error": "Could not load the Whisper speech model (first use downloads it from huggingface.co): ProxyError",
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "blocked": "model download blocked in this build sandbox"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "063",
+  "name": "Face & People Detection",
+  "studio": "content",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 8,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": "faces"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "064",
+  "name": "Ask the Video",
+  "studio": "content",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/video-understanding"
+  ],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "065",
+  "name": "Highlight Finder",
+  "studio": "content",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": "highlights"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "066",
+  "name": "Retention Risk Check",
+  "studio": "content",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": "retention"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "067",
+  "name": "Audio Quality Report",
+  "studio": "content",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": "audio"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "068",
+  "name": "Visual Quality Report",
+  "studio": "content",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": "visual"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "069",
+  "name": "Content Safety Check",
+  "studio": "content",
+  "engine": "pipeline",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/imageutils/nsfw"
+  ],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "070",
+  "name": "Chapter Generator",
+  "studio": "content",
+  "engine": "pipeline",
+  "state": "needs_key",
+  "needs": [
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "071",
+  "name": "Channel Analyzer",
+  "studio": "creator",
+  "engine": "youtube",
+  "state": "needs_key",
+  "needs": [
+   "YOUTUBE_API_KEY (free Google Cloud key)",
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs YOUTUBE_API_KEY (free Google Cloud key) + ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "072",
+  "name": "Topic Discovery",
+  "studio": "creator",
+  "engine": "youtube",
+  "state": "needs_key",
+  "needs": [
+   "YOUTUBE_API_KEY (free Google Cloud key)",
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs YOUTUBE_API_KEY (free Google Cloud key) + ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "073",
+  "name": "Competitor Compare",
+  "studio": "creator",
+  "engine": "youtube",
+  "state": "needs_key",
+  "needs": [
+   "YOUTUBE_API_KEY (free Google Cloud key)",
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs YOUTUBE_API_KEY (free Google Cloud key) + ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "074",
+  "name": "Content Opportunity Map",
+  "studio": "creator",
+  "engine": "youtube",
+  "state": "needs_key",
+  "needs": [
+   "YOUTUBE_API_KEY (free Google Cloud key)",
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs YOUTUBE_API_KEY (free Google Cloud key) + ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "075",
+  "name": "Trend Explorer",
+  "studio": "creator",
+  "engine": "youtube",
+  "state": "needs_key",
+  "needs": [
+   "YOUTUBE_API_KEY (free Google Cloud key)",
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs YOUTUBE_API_KEY (free Google Cloud key) + ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "076",
+  "name": "Title A/B Scorer",
+  "studio": "creator",
+  "engine": "llm",
+  "state": "needs_key",
+  "needs": [
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "077",
+  "name": "Thumbnail A/B Analyzer",
+  "studio": "creator",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": "thumb_ab"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "078",
+  "name": "SEO Analyzer",
+  "studio": "creator",
+  "engine": "llm",
+  "state": "needs_key",
+  "needs": [
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "079",
+  "name": "Content Calendar",
+  "studio": "creator",
+  "engine": "llm",
+  "state": "needs_key",
+  "needs": [
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "080",
+  "name": "Growth Strategy",
+  "studio": "creator",
+  "engine": "youtube",
+  "state": "needs_key",
+  "needs": [
+   "YOUTUBE_API_KEY (free Google Cloud key)",
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs YOUTUBE_API_KEY (free Google Cloud key) + ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "081",
+  "name": "Background Remover",
+  "studio": "imageedit",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 1,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "082",
+  "name": "Inpaint / Erase",
+  "studio": "imageedit",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [
+   "fal-ai/nano-banana-pro/edit",
+   "openai/gpt-image-2/edit",
+   "fal-ai/nano-banana/edit"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 1,
+   "sequences": 0,
+   "model": "OpenCV Telea inpainting",
+   "resultKind": null,
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "083",
+  "name": "Outpaint / Expand",
+  "studio": "imageedit",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/nano-banana-pro/edit",
+   "openai/gpt-image-2/edit",
+   "fal-ai/nano-banana/edit"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "084",
+  "name": "Image Upscale",
+  "studio": "imageedit",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/esrgan"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "085",
+  "name": "Relight",
+  "studio": "imageedit",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/nano-banana-pro/edit",
+   "openai/gpt-image-2/edit",
+   "fal-ai/nano-banana/edit"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "086",
+  "name": "Colour Adjust",
+  "studio": "imageedit",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 1,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "087",
+  "name": "Edit with Words",
+  "studio": "imageedit",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/nano-banana-pro/edit",
+   "openai/gpt-image-2/edit",
+   "fal-ai/nano-banana/edit"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "088",
+  "name": "Portrait Retouch",
+  "studio": "imageedit",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/nano-banana-pro/edit",
+   "openai/gpt-image-2/edit",
+   "fal-ai/nano-banana/edit"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "089",
+  "name": "Background Replace",
+  "studio": "imageedit",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 1,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "090",
+  "name": "Text on Image",
+  "studio": "imageedit",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 1,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "091",
+  "name": "Shot Detection to Timeline",
+  "studio": "videointel",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 1,
+   "model": null,
+   "resultKind": "shots",
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "092",
+  "name": "Smart Reframe",
+  "studio": "videointel",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 1,
+   "model": null,
+   "resultKind": "reframe",
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "093",
+  "name": "Auto Cut Silences",
+  "studio": "videointel",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 1,
+   "model": null,
+   "resultKind": "silence_cut",
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "094",
+  "name": "Auto Shorts",
+  "studio": "videointel",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 1,
+   "model": null,
+   "resultKind": "shorts",
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "095",
+  "name": "B-roll Suggestions",
+  "studio": "videointel",
+  "engine": "pipeline",
+  "state": "needs_key",
+  "needs": [
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "096",
+  "name": "Auto Punch-in",
+  "studio": "videointel",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 1,
+   "model": null,
+   "resultKind": "punchin",
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "097",
+  "name": "Continuity Check",
+  "studio": "videointel",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": "continuity"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "098",
+  "name": "Subject Tracking",
+  "studio": "videointel",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 12,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": "tracking"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "099",
+  "name": "Multi-Format Versions",
+  "studio": "videointel",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 2,
+   "model": null,
+   "resultKind": "formats",
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "100",
+  "name": "Auto Markers",
+  "studio": "videointel",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 1,
+   "model": null,
+   "resultKind": "markers",
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "101",
+  "name": "Transcribe",
+  "studio": "localize",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "failed",
+   "error": "Could not load the Whisper speech model (first use downloads it from huggingface.co): ProxyError",
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "blocked": "model download blocked in this build sandbox"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "102",
+  "name": "Translate Subtitles",
+  "studio": "localize",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "failed",
+   "error": "Could not load the Whisper speech model (first use downloads it from huggingface.co): ProxyError",
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "blocked": "model download blocked in this build sandbox"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "103",
+  "name": "Subtitle Burn-in",
+  "studio": "localize",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "failed",
+   "error": "Could not load the Whisper speech model (first use downloads it from huggingface.co): ProxyError",
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "blocked": "model download blocked in this build sandbox"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "104",
+  "name": "AI Dubbing",
+  "studio": "localize",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "failed",
+   "error": "Could not load the Whisper speech model (first use downloads it from huggingface.co): ProxyError",
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "blocked": "model download blocked in this build sandbox"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "105",
+  "name": "Voice-Preserving Dub",
+  "studio": "localize",
+  "engine": "fal",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/elevenlabs/dubbing"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "106",
+  "name": "Lip-Synced Dub",
+  "studio": "localize",
+  "engine": "pipeline",
+  "state": "needs_key",
+  "needs": [
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [
+   "fal-ai/sync-lipsync/v3",
+   "fal-ai/kling-video/lipsync/audio-to-video"
+  ],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "107",
+  "name": "Speaker Diarization",
+  "studio": "localize",
+  "engine": "unbuilt",
+  "state": "unbuilt",
+  "needs": [],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "Needs a speaker-diarization model (e.g. pyannote) — not integrated yet"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "108",
+  "name": "Multi-Language Pack",
+  "studio": "localize",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "failed",
+   "error": "Could not load the Whisper speech model (first use downloads it from huggingface.co): ProxyError",
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "blocked": "model download blocked in this build sandbox"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "109",
+  "name": "Translation Compare",
+  "studio": "localize",
+  "engine": "pipeline",
+  "state": "needs_key",
+  "needs": [
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "110",
+  "name": "Subtitle Timing Fix",
+  "studio": "localize",
+  "engine": "local",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": "subtitles"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "111",
+  "name": "Workflow Builder",
+  "studio": "automation",
+  "engine": "pipeline",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 14,
+   "outputs": 0,
+   "sequences": 0,
+   "model": "workflow",
+   "resultKind": "workflow"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "112",
+  "name": "Long Video → Shorts",
+  "studio": "automation",
+  "engine": "pipeline",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "failed",
+   "error": "Could not load the Whisper speech model (first use downloads it from huggingface.co): ProxyError",
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "blocked": "model download blocked in this build sandbox"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "113",
+  "name": "Faceless Video Maker",
+  "studio": "automation",
+  "engine": "pipeline",
+  "state": "needs_key",
+  "needs": [
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY",
+   "FAL_KEY (fal.ai account — pay per generation)"
+  ],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs ANTHROPIC_API_KEY or OPENAI_API_KEY + FAL_KEY (fal.ai account — pay per generation)"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "114",
+  "name": "Podcast to Clips",
+  "studio": "automation",
+  "engine": "pipeline",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 4,
+   "outputs": 0,
+   "sequences": 1,
+   "model": "workflow",
+   "resultKind": "workflow",
+   "timeline": "placed"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "115",
+  "name": "Auto Localize",
+  "studio": "automation",
+  "engine": "pipeline",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "failed",
+   "error": "Could not load the Whisper speech model (first use downloads it from huggingface.co): ProxyError",
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": null,
+   "blocked": "model download blocked in this build sandbox"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "116",
+  "name": "Batch Processor",
+  "studio": "automation",
+  "engine": "pipeline",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": "batch:086",
+   "resultKind": "batch"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "117",
+  "name": "Scheduled Workflows",
+  "studio": "automation",
+  "engine": "unbuilt",
+  "state": "unbuilt",
+  "needs": [],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "Needs a scheduler service (cron worker) — not built yet"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "118",
+  "name": "Approval Gates",
+  "studio": "automation",
+  "engine": "pipeline",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": true,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 12,
+   "outputs": 0,
+   "sequences": 0,
+   "model": "workflow",
+   "resultKind": "workflow"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "119",
+  "name": "Director Agent",
+  "studio": "automation",
+  "engine": "llm",
+  "state": "needs_key",
+  "needs": [
+   "ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  ],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "not executed",
+   "reason": "needs ANTHROPIC_API_KEY or OPENAI_API_KEY"
+  },
+  "ui_pass": true
+ },
+ {
+  "id": "120",
+  "name": "Workflow Templates",
+  "studio": "automation",
+  "engine": "pipeline",
+  "state": "ready",
+  "needs": [],
+  "models": [],
+  "timeline": false,
+  "checks": {
+   "1366": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   },
+   "1600": {
+    "layout": true,
+    "missing": [],
+    "hasIn": true,
+    "hasOut": true,
+    "honest": true,
+    "overflow": false,
+    "adv": 0,
+    "errors": []
+   }
+  },
+  "run": {
+   "status": "succeeded",
+   "error": null,
+   "seconds": 2,
+   "outputs": 0,
+   "sequences": 0,
+   "model": null,
+   "resultKind": "templates"
+  },
+  "ui_pass": true
+ }
+]

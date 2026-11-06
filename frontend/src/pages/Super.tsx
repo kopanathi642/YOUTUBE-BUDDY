@@ -57,7 +57,7 @@ export default function Super() {
         <div className="card stat"><span className="muted row"><Cpu size={15} />Engines ready</span><b>{ready}/{caps.length}</b></div>
       </div>
       <div className="grid" style={{ gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 12, marginBottom: 16 }} id="uni-status">
-        {[["Editor Universe", "/editor", `${sum?.projects ?? 0} projects`, Film, "#2563eb"], ["AI Creation Universe", "/ai-creation", `${jobs.filter((j) => AI.includes(j.kind)).length} recent AI jobs`, Orbit, "#a855f7"],
+        {[["Editor Universe", "/editor", `${sum?.projects ?? 0} projects`, Film, "#2563eb"], ["AI Generator Universe", "/ai-generator", `${jobs.filter((j) => AI.includes(j.kind)).length} recent AI jobs`, Orbit, "#a855f7"],
           ["Super Universe", "/super", "you are here", Workflow, "#10b981"]].map(([t, to, d, I, c]: any) => (
           <Link key={t} to={to} className="card uni-status" style={{ borderColor: c }}><I size={20} color={c} /><div><b>{t}</b><div className="dim" style={{ fontSize: 12 }}>{d}</div></div></Link>))}
       </div>

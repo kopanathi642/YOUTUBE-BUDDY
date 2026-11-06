@@ -80,10 +80,26 @@ Everything below runs on your own render worker with open-source models — no A
 
 Optional: add `OPENAI_API_KEY` in Render → Environment to use OpenAI for captions and translation instead (better accuracy for Hindi/Hinglish; costs per minute). Not available yet: lip sync and object removal (need GPU providers).
 
+## Step 6 — AI Generator Universe: hosted models (Higgsfield-level output)
+
+The 120 tools live in 12 studios. 49 run on your own worker with no key. The rest show **Needs key** and the exact key, until you add it in **Render → your services → Environment** (never paste keys in chat):
+
+| Key | Turns on | Where to get it | Cost |
+|---|---|---|---|
+| `FAL_KEY` | 46+ tools: text/image-to-video (Google Veo 3.1, Kling 3.0, Seedance 2.0, MiniMax Hailuo), images (Nano Banana Pro, FLUX.2, GPT Image 2), music & SFX (ElevenLabs), lip-sync, avatars, upscaling, 3D | fal.ai → Dashboard → API keys; add credit | Pay per use: e.g. Veo 3.1 ≈ $0.40/s with audio, Kling 3.0 Pro ≈ $0.17/s, FLUX.2 ≈ $0.05/image. The app shows the estimate before every run. |
+| `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`) | Script writer, hooks, titles, SEO, calendar, chapters, B-roll, Director Agent | console.anthropic.com → API keys | per token, typically a few cents per run |
+| `YOUTUBE_API_KEY` | Channel analyzer, competitor compare, trends, topic discovery | Google Cloud console → enable "YouTube Data API v3" → Credentials → API key | free quota (10,000 units/day) |
+
+Add both `FAL_KEY` and `ANTHROPIC_API_KEY` to **both** the web service and the worker. After adding, open AI Generator → the counts at the top change from "need a key" to "ready".
+
+**Why not "train our own models"?** Models at Higgsfield quality (Veo, Kling, Seedance) cost tens of millions of dollars and thousands of GPUs to train. Higgsfield itself does not train these base models — it runs them through providers, which is exactly what this app does through fal.ai. The app owns the workflow around them (director controls, storyboard, versions, edit in timeline), and can later add fine-tuned styles (LoRA) per brand when there is demand and budget.
+
+**First live check after adding keys** (≈$1): run Text to Image once (FLUX Schnell, ~$0.003), Text to Video once on Kling 2.5 Turbo (5 s ≈ $0.35), Script Writer once. Hosted-model requests were verified only against a simulated provider in the build sandbox, so this live check matters.
+
 ## After going live — 5-minute check
 1. Open https://youtubebuddy.com → sign up → you land on **/universes** (the three portals).
-2. Enter each universe: Editor (`/editor`), AI Creation (`/ai-creation`), Super (`/super`).
-3. In AI Creation run **Transcribe** once on a short clip — the first run downloads the Whisper model to the worker disk (a few minutes). Super → Models should then show it ready.
+2. Enter each universe: Editor (`/editor`), AI Generator (`/ai-generator`), Super (`/super`).
+3. In AI Generator run **Transcribe** once on a short clip — the first run downloads the Whisper model to the worker disk (a few minutes). Super → Models should then show it ready.
 4. Export a short clip in the editor and download it.
 
 ## Operating it
