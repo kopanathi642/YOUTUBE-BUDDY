@@ -184,8 +184,8 @@ function TrackRow({ badge, t, tl, view, ppf, contentW, assets, selected, readOnl
               {(c.fade_in > 0 || c.fade_out > 0) && <>
                 {c.fade_in > 0 && <span className="fade in" style={{ width: c.fade_in * ppf }} />}
                 {c.fade_out > 0 && <span className="fade out" style={{ width: c.fade_out * ppf }} />}
-                {keyTimes(c).map((kt) => <span key={kt} className="kf-mark" style={{ left: kt * ppf }} aria-hidden="true" />)}
               </>}
+              {keyTimes(c).map((kt) => <span key={kt} className="kf-mark" style={{ left: kt * ppf }} aria-hidden="true" />)}
               {!readOnly && !t.locked && <span className="edge r" onPointerDown={(e) => down(e, "trimR", c)} onPointerMove={move} onPointerUp={up} />}
             </div>
           );
