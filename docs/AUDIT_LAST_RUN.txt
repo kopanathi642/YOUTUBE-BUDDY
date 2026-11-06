@@ -48,7 +48,7 @@ PASS  Stabilize selected clip → stabilized copy swapped in
 PASS  Background removal on selected clip → transparent copy swapped in
 PASS  Highlight finder → 2 shorts created
 PASS  Thumbnail designer → saved to media bin
-NOTE  Dubbing engine blocked in this sandbox: Created 1 short — switch between them with the Program menu | Thumbnail saved to your media bin | Vlog_Intro (dub hi).wav failed: Could not 
+NOTE  Dubbing engine blocked in this sandbox: Swapped in “Vlog_Intro (no background).mov” on 2 clips — Ctrl+Z to go back to the original | Created 1 short — switch between them with the 
 PASS  Translate & Dub runs (pipeline) and reports engine status honestly
 PASS  Export: tabs, queue, render, verified download
 PASS  Export cancel

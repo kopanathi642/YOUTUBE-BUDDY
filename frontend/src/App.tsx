@@ -10,7 +10,8 @@ import Shell from "./components/Shell";
 import Gateway from "./pages/Gateway";
 import { AiHub, AiStudio, AiExplorer } from "./pages/AiHub";
 import AiTool from "./pages/AiTool";
-import Super from "./pages/Super";
+import Super, { SuperLocked } from "./pages/Super";
+import { universeById } from "./universes";
 import Library from "./pages/Library";
 import Settings from "./pages/Settings";
 
@@ -94,7 +95,7 @@ export default function App() {
           <Route path="/ai-generator/studio/:sid" element={<Private bare><AiStudio /></Private>} />
           <Route path="/ai-generator/explore" element={<Private bare><AiExplorer /></Private>} />
           <Route path="/ai-generator/tool/:id" element={<Private bare><AiTool /></Private>} />
-          <Route path="/super" element={<Private bare><Super /></Private>} />
+          <Route path="/super" element={<Private bare>{universeById("super").locked ? <SuperLocked /> : <Super />}</Private>} />
           <Route path="/library" element={<Private bare><Library /></Private>} />
           <Route path="/settings" element={<Private bare><Settings /></Private>} />
           <Route path="/home" element={<Navigate to="/editor" replace />} />

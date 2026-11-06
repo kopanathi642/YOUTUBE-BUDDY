@@ -30,8 +30,12 @@
 .portal { position: relative; cursor: pointer; transform-style: preserve-3d; transition: transform .55s cubic-bezier(.2,.8,.2,1), opacity .4s, filter .4s; }
 .portal-float { position: relative; animation: gwFloat 7s ease-in-out infinite; animation-delay: var(--d); transform-style: preserve-3d; }
 @keyframes gwFloat { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -18px, 0); } }
+.portal.locked { cursor: not-allowed; }
+.portal.locked .portal-body { filter: grayscale(.55) brightness(.75); }
+.portal.locked .portal-cta { background: rgba(255,255,255,.08); color: var(--text-2); box-shadow: none; gap: 8px; }
+.portal.locked.focus { transform: translateZ(30px) scale(1.01); }
 .portal.focus { transform: translateZ(90px) scale(1.06); z-index: 3; }
-.portal.dim { opacity: .55; filter: saturate(.6) brightness(.8); transform: translateZ(-30px) scale(.97); }
+.portal.dim { opacity: .55; filter: saturate(.6) brightness(.8); transform: scale(.97); } /* no negative Z: a portal pushed behind the stage plane stops receiving clicks */
 .portal.chosen { transform: translateZ(380px) scale(1.25); z-index: 5; transition-duration: .9s; }
 .portal.faded { opacity: 0; transform: translateZ(-200px) scale(.85); transition-duration: .6s; }
 .portal-ring { position: absolute; inset: -14px; border-radius: 40px; pointer-events: none;

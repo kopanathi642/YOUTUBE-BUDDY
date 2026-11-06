@@ -1,6 +1,6 @@
 import { CSSProperties, ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { ArrowLeft, Film, Orbit, Atom, Library } from "lucide-react";
+import { ArrowLeft, Film, Orbit, Atom, Library, Lock } from "lucide-react";
 import GlobalBar from "./GlobalBar";
 import { Universe, UNIVERSES } from "../universes";
 
@@ -18,7 +18,7 @@ export default function UniverseShell({ u, nav, children }: { u: Universe | null
           <div className="side-h">Switch universe</div>
           {UNIVERSES.map((x) => { const I = ICON[x.id]; return (
             <NavLink key={x.id} to={x.route} className={({ isActive }) => `side-link uni-link ${isActive || u?.id === x.id ? "active" : ""}`} style={{ "--c1": x.c1 } as CSSProperties}>
-              <I size={16} />{x.title.replace(" UNIVERSE", "").replace("AI GENERATOR", "AI Generator").replace("EDITOR", "Editor").replace("SUPER", "Super")}</NavLink>); })}
+              <I size={16} />{x.title.replace(" UNIVERSE", "").replace("AI GENERATOR", "AI Generator").replace("EDITOR", "Editor").replace("SUPER", "Super")}{x.locked && <Lock size={12} style={{ marginLeft: "auto", opacity: .7 }} aria-label="locked" />}</NavLink>); })}
           {nav && <><div className="side-h">{u?.title.toLowerCase().replace(/(^|\s)\S/g, (m) => m.toUpperCase())}</div>
             {nav.map((n) => <NavLink key={n.to} to={n.to} end className={({ isActive }) => `side-link ${isActive ? "active" : ""}`}><n.icon size={16} />{n.label}</NavLink>)}</>}
           <div className="side-h">Shared</div>

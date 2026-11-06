@@ -11,6 +11,29 @@ type Member = { user_id: string; email: string; display_name: string; role: stri
 type Summary = { projects: number; media_count: number; storage_bytes: number; active_jobs: number };
 const AI = ["ai.tts", "ai.transcribe", "ai.translate", "ai.dub", "media.derive"];
 
+/** Shown while the Super Universe is locked (universes.ts → locked: true). */
+export function SuperLocked() {
+  const u = universeById("super");
+  return (
+    <UniverseShell u={u}>
+      <div className="card super-locked" style={{ maxWidth: 720, margin: "40px auto", padding: 32, textAlign: "center" }}>
+        <div style={{ width: 64, height: 64, borderRadius: 18, margin: "0 auto 14px", display: "grid", placeItems: "center", background: "linear-gradient(135deg,#10b981,#06b6d4)", color: "#fff" }}><Lock size={28} /></div>
+        <h1 style={{ margin: "0 0 6px" }}>Super Universe is locked</h1>
+        <p className="muted" style={{ margin: "0 auto 18px", maxWidth: 520 }}>It opens in a later release as the command centre that ties the Editor and AI Generator universes together. Until then, everything you need lives in those two universes.</p>
+        <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10, textAlign: "left", marginBottom: 20 }}>
+          {["Cross-universe command centre", "Autonomous creative workflows", "Scheduled automations & publishing", "Project intelligence & insights"].map((t) =>
+            <div key={t} className="gw-row" style={{ padding: "8px 10px", border: "1px dashed var(--line)", borderRadius: 10 }}><Lock size={13} className="dim" /><span>{t}</span></div>)}
+        </div>
+        <div className="row" style={{ justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
+          <Link className="btn primary" to="/editor"><Film size={15} />Editor Universe</Link>
+          <Link className="btn" to="/ai-generator"><Orbit size={15} />AI Generator Universe</Link>
+          <Link className="btn ghost" to="/settings#team"><Users size={15} />Team & workspaces</Link>
+        </div>
+      </div>
+    </UniverseShell>
+  );
+}
+
 export default function Super() {
   const u = universeById("super");
   const { workspace, me, refresh, setWorkspace } = useAuth();

@@ -2,8 +2,7 @@ import { ReactNode, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import {
   Home, FolderOpen, Film, Sparkles, Smartphone, Clapperboard, Languages, Palette, AudioLines, Workflow, Type, Image,
-  Download, LogOut, ChevronDown, Bell, Wand2, Orbit, Atom, Scissors, ArrowLeft, Library as LibraryIcon,
-} from "lucide-react";
+  Download, LogOut, ChevronDown, Bell, Wand2, Orbit, Atom, Scissors, ArrowLeft, Library as LibraryIcon, Lock } from "lucide-react";
 import { api } from "../api";
 import { useAuth, useBrand } from "../App";
 
@@ -90,7 +89,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         <div className="universe-switch" aria-label="Switch universe">
           <Link to="/editor" className="universe on"><Film size={16} />Editor Universe</Link>
           <Link to="/ai-generator" className="universe"><Orbit size={16} />AI Generator Universe</Link>
-          <Link to="/super" className="universe"><Atom size={16} />Super Universe</Link>
+          <Link to="/super" className="universe"><Atom size={16} />Super Universe<Lock size={12} style={{ marginLeft: "auto", opacity: .7 }} aria-label="locked" /></Link>
         </div>
         <div className="side-h">Workspace</div>
         <NavLink className={({ isActive }) => `side-link ${isActive ? "active" : ""}`} to="/editor"><Home size={17} />Dashboard</NavLink>

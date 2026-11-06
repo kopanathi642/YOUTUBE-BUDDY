@@ -2,7 +2,7 @@ import { CSSProperties, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, Download, Film, Play, Cpu, CheckCircle2, Lock } from "lucide-react";
 import { api, ExportRec, Job, Project, timeAgo } from "../api";
-import { useAuth } from "../App";
+import { useAuth, useToast } from "../App";
 import GlobalBar, { jobLabel } from "../components/GlobalBar";
 import { UNIVERSES, Universe } from "../universes";
 
@@ -79,6 +79,7 @@ function Scene({ u }: { u: Universe }) {
 export default function Gateway() {
   const { workspace, me } = useAuth();
   const nav = useNavigate();
+  const toast = useToast();
   const mouse = useRef({ x: 0.5, y: 0.5 });
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [hover, setHover] = useState<string | null>(null);
@@ -115,6 +116,7 @@ export default function Gateway() {
 
   function enter(u: Universe, el: HTMLElement | null) {
     if (entering) return;
+    if (u.locked) { toast(`${u.title.replace(" UNIVERSE", " Universe").replace("SUPER", "Super")} is locked for now — it opens in a later release.`); return; }
     if (reducedMotion()) { nav(u.route); return; }
     const r = el?.getBoundingClientRect();
     if (r) setOrigin({ x: ((r.left + r.width / 2) / innerWidth) * 100, y: ((r.top + r.height / 2) / innerHeight) * 100 });
@@ -138,7 +140,7 @@ export default function Gateway() {
           {UNIVERSES.map((u, i) => {
             const state = entering ? (entering.id === u.id ? "chosen" : "faded") : hover ? (hover === u.id ? "focus" : "dim") : "";
             return (
-              <article key={u.id} className={`portal ${u.hue} ${state}`} style={{ "--c1": u.c1, "--c2": u.c2, "--c3": u.c3, "--d": `${i * -2.1}s` } as CSSProperties}
+              <article key={u.id} className={`portal ${u.hue} ${state} ${u.locked ? "locked" : ""}`} aria-disabled={u.locked || undefined} style={{ "--c1": u.c1, "--c2": u.c2, "--c3": u.c3, "--d": `${i * -2.1}s` } as CSSProperties}
                 onPointerEnter={() => setHover(u.id)} onPointerLeave={() => setHover(null)}
                 onClick={(e) => enter(u, e.currentTarget)}>{/* whole portal is the click target: 3D hit-testing can miss small buttons */}
                 <div className="portal-float">
@@ -149,10 +151,11 @@ export default function Gateway() {
                       <h2>{u.title}</h2>
                       <div className="portal-sub">{u.subtitle}</div>
                       <p>{u.description}</p>
-                      {u.id === "editor" ? <span className="badge ok">Live</span> : <span className="badge soon">Early access — tools grow every release</span>}
+                      {u.locked ? <span className="badge soon"><Lock size={11} /> Locked — opens in a later release</span>
+                        : u.id === "editor" ? <span className="badge ok">Live</span> : <span className="badge soon">Early access — tools grow every release</span>}
                     </div>
-                    <button type="button" className="portal-cta" onFocus={() => setHover(u.id)} onBlur={() => setHover(null)} aria-label={`${u.cta}: ${u.subtitle}`}>
-                      {u.cta}<ArrowRight size={17} />
+                    <button type="button" className="portal-cta" onFocus={() => setHover(u.id)} onBlur={() => setHover(null)} aria-label={u.locked ? `${u.title} is locked` : `${u.cta}: ${u.subtitle}`}>
+                      {u.locked ? <><Lock size={16} />LOCKED</> : <>{u.cta}<ArrowRight size={17} /></>}
                     </button>
                   </div>
                 </div>
