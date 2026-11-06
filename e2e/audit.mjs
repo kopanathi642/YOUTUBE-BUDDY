@@ -1,0 +1,249 @@
+// Full UI audit: opens every page and exercises every enabled control of the Editor Universe.
+// Each step passes or fails independently; console errors, page errors and failed API calls are collected.
+// Run:  BASE=http://localhost:8000 MEDIA=/path/to/media node e2e/audit.mjs
+// MEDIA must contain: Vlog_Intro.mp4 Talk_With_Pause.mp4 Drone_Shot.mp4 Music_BGM.wav Subscribe_Badge.png
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const { chromium } = require(process.env.PLAYWRIGHT ?? "playwright");
+
+const B = process.env.BASE ?? "http://localhost:8000", M = process.env.MEDIA, OUT = process.env.OUT ?? "/tmp";
+const results = [], problems = [];
+const browser = await chromium.launch({ args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"] });
+const ctx = await browser.newContext({ viewport: { width: 1672, height: 941 }, permissions: ["camera", "microphone"], acceptDownloads: true });
+await ctx.addInitScript(() => { window.__toasts = 0; new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => n.classList?.contains("toast") && window.__toasts++))).observe(document, { childList: true, subtree: true }); });
+const page = await ctx.newPage();
+let phase = "start";
+page.on("pageerror", (e) => problems.push(`[${phase}] page error: ${e.message}`));
+page.on("console", (m) => { if (m.type() === "error" && !/fonts\.g|TUNNEL|ERR_TUNNEL|status of 401/.test(m.text()) && !(phase.startsWith("Sign-up validation") && m.text().includes("422"))) problems.push(`[${phase}] console: ${m.text()}`); });
+page.on("response", (r) => { const u = r.url(); if (u.includes("/api/v1/") && r.status() >= 400 && !(r.status() === 401 && u.endsWith("/auth/me")) && !(phase.startsWith("Sign-up validation") && r.status() === 422)) problems.push(`[${phase}] HTTP ${r.status()} ${r.request().method()} ${u.replace(B, "")}`); });
+const w = (ms) => page.waitForTimeout(ms);
+async function step(name, fn) {
+  phase = name;
+  const before = problems.length;
+  try { await fn(); results.push([problems.length > before ? "WARN" : "PASS", name]); }
+  catch (e) { results.push(["FAIL", `${name} — ${String(e.message).split("\n")[0].slice(0, 200)}`]); await page.screenshot({ path: `${OUT}/fail-${results.length}.png` }).catch(() => {}); }
+}
+const toast = async () => (await page.locator(".toast").allTextContents()).join(" | ");
+const tl = async () => page.evaluate(() => [...document.querySelectorAll(".clip")].map((e) => e.getAttribute("aria-label")));
+const scrubTo = async (sec) => { const sc = await page.locator(".tl-scroll").boundingBox(); await page.locator(".tl-scroll").evaluate((e) => (e.scrollLeft = 0)); await page.mouse.click(sc.x + 214 + sec * 60, sc.y + 10); };
+// React-compatible way to move a range slider (fires the same input event a user drag does)
+const setRange = (sel, v) => page.locator(sel).evaluate((el, v) => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, String(v)); el.dispatchEvent(new Event("input", { bubbles: true })); }, v);
+const saved = () => page.waitForFunction(() => document.querySelector(".save-block")?.textContent?.includes("Cloud Saved"), null, { timeout: 15000 });
+
+// ---------------- public pages
+await step("Landing page loads, nav anchors work", async () => {
+  await page.goto(B + "/"); await page.waitForSelector("text=Start editing");
+  for (const a of ["#universes", "#features", "#status"]) await page.click(`a[href="${a}"]`);
+});
+await step("Sign-up validation shows errors", async () => {
+  await page.goto(B + "/signup"); await page.fill("#n", "A"); await page.fill("#e", "bad"); await page.fill("#p", "short");
+  await page.click("button:has-text('Create account')", { noWaitAfter: true });
+  await page.waitForSelector(".error-box");
+});
+const email = `audit${Date.now()}@example.com`;
+await step("Sign up", async () => {
+  await page.fill("#n", "Audit Bot"); await page.fill("#e", email); await page.fill("#p", "audit-password-123");
+  await page.click("button:has-text('Create account')"); await page.waitForURL("**/home");
+});
+await step("Sign out and sign in again", async () => {
+  await page.click(".topbar .btn.ghost:has(.avatar)"); await page.click("text=Sign out"); await page.waitForURL(B + "/");
+  await page.goto(B + "/signin"); await page.fill("#e", email); await page.fill("#p", "audit-password-123");
+  await page.click("button:has-text('Sign in')"); await page.waitForURL("**/home");
+});
+await step("Dashboard: stats, quick tiles, jobs list render", async () => {
+  await page.waitForSelector(".stat b"); await page.waitForSelector("text=Recent cloud jobs");
+  await page.click(".quick-tile:has-text('Open Project')"); await page.waitForURL("**/projects"); await page.goBack();
+});
+await step("Projects page: create, search, archive, restore, rename via editor, delete", async () => {
+  await page.goto(B + "/projects"); await page.click("button:has-text('New project')");
+  await page.fill("#np-name", "Throwaway"); await page.click(".fmt:has-text('1:1')"); await page.click("button:has-text('Create & open editor')");
+  await page.waitForURL("**/edit/**"); await page.waitForSelector(".ed2");
+  await page.goto(B + "/projects"); await page.fill("input[aria-label='Search projects']", "Throw"); await w(500);
+  await page.click(".proj-card:has-text('Throwaway') button[aria-label='Archive']"); await w(600);
+  await page.click(".seg button:has-text('Archived')"); await page.waitForSelector(".proj-card:has-text('Throwaway')");
+  await page.click(".proj-card:has-text('Throwaway') button[aria-label='Restore']"); await w(500);
+  await page.click(".seg button:has-text('Active')"); await page.waitForSelector(".proj-card:has-text('Throwaway')");
+  page.once("dialog", (d) => d.accept());
+  await page.click(".proj-card:has-text('Throwaway') button[aria-label='Delete']"); await w(800);
+  if (await page.locator(".proj-card:has-text('Throwaway')").count()) throw new Error("project not deleted");
+});
+await step("Workspace menu opens", async () => { await page.click(".topbar .btn.ghost:has(.avatar)"); await page.waitForSelector(".menu"); await page.keyboard.press("Escape"); await page.mouse.click(5, 300); });
+
+// ---------------- editor
+await step("Create project and open editor", async () => {
+  await page.goto(B + "/home"); await page.click("button:has-text('New project')"); await page.fill("#np-name", "Audit Project");
+  await page.click("button:has-text('Create & open editor')"); await page.waitForURL("**/edit/**"); await page.waitForSelector(".ed2");
+});
+await step("Upload 5 files and wait for analysis", async () => {
+  await page.setInputFiles("input[type=file]", ["Vlog_Intro.mp4", "Talk_With_Pause.mp4", "Drone_Shot.mp4", "Music_BGM.wav", "Subscribe_Badge.png"].map((f) => `${M}/${f}`));
+  await page.waitForFunction(() => document.querySelectorAll(".bin-item.ready").length === 5, null, { timeout: 300000 });
+});
+await step("Media bin: search + type filters", async () => {
+  await page.fill("input[aria-label='Search media']", "drone"); await w(200);
+  if ((await page.locator(".bin-item").count()) !== 1) throw new Error("search filter");
+  await page.fill("input[aria-label='Search media']", "");
+  for (const f of ["Video", "Audio", "Image", "All"]) await page.click(`.ed-bin .seg button:has-text("${f}")`);
+});
+await step("Add clips with + buttons", async () => {
+  for (const n of ["Vlog_Intro.mp4", "Talk_With_Pause.mp4", "Drone_Shot.mp4", "Music_BGM.wav"]) { await page.hover(`.bin-item:has-text("${n}")`); await page.click(`button[aria-label="Add ${n} to timeline"]`); await w(250); }
+  if ((await tl()).length !== 4) throw new Error(`expected 4 clips, got ${(await tl()).length}`);
+});
+await step("Drag image from bin onto V2 at 9s", async () => {
+  await page.locator(".tl-scroll").evaluate((e) => (e.scrollLeft = 0));
+  await page.locator('.bin-item:has-text("Subscribe_Badge.png") .bin-thumb').scrollIntoViewIfNeeded();
+  const sb = await page.locator('.bin-item:has-text("Subscribe_Badge.png") .bin-thumb').boundingBox();
+  const lane = await page.locator('[data-track="v2"]').boundingBox(); const sc = await page.locator(".tl-scroll").boundingBox();
+  await page.mouse.move(sb.x + 20, sb.y + 20); await page.mouse.down(); await page.mouse.move(sc.x + 214 + 9 * 60, lane.y + lane.height / 2, { steps: 15 }); await page.mouse.up(); await w(500);
+  if (!(await page.locator('[data-track="v2"] .clip').count())) throw new Error("drop failed");
+});
+await step("Inspector: type transform values (Enter applies)", async () => {
+  await page.click('[data-track="v2"] .clip');
+  for (const [id, v] of [["#f-Scale", "30"], ["#f-PositionX", "640"], ["#f-PositionY", "-360"], ["#f-Rotation", "5"], ["#f-Opacity", "90"]]) { await page.click(id); await page.keyboard.press("Control+A"); await page.keyboard.type(v); await page.keyboard.press("Enter"); }
+  const v = await page.inputValue("#f-Scale"); if (v !== "30") throw new Error("scale=" + v);
+});
+await step("Inspector tabs: Effects / Transition / Text / Metadata", async () => {
+  for (const t of ["Effects", "Transition", "Text", "Metadata", "Inspector"]) await page.click(`.ed-insp [role=tab]:has-text("${t}")`);
+});
+await step("Undo / redo buttons and keyboard", async () => {
+  await page.click("button[aria-label='Undo']"); await page.click("button[aria-label='Redo']");
+  await page.keyboard.press("Control+z"); await page.keyboard.press("Control+Shift+z");
+});
+await step("Timeline: split (S), select, ripple delete, snapping toggle, zoom", async () => {
+  await scrubTo(4); await page.keyboard.press("s"); await w(200);
+  const n = (await tl()).length; if (n < 6) throw new Error("split did not create clips: " + n);
+  await page.keyboard.press("Control+z"); await page.click(".tl-toolbar button:has-text('Snap')"); await page.click(".tl-toolbar button:has-text('Snap')");
+  await page.click("button[aria-label='Zoom in']"); await page.click("button[aria-label='Zoom out']");
+});
+await step("Timeline: track lock / hide / mute / add tracks", async () => {
+  for (const l of ["Lock", "Hide", "Mute"]) { const b = page.locator(`.tl-head button[aria-label^="${l} "]`).first(); await b.click(); await w(100); await page.locator(`.tl-head button[aria-label^="${l === "Lock" ? "Unlock" : l === "Hide" ? "Show" : "Unmute"} "]`).first().click(); }
+  await page.click(".tl-toolbar button:has-text('Video track')"); await page.click(".tl-toolbar button:has-text('Audio track')");
+  await page.keyboard.press("Control+z"); await page.keyboard.press("Control+z");
+});
+await step("Timeline: trim right edge by dragging", async () => {
+  await page.locator(".tl-scroll").evaluate((e) => (e.scrollLeft = 0));
+  const c = await page.locator('[data-track="v1"] .clip').first().boundingBox();
+  await page.mouse.move(c.x + c.width - 3, c.y + c.height / 2); await page.mouse.down(); await page.mouse.move(c.x + c.width - 63, c.y + c.height / 2, { steps: 8 }); await page.mouse.up();
+  const c2 = await page.locator('[data-track="v1"] .clip').first().boundingBox(); if (!(c2.width < c.width - 30)) throw new Error("trim failed");
+  await page.keyboard.press("Control+z");
+});
+await step("Monitor: play/pause, frame/second steps, loop, mute, safe area, fit/50%, fullscreen", async () => {
+  await page.click("button[aria-label='Go to start']"); await page.click("button.play"); await w(1200); await page.click("button.play");
+  for (const l of ["Forward 1 second", "Back 1 second", "Go to end", "Go to start", "Loop playback", "Loop playback", "Mute preview", "Unmute preview", "Safe-area guides", "Safe-area guides"]) await page.click(`button[aria-label="${l}"]`);
+  await page.click(".viewer-head .pill:has-text('Fit')"); await page.click(".viewer-head .pill:has-text('50%')");
+  await page.keyboard.press("Space"); await w(400); await page.keyboard.press("Space");
+});
+await step("Colour: wheels drag, master slider, tone sliders, looks, bypass, reset", async () => {
+  await scrubTo(3); await page.click('[data-track="v1"] .clip >> nth=0');
+  const d = await page.locator(".wheel-disc").nth(2).boundingBox();
+  await page.mouse.move(d.x + d.width / 2, d.y + d.height / 2); await page.mouse.down(); await page.mouse.move(d.x + d.width * 0.8, d.y + d.height * 0.3, { steps: 6 }); await page.mouse.up();
+  await setRange(".wheel input[type=range] >> nth=0", 0.05);
+  await page.click(".color-panel-anchor .mini-tabs button:has-text('Tone')");
+  for (let i = 0; i < 5; i++) await setRange(`.cslider input >> nth=${i}`, 0.3);
+  await page.click(".color-panel-anchor .mini-tabs button:has-text('Looks')"); await page.click(".look:has-text('Cinematic')");
+  await page.click("button[title^='Bypass grade']"); await page.click("button[title^='Grade bypassed']");
+  await page.click("button[aria-label='Reset grade']"); await page.click(".color-panel-anchor .mini-tabs button:has-text('Wheels')");
+});
+await step("Scopes render pixels (not blank)", async () => {
+  await page.click(".look:has-text('Vivid')").catch(() => {});
+  await w(1200);
+  const lit = await page.evaluate(() => { const c = document.querySelector(".scopes canvas"); const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return n; });
+  if (lit < 50) throw new Error("waveform empty");
+});
+await step("Fusion node: ColorCorrect bypass toggle", async () => {
+  await page.click(".color-panel-anchor .mini-tabs button:has-text('Looks')"); await page.click(".look:has-text('Warm')");
+  await page.click(".node:has-text('ColorCorrect1')"); await page.click(".node:has-text('ColorCorrect1')");
+});
+await step("Media bin Effects tab applies a look", async () => {
+  await page.click(".ed-bin [role=tab]:has-text('Effects')"); await page.click(".ed-bin .look:has-text('B&W')"); await page.click(".ed-bin [role=tab]:has-text('Media')");
+});
+await step("Autosave reaches Cloud Saved", saved);
+await step("AI Magic: plan dialog, untick one, apply", async () => {
+  await page.click("button:has-text('Apply AI Magic (Auto)')"); await page.waitForSelector(".plan-op");
+  await page.locator(".plan-op input").last().uncheck(); await page.click(".modal button.primary"); await w(500);
+  if (!(await toast()).includes("AI Magic applied")) throw new Error("no confirmation");
+});
+await step("AI Auto-Adjust toggle", async () => { await page.click(".ai-toggle"); await page.click(".ai-toggle"); });
+await step("Recommendations: Apply All", async () => { const b = page.locator(".recs button:has-text('Apply All')"); if (await b.count()) await b.click(); });
+for (const qa of ["Silence Remove", "Scene Detect", "Clips & Highlights", "Auto Edit"]) {
+  await step(`Quick action: ${qa}`, async () => { await page.click(`.qa:has-text("${qa}")`); await w(400); const t = await toast(); if (!t) throw new Error("no feedback"); if (await page.locator(".modal").count()) await page.click(".modal .btn.ghost"); });
+}
+await step("Storyboard strip tabs + jump + notes save", async () => {
+  for (const t of ["Scenes", "Chapters", "Assets", "AI Suggestions", "Notes"]) await page.click(`.storyboard [role=tab]:has-text("${t}")`);
+  await page.fill(".notes", "Audit note"); await page.click(".storyboard [role=tab]:has-text('Storyboard')");
+  await page.click(".sb-card >> nth=0");
+});
+await step("Add Scene (split at playhead) from storyboard", async () => { await scrubTo(2); await page.click(".sb-card.add"); });
+await step("Sidebar tools: every item gives working result or explicit reason", async () => {
+  const labels = (await page.locator(".ed-side .tool:not(.group-head)").allTextContents()).map((t) => t.replace(/Soon$/, "").trim());
+  for (const label of labels) {
+    if (/Video to Shorts \(Auto\)|Reels|Smart Reframe|^Video Tools|^Audio Tools/.test(label)) continue; // sequence-creating ones tested separately
+    const b = page.locator(".ed-side .tool", { hasText: label }).first();
+    if (!(await b.count()) || (await b.isDisabled())) continue;
+    const before = await page.evaluate(() => window.__toasts);
+    await b.click(); await w(250);
+    if (await page.locator(".modal").count()) { await page.click(".modal .btn.ghost"); continue; }
+    const scrollOnly = /^(Media|Edit|Color Grading|VFX & Fusion|Export & Share|Effects & Filters|Transitions)$/.test(label);
+    if (!scrollOnly && (await page.evaluate(() => window.__toasts)) <= before) throw new Error(`no feedback from "${label}"`);
+  }
+  await page.locator(".tool:has-text('Video Tools')").click(); await page.locator(".tool:has-text('Audio Tools')").click();
+});
+await step("Snapshot to media bin", async () => {
+  const n = await page.locator(".bin-item").count(); await page.click("button[aria-label='Snapshot current frame to media']");
+  await page.waitForFunction((n) => document.querySelectorAll(".bin-item").length > n, n, { timeout: 30000 });
+});
+await step("Record from (fake) camera and add to project", async () => {
+  const n = await page.locator(".bin-item").count();
+  await page.click(".ed-bin button:has-text('Record')"); await page.click("button:has-text('Start recording')"); await w(2500);
+  await page.click("button:has-text('Stop')"); await page.click("button:has-text('Add to project')");
+  await page.waitForFunction((n) => document.querySelectorAll(".bin-item").length > n, n, { timeout: 30000 });
+  await page.waitForFunction(() => [...document.querySelectorAll(".bin-item")].every((e) => !e.className.includes("processing")), null, { timeout: 120000 });
+  if (await page.locator(".bin-item.failed, .bin-item.rejected").count()) throw new Error("recording rejected");
+});
+await step("Translate & Voice / Lip Sync panels: controls respond, locked buttons explain", async () => {
+  await page.selectOption(".voice select >> nth=1", "Hindi"); await page.click(".voices button:has-text('Female')");
+  await page.click(".voice [role=tab]:has-text('Lip Sync')"); await page.click(".voice [role=tab]:has-text('Translate')");
+});
+await step("Sequence menu: new sequence, switch back", async () => {
+  await page.click(".viewer-head .pill:has-text('Program')"); await page.click(".menu-item:has-text('New sequence')");
+  await page.waitForFunction(() => document.querySelector(".pill b")?.textContent?.includes("Sequence 2"));
+  await page.click(".viewer-head .pill:has-text('Program')"); await page.click(".menu-item:has-text('Main sequence')");
+  await page.waitForFunction(() => document.querySelector(".pill b")?.textContent?.includes("Main sequence"));
+});
+await step("Shorts Maker creates 9:16 sequence", async () => {
+  await page.click(".qa:has-text('Shorts Maker')"); await page.waitForFunction(() => document.querySelector(".pill b")?.textContent?.includes("9:16"), null, { timeout: 20000 });
+});
+await step("Export: tabs, queue, render, verified download", async () => {
+  for (const t of ["Presets", "Queue", "Export"]) await page.click(`.export-dock [role=tab]:has-text("${t}")`);
+  await page.selectOption(".exp-form select >> nth=1", "draft");
+  await page.click("button.export-big");
+  await page.waitForSelector(".q-row a:has-text('Download')", { timeout: 300000 });
+  if (!(await page.locator(".q-row .badge.ok").count())) throw new Error("not verified");
+  const href = await page.getAttribute(".q-row a:has-text('Download')", "href"); const r = await page.request.get(href);
+  if (r.status() !== 200 || (await r.body()).length < 10000) throw new Error("download failed");
+});
+await step("Export cancel", async () => {
+  await page.click("button.export-big"); await page.click(".export-dock [role=tab]:has-text('Queue')");
+  await page.click("button[aria-label='Cancel export']", { timeout: 5000 });
+  await page.waitForSelector(".q-row .badge:has-text('canceled')", { timeout: 20000 });
+});
+await step("Reload keeps the edit (persistence)", async () => {
+  await saved(); const before = (await tl()).length; await page.reload(); await page.waitForSelector(".clip");
+  const after = (await tl()).length; if (after !== before) throw new Error(`${before} -> ${after}`);
+});
+await step("Delete media from bin", async () => {
+  page.once("dialog", (d) => d.accept()); const n = await page.locator(".bin-item").count();
+  await page.hover(".bin-item >> nth=0"); await page.click(".bin-item >> nth=0 >> .bin-del"); await w(600);
+  if ((await page.locator(".bin-item").count()) !== n - 1) throw new Error("not removed");
+});
+await step("Mobile layout renders editor + dashboard", async () => {
+  const m = await browser.newContext({ viewport: { width: 390, height: 844 }, storageState: await ctx.storageState() }); const p = await m.newPage();
+  await p.goto(page.url()); await p.waitForSelector(".ed2 .ed-viewer"); await p.goto(B + "/home"); await p.waitForSelector(".stat"); await m.close();
+});
+
+phase = "done";
+await browser.close();
+const fails = results.filter((r) => r[0] !== "PASS");
+console.log(results.map((r) => `${r[0]}  ${r[1]}`).join("\n"));
+console.log(`\n${results.filter((r) => r[0] === "PASS").length}/${results.length} steps passed`);
+if (problems.length) console.log("\nProblems:\n" + [...new Set(problems)].join("\n"));
+process.exit(fails.length || problems.length ? 1 : 0);

@@ -11,7 +11,7 @@ export default function NodesPanel({ tl, sel, asset, edit, readOnly }: { tl: Tim
   const visual = sel && sel.track.kind === "video" && asset?.has_video;
   const c = sel?.clip;
   const tfOn = !!c && (c.transform.x || c.transform.y || c.transform.scale !== 1 || c.transform.rotation || c.transform.opacity < 1);
-  const ccOn = !!c && !isNeutral(c.color);
+  const ccOn = !!c && !!c.color && !isNeutral({ ...c.color, enabled: true }); // a bypassed grade still exists
   const fadeOn = !!c && (c.fade_in > 0 || c.fade_out > 0);
   const nodes = [
     { id: "in", label: "MediaIn1", x: 8, y: 22, on: true, tip: asset ? `${asset.filename} (original file)` : "" },
