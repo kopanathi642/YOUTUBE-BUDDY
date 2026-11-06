@@ -4,6 +4,7 @@ import { Asset } from "../api";
 import { Clip, Timeline, Track, Transform, DEFAULT_TRANSFORM, DEFAULT_TITLE, Title, Crop, framesToTimecode, len, updateClip, setSpeed } from "../timeline";
 import { LOOKS, withLook, sanitizeGrade } from "../grade";
 import { Ease, KfProp, clearProp, isAnimated, keyTimes, removeKey, setKey, tfAt } from "../keyframes";
+import { TRANSITION_LIST, TransitionType, nextTouching, previousTouching, transitionLinks } from "../transitions";
 
 /** Free typing; applied (and clamped) on Enter or blur. Esc reverts. */
 function NumBox({ id, value, disabled, commit }: { id: string; value: string; disabled?: boolean; commit: (v: number) => void }) {
@@ -146,7 +147,28 @@ export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab,
             onChange={(v) => { const f = Math.round(v * fps); if (f + clip.fade_out <= len(clip)) set({ fade_in: f }, "fi"); }} />
           <Field label="Fade out" value={+(clip.fade_out / fps).toFixed(2)} min={0} max={+(len(clip) / fps).toFixed(2)} step={1 / fps} unit="s" disabled={ro}
             onChange={(v) => { const f = Math.round(v * fps); if (f + clip.fade_in <= len(clip)) set({ fade_out: f }, "fo"); }} />
-          <div className="dim" style={{ fontSize: 11 }}>Fades work on picture and sound. Cross-dissolves and wipes are planned.</div>
+          <div className="dim" style={{ fontSize: 11 }}>Fades work on picture and sound.</div>
+          {track.kind === "video" && (() => {
+            const prev = previousTouching(track, clip), nxt = nextTouching(track, clip);
+            const tr = clip.transition_in, link = transitionLinks(track.clips).get(clip.id);
+            const setTr = (type: TransitionType | null, frames?: number) =>
+              set({ transition_in: type ? { type, frames: frames ?? tr?.frames ?? Math.round(fps / 2) } : null }, "tr");
+            return <div className="tr-sec">
+              <div className="label" style={{ marginTop: 10 }}>Transition into this clip</div>
+              {!prev ? <div className="dim" style={{ fontSize: 11.5 }}>Place this clip right against the previous clip on the same track (no gap) to add a transition.</div> : <>
+                <div className="tr-grid" role="radiogroup" aria-label="Transition type">
+                  <button role="radio" aria-checked={!tr} className={`tr-tile ${!tr ? "on" : ""}`} disabled={ro} onClick={() => setTr(null)}><i className="tr-ico cut" />Cut</button>
+                  {TRANSITION_LIST.map((t) => <button key={t.type} role="radio" aria-checked={tr?.type === t.type} className={`tr-tile ${tr?.type === t.type ? "on" : ""}`} disabled={ro}
+                    title={t.group} onClick={() => setTr(t.type)}><i className={`tr-ico ${t.type}`} />{t.label}</button>)}
+                </div>
+                {tr && <Field label="Duration" value={+(tr.frames / fps).toFixed(2)} min={2 / fps} max={5} step={1 / fps} unit="s" disabled={ro}
+                  onChange={(v) => setTr(tr.type, Math.max(2, Math.min(300, Math.round(v * fps))))} />}
+                {tr && link && link[0] + link[1] < tr.frames && <div className="dim" style={{ fontSize: 11 }}>Shortened to {((link[0] + link[1]) / fps).toFixed(2)} s to fit the shorter clip.</div>}
+                {tr && <div className="dim" style={{ fontSize: 11 }}>Centred on the cut. If a clip has no extra footage, its first/last frame is held. Same in the preview and the export.</div>}
+              </>}
+              {nxt && <div className="dim" style={{ fontSize: 11, marginTop: 6 }}>To change the transition out of this clip, select the clip after it.</div>}
+            </div>;
+          })()}
         </div>}
         {tab === "text" && (isTitle ? <div className="insp-sec">
           <div className="label">Style</div>

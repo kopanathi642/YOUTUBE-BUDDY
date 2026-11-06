@@ -93,3 +93,32 @@ function defaultTl() {
     { id: "v1", kind: "video" as const, name: "Video", muted: false, hidden: false, locked: false, clips: [] as any[] },
     { id: "a1", kind: "audio" as const, name: "Voice", muted: false, hidden: false, locked: false, clips: [] as any[] }] };
 }
+
+import { transitionLinks, transitionState } from "./transitions";
+
+describe("transitions match the server", () => {
+  const mk = (id: string, start: number, out: number, tr?: any) => ({ id, asset_id: "m", start, in: 0, out, volume: 1, fade_in: 0, fade_out: 0,
+    transform: { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 }, transition_in: tr ?? null });
+  it("links need touching clips and are capped (same as Python test)", () => {
+    const m = transitionLinks([mk("a", 0, 20), mk("b", 20, 8, { type: "fade", frames: 30 }), mk("c", 40, 20, { type: "fade", frames: 10 })] as any);
+    expect([...m.entries()]).toEqual([["b", [4, 4]]]);
+  });
+  it("dissolve is centred: incoming at 50 % on the cut, outgoing held after its end", () => {
+    const track = { id: "v1", kind: "video" as const, name: "", muted: false, hidden: false, locked: false,
+      clips: [mk("a", 0, 30), mk("b", 30, 30, { type: "fade", frames: 10 })] as any };
+    const [a, b] = track.clips;
+    expect(transitionState(track, b, 24).visible).toBe(false);
+    expect(transitionState(track, b, 25)).toMatchObject({ visible: true, holdLocal: 0, opacity: 0 });
+    expect(transitionState(track, b, 30).opacity).toBeCloseTo(0.5);
+    expect(transitionState(track, a, 32)).toMatchObject({ visible: true, holdLocal: 29 });
+    expect(transitionState(track, a, 35).visible).toBe(false);
+  });
+  it("wipe and slide move like FFmpeg xfade", () => {
+    const track = { id: "v1", kind: "video" as const, name: "", muted: false, hidden: false, locked: false,
+      clips: [mk("a", 0, 30), mk("b", 30, 30, { type: "wipeleft", frames: 10 })] as any };
+    expect(transitionState(track, track.clips[1], 30).container).toEqual({ clipPath: "inset(0 0 0 50.000%)" });
+    track.clips[1].transition_in = { type: "slideleft", frames: 10 };
+    expect(transitionState(track, track.clips[0], 30).container).toEqual({ transform: "translateX(-50.000%)" });
+    expect(transitionState(track, track.clips[1], 30).container).toEqual({ transform: "translateX(50.000%)" });
+  });
+});

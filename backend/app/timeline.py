@@ -7,6 +7,7 @@ track that appears higher in the list sits on top in the picture.
 from __future__ import annotations
 
 import os
+import re
 import uuid
 from typing import Literal
 
@@ -209,6 +210,18 @@ def _ease_at(kfs: list[Keyframe], t: int) -> str:
     return prev[-1].ease if prev else "linear"
 
 
+TRANSITIONS = ("fade", "fadeblack", "fadewhite", "wipeleft", "wiperight", "wipeup", "wipedown",
+               "slideleft", "slideright", "slideup", "slidedown", "circleopen")
+
+
+class Transition(BaseModel):
+    """Blend INTO this clip from the clip that ends exactly where this one starts on the same track. Centred on the
+    cut: half before, half after. Where a clip has no more frames, its first/last frame is held."""
+    model_config = ConfigDict(extra="forbid")
+    type: Literal[TRANSITIONS] = "fade"  # type: ignore[valid-type]
+    frames: int = Field(15, ge=2, le=300)
+
+
 class Crop(BaseModel):
     model_config = ConfigDict(extra="forbid")
     left: float = Field(0, ge=0, le=0.45)
@@ -236,6 +249,7 @@ class Clip(BaseModel):
     transform: Transform = Field(default_factory=Transform)
     color: ColorGrade | None = None
     keyframes: Keyframes | None = None  # animated transform (overrides the static value of each animated property)
+    transition_in: Transition | None = None  # blend from the previous touching clip on the same track
     denoise: bool = False  # FFmpeg FFT noise reduction on this clip's audio (applied in export)
 
     @property
@@ -382,6 +396,24 @@ def _opacity_filters(clip: "Clip", fps: int, workdir: str, tag: str) -> list[str
     return [f"sendcmd=f={_ff_path(path)}", f"colorchannelmixer@op{tag}=aa={first}"]
 
 
+def _lab(clip_id: str) -> str:
+    """Clip ids are free-form; filtergraph labels must not contain separators."""
+    return re.sub(r"[^A-Za-z0-9_]", "_", clip_id)
+
+
+def transition_links(clips: list["Clip"]) -> dict[str, tuple[int, int]]:
+    """For clips sorted by start: {incoming clip id: (frames before the cut, frames after)} for every usable transition.
+    A transition needs the previous clip to end exactly where this one starts; it is capped by both clips' lengths."""
+    out = {}
+    for a, b in zip(clips, clips[1:]):
+        t = b.transition_in
+        if t and a.end == b.start:
+            d = min(t.frames, a.length, b.length)
+            if d >= 2:
+                out[b.id] = (d // 2, d - d // 2)
+    return out
+
+
 def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: str,
                    out_w: int | None = None, out_h: int | None = None, crf: int = 20,
                    workdir: str | None = None) -> tuple[list[str], float]:
@@ -419,7 +451,39 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
     # Video: bottom track first.
     video_tracks = [t for t in tl.tracks if t.kind == "video"]
     for track in reversed(video_tracks):
-        for clip in sorted(track.clips, key=lambda c: c.start):
+        ordered = sorted(track.clips, key=lambda c: c.start)
+        links = transition_links(ordered)
+        # chains of clips joined by transitions -> each member becomes a full-canvas layer, blended with xfade
+        chain_of: dict[str, list] = {}
+        chains: list[list] = []
+        for i, c in enumerate(ordered):
+            if c.id in links and i and ordered[i - 1].id in chain_of:
+                chain = chain_of[ordered[i - 1].id]
+            elif c.id in links or (i + 1 < len(ordered) and ordered[i + 1].id in links):
+                chain = []
+                chains.append(chain)
+            else:
+                continue
+            chain.append(c)
+            chain_of[c.id] = chain
+        layer_of: dict[str, str] = {}
+
+        def to_layer(clip: "Clip", lab: str, pos: str, chain_filters: list[str]) -> None:
+            """Turn a finished clip stream into a full-canvas transparent layer starting at local 0, with held
+            frames before/after for the transitions on either side."""
+            before = links.get(clip.id, (0, 0))[0]
+            nxt = next((c for c in ordered if c.start == clip.end and c.id in links), None)
+            after = links[nxt.id][1] if nxt and chain_of.get(nxt.id) is chain_of[clip.id] else 0
+            f = chain_filters + ["setpts=PTS-STARTPTS"]
+            if before or after:
+                f.append(f"tpad=start_mode=clone:start_duration={_f(before / fps)}:stop_mode=clone:stop_duration={_f(after / fps)}")
+            total = (clip.length + before + after) / fps
+            graph.append(f"{lab}{','.join(f)}[lr{_lab(clip.id)}]")
+            graph.append(f"color=c=black@0:s={W}x{H}:r={fps}:d={_f(total)},format=yuva420p[cn{_lab(clip.id)}]")
+            graph.append(f"[cn{_lab(clip.id)}][lr{_lab(clip.id)}]overlay={pos}:eof_action=pass,format=yuva420p,fps={fps},settb=AVTB[L{_lab(clip.id)}]")
+            layer_of[clip.id] = f"L{_lab(clip.id)}"
+
+        for clip in ordered:
             if clip.title is not None:
                 if track.hidden or clip.transform.opacity <= 0:
                     continue
@@ -441,11 +505,14 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
                     chain.append(f"fade=t=in:st=0:d={_f(clip.fade_in / fps)}:alpha=1")
                 if clip.fade_out:
                     chain.append(f"fade=t=out:st={_f(dur - clip.fade_out / fps)}:d={_f(clip.fade_out / fps)}:alpha=1")
+                at = f"-{KF_PAD}:-{KF_PAD}" if anim else "0:0"
+                if clip.id in chain_of:
+                    to_layer(clip, f"[{n_inputs - 1}:v]", f"x={at.split(':')[0]}:y={at.split(':')[1]}", chain)
+                    continue
                 chain.append(f"setpts=PTS-STARTPTS+{_f(st)}/TB")
                 lab = f"ti{n_titles}"
                 graph.append(f"[{n_inputs - 1}:v]{','.join(chain)}[{lab}]")
                 nxt = f"tbase{n_titles}"
-                at = f"-{KF_PAD}:-{KF_PAD}" if anim else "0:0"
                 graph.append(f"[{vlabel}][{lab}]overlay={at}:eof_action=pass:enable='between(t,{_f(st)},{_f(en)})'[{nxt}]")
                 vlabel = nxt
                 continue
@@ -487,14 +554,38 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
                     chain.append(f"fade=t=in:st=0:d={_f(clip.fade_in / fps)}:alpha=1")
                 if clip.fade_out:
                     chain.append(f"fade=t=out:st={_f(dur - clip.fade_out / fps)}:d={_f(clip.fade_out / fps)}:alpha=1")
-                chain.append(f"setpts=PTS-STARTPTS+{_f(st)}/TB")
-                graph.append(f"[{idx}:v]{','.join(chain)}[cv{idx}]")
-                nxt = f"base{idx + 1}"
                 pos = f"x=-{KF_PAD}:y=-{KF_PAD}" if anim else f"x=(W-w)/2+({_f(tf.x)}):y=(H-h)/2+({_f(tf.y)})"
-                graph.append(f"[{vlabel}][cv{idx}]overlay={pos}:eof_action=pass:enable='between(t,{_f(st)},{_f(en)})'[{nxt}]")
-                vlabel = nxt
+                if clip.id in chain_of:
+                    to_layer(clip, f"[{idx}:v]", pos, chain)
+                else:
+                    chain.append(f"setpts=PTS-STARTPTS+{_f(st)}/TB")
+                    graph.append(f"[{idx}:v]{','.join(chain)}[cv{idx}]")
+                    nxt = f"base{idx + 1}"
+                    graph.append(f"[{vlabel}][cv{idx}]overlay={pos}:eof_action=pass:enable='between(t,{_f(st)},{_f(en)})'[{nxt}]")
+                    vlabel = nxt
             if use_a:
                 audio_labels.append(_audio_chain(graph, idx, clip, fps))
+
+        for chain in chains:  # blend each chain's layers with xfade, then place the result on the canvas
+            members = [c for c in chain if c.id in layer_of]
+            if not members:
+                continue
+            s0 = members[0].start
+            acc = layer_of[members[0].id]
+            for prev, c in zip(members, members[1:]):
+                if c.id in links and prev.end == c.start:
+                    h, a2 = links[c.id]
+                    off = (c.start - h - s0) / fps
+                    graph.append(f"[{acc}][{layer_of[c.id]}]xfade=transition={c.transition_in.type}:duration={_f((h + a2) / fps)}"
+                                 f":offset={_f(off)}[x{_lab(c.id)}]")
+                else:  # shouldn't happen inside a chain; fall back to a hard cut
+                    graph.append(f"[{acc}][{layer_of[c.id]}]concat=n=2:v=1:a=0[x{_lab(c.id)}]")
+                acc = f"x{_lab(c.id)}"
+            e0 = members[-1].end
+            graph.append(f"[{acc}]trim=duration={_f((e0 - s0) / fps)},setpts=PTS-STARTPTS+{_f(s0 / fps)}/TB[ch{_lab(members[0].id)}]")
+            nxt = f"chb{_lab(members[0].id)}"
+            graph.append(f"[{vlabel}][ch{_lab(members[0].id)}]overlay=0:0:eof_action=pass:enable='between(t,{_f(s0 / fps)},{_f(e0 / fps)})'[{nxt}]")
+            vlabel = nxt
 
     for track in (t for t in tl.tracks if t.kind == "audio"):
         if track.muted:
