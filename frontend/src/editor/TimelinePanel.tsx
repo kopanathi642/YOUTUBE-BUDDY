@@ -2,6 +2,7 @@ import { PointerEvent as RPE, useEffect, useMemo, useRef, useState } from "react
 import { Scissors, Trash2, Magnet, Lock, Unlock, Eye, EyeOff, Volume2, VolumeX, Plus, ZoomIn, ZoomOut, ArrowLeftToLine } from "lucide-react";
 import { Asset } from "../api";
 import { Timeline, Track, Clip, end, len, moveClip, trimStart, trimEnd, snap, snapPoints, splitAllAt, deleteClip, updateTrack, addTrack, duration, framesToTimecode } from "../timeline";
+import { keyTimes } from "../keyframes";
 import { assetFrames } from "./Editor";
 
 const HEAD_W = 214;
@@ -183,6 +184,7 @@ function TrackRow({ badge, t, tl, view, ppf, contentW, assets, selected, readOnl
               {(c.fade_in > 0 || c.fade_out > 0) && <>
                 {c.fade_in > 0 && <span className="fade in" style={{ width: c.fade_in * ppf }} />}
                 {c.fade_out > 0 && <span className="fade out" style={{ width: c.fade_out * ppf }} />}
+                {keyTimes(c).map((kt) => <span key={kt} className="kf-mark" style={{ left: kt * ppf }} aria-hidden="true" />)}
               </>}
               {!readOnly && !t.locked && <span className="edge r" onPointerDown={(e) => down(e, "trimR", c)} onPointerMove={move} onPointerUp={up} />}
             </div>

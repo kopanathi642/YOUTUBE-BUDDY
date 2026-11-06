@@ -375,3 +375,16 @@ input[type="range"] { accent-color: var(--purple); width: 100%; }
 .lut-preview { display: grid; gap: 4px; align-content: start; }
 .lut-preview canvas { width: 100%; border-radius: 6px; background: #000; }
 .lut-preview input[type=range] { width: 100%; }
+
+/* Keyframes */
+.insp-field.has-kf label { display: flex; align-items: center; gap: 2px; }
+.kf-btns { display: inline-flex; align-items: center; gap: 0; margin-right: 3px; }
+.kf-diamond, .kf-nav { background: none; border: 0; padding: 1px; color: var(--text-3); cursor: pointer; display: grid; place-items: center; }
+.kf-diamond:disabled, .kf-nav:disabled { opacity: .35; cursor: default; }
+.kf-diamond.anim { color: #a78bfa; }
+.kf-diamond.on { color: #fbbf24; }
+.kf-diamond.on svg { fill: #fbbf24; }
+.kf-ease { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 11px; margin: 6px 0; }
+.kf-note { font-size: 11px; margin: 6px 0; line-height: 1.5; }
+.kf-note .btn { margin-left: 4px; }
+.clip .kf-mark { position: absolute; bottom: 2px; width: 7px; height: 7px; margin-left: -3.5px; background: #fbbf24; transform: rotate(45deg); border: 1px solid #0008; pointer-events: none; z-index: 2; }

@@ -57,3 +57,39 @@ describe("timeline ops", () => {
     expect(freeSlot(base().tracks[0], 5, 10)).toBe(5);
   });
 });
+
+import { valueAt, sliceKeyframes, setKey, removeKey, tfAt } from "./keyframes";
+import { splitAt as split2, trimStart as trimS } from "./timeline";
+
+describe("keyframes match the server", () => {
+  it("valueAt: linear, ease, hold, before/after", () => {
+    const k = [{ t: 0, v: 0, ease: "linear" as const }, { t: 10, v: 100, ease: "ease" as const }, { t: 20, v: 0, ease: "hold" as const }, { t: 30, v: 50, ease: "linear" as const }];
+    expect(valueAt(k, -5, 9)).toBe(0); expect(valueAt(k, 5, 9)).toBe(50); expect(valueAt(k, 15, 9)).toBeCloseTo(50);
+    expect(valueAt(k, 12, 9)).toBeGreaterThan(80); expect(valueAt(k, 25, 9)).toBe(0); expect(valueAt(k, 99, 9)).toBe(50); expect(valueAt([], 3, 7)).toBe(7);
+  });
+  it("slice keeps the animation continuous (same numbers as the Python test)", () => {
+    const part = sliceKeyframes({ x: [{ t: 0, v: 0, ease: "linear" }, { t: 30, v: 90, ease: "linear" }] }, 10, 20, { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 });
+    expect(part!.x!.map((f) => [f.t, Math.round(f.v)])).toEqual([[0, 30], [9, 57]]);
+  });
+  it("set/remove keys and split/trim carry the animation", () => {
+    let kf = setKey(null, "x", 0, -100); kf = setKey(kf, "x", 29, 100); kf = setKey(kf, "x", 29, 120);
+    expect(kf.x!.map((f) => f.v)).toEqual([-100, 120]);
+    expect(removeKey(removeKey(kf, "x", 0), "x", 29)).toBeNull();
+    const tl0 = defaultTl();
+    const tl = { ...tl0, tracks: tl0.tracks.map((t) => t.id === "v1" ? { ...t, clips: [{ id: "a", asset_id: "m", start: 0, in: 0, out: 30, volume: 1, fade_in: 0, fade_out: 0,
+      transform: { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 }, keyframes: kf }] } : t) };
+    const r = split2(tl, "a", 15)!;
+    const v1 = r.tl.tracks.find((t) => t.id === "v1")!.clips;
+    const left = v1.find((c) => c.id === "a")!, right = v1.find((c) => c.id === r.rightId)!;
+    expect(tfAt(left, 14).x).toBeCloseTo(tfAt({ ...left, keyframes: kf }, 14).x, 3);
+    expect(tfAt(right, 0).x).toBeCloseTo(-100 + 220 * 15 / 29, 3);
+    const t2 = trimS(tl, "a", 10)!.tracks.find((t) => t.id === "v1")!.clips[0];
+    expect(tfAt(t2, 0).x).toBeCloseTo(-100 + 220 * 10 / 29, 3);
+  });
+});
+
+function defaultTl() {
+  return { schema_version: 1 as const, fps: 30, width: 320, height: 180, tracks: [
+    { id: "v1", kind: "video" as const, name: "Video", muted: false, hidden: false, locked: false, clips: [] as any[] },
+    { id: "a1", kind: "audio" as const, name: "Voice", muted: false, hidden: false, locked: false, clips: [] as any[] }] };
+}

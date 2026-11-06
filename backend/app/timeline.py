@@ -113,6 +113,102 @@ class Title(BaseModel):
     bg_opacity: float = Field(0.7, ge=0, le=1)
 
 
+KF_LIMITS = {"x": (-10000, 10000), "y": (-10000, 10000), "scale": (0.05, 10), "rotation": (-360, 360), "opacity": (0, 1)}
+
+
+class Keyframe(BaseModel):
+    """Value of one property at frame `t` (counted from the clip's start on the timeline). `ease` shapes the
+    segment that LEAVES this keyframe: linear, ease (smooth in-out), or hold (jump at the next keyframe)."""
+    model_config = ConfigDict(extra="forbid")
+    t: int = Field(ge=0, le=10_000_000)
+    v: float
+    ease: Literal["linear", "ease", "hold"] = "linear"
+
+
+class Keyframes(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    x: list[Keyframe] = Field(default_factory=list, max_length=64)
+    y: list[Keyframe] = Field(default_factory=list, max_length=64)
+    scale: list[Keyframe] = Field(default_factory=list, max_length=64)
+    rotation: list[Keyframe] = Field(default_factory=list, max_length=64)
+    opacity: list[Keyframe] = Field(default_factory=list, max_length=64)
+
+    @model_validator(mode="after")
+    def _ok(self):
+        for k, (lo, hi) in KF_LIMITS.items():
+            kfs = getattr(self, k)
+            if any(b.t <= a.t for a, b in zip(kfs, kfs[1:])):
+                raise ValueError(f"{k} keyframes must be in increasing time order")
+            if any(not (lo <= f.v <= hi) for f in kfs):
+                raise ValueError(f"{k} keyframe value out of range")
+        return self
+
+    def empty(self) -> bool:
+        return not any(getattr(self, k) for k in KF_LIMITS)
+
+    def geometric(self) -> bool:
+        return bool(self.x or self.y or self.scale or self.rotation)
+
+
+def kf_value(kfs: list[Keyframe], t: float, default: float) -> float:
+    """Value at clip frame t — identical to valueAt() in frontend/src/keyframes.ts."""
+    if not kfs:
+        return default
+    if t <= kfs[0].t:
+        return kfs[0].v
+    for a, b in zip(kfs, kfs[1:]):
+        if t < b.t:
+            if a.ease == "hold":
+                return a.v
+            u = (t - a.t) / (b.t - a.t)
+            if a.ease == "ease":
+                u = u * u * (3 - 2 * u)
+            return a.v + (b.v - a.v) * u
+    return kfs[-1].v
+
+
+def kf_expr(kfs: list[Keyframe], default: float, n: str = "in") -> str:
+    """The same function as an FFmpeg expression of the frame counter `n` (for perspective's per-frame eval)."""
+    if not kfs:
+        return _f(default)
+    expr = _f(kfs[-1].v)
+    for a, b in reversed(list(zip(kfs, kfs[1:]))):
+        u = f"(({n}-{a.t})/{b.t - a.t})"
+        if a.ease == "hold":
+            seg = _f(a.v)
+        elif a.ease == "ease":
+            seg = f"({_f(a.v)}+({_f(b.v - a.v)})*{u}*{u}*(3-2*{u}))"
+        else:
+            seg = f"({_f(a.v)}+({_f(b.v - a.v)})*{u})"
+        expr = f"if(lt({n},{b.t}),{seg},{expr})"
+    return f"if(lt({n},{kfs[0].t}),{_f(kfs[0].v)},{expr})"
+
+
+def slice_keyframes(kf: "Keyframes | None", a: int, b: int, static: "Transform") -> "Keyframes | None":
+    """Keep the animation inside clip frames [a, b), shifted to start at 0, with boundary keys so values don't jump."""
+    if kf is None or kf.empty():
+        return kf
+    out = {}
+    for k in KF_LIMITS:
+        kfs = getattr(kf, k)
+        if not kfs:
+            out[k] = []
+            continue
+        inside = [f for f in kfs if a < f.t < b]
+        first = Keyframe(t=0, v=round(kf_value(kfs, a, getattr(static, k)), 4), ease=_ease_at(kfs, a))
+        last = Keyframe(t=b - a - 1, v=round(kf_value(kfs, b - 1, getattr(static, k)), 4), ease="linear")
+        keep = [first] + [Keyframe(t=f.t - a, v=f.v, ease=f.ease) for f in inside if f.t - a < b - a - 1]
+        if last.t > keep[-1].t:
+            keep.append(last)
+        out[k] = keep
+    return Keyframes(**out)
+
+
+def _ease_at(kfs: list[Keyframe], t: int) -> str:
+    prev = [f for f in kfs if f.t <= t]
+    return prev[-1].ease if prev else "linear"
+
+
 class Crop(BaseModel):
     model_config = ConfigDict(extra="forbid")
     left: float = Field(0, ge=0, le=0.45)
@@ -139,6 +235,7 @@ class Clip(BaseModel):
     fade_out: int = Field(0, ge=0)
     transform: Transform = Field(default_factory=Transform)
     color: ColorGrade | None = None
+    keyframes: Keyframes | None = None  # animated transform (overrides the static value of each animated property)
     denoise: bool = False  # FFmpeg FFT noise reduction on this clip's audio (applied in export)
 
     @property
@@ -248,6 +345,43 @@ def _f(x: float) -> str:
     return f"{x:.6f}".rstrip("0").rstrip(".") or "0"
 
 
+KF_PAD = 2  # transparent border: perspective repeats edge pixels outside the shape, so the edge must be transparent
+
+
+def _perspective(clip: "Clip", W: int, H: int) -> list[str]:
+    """Animated position/scale/rotation of a full-canvas layer, evaluated per frame (variable `in` = clip frame).
+    The layer gets a transparent border, corners are sent to their animated positions (sense=destination), and the
+    result is overlaid at (-KF_PAD, -KF_PAD)."""
+    kf, tf = clip.keyframes, clip.transform
+    n = "(in-1)"  # perspective's input frame counter starts at 1 (measured); keyframe time 0 = the clip's first frame
+    X, Y = kf_expr(kf.x, tf.x, n), kf_expr(kf.y, tf.y, n)
+    S, R = kf_expr(kf.scale, tf.scale, n), f"(({kf_expr(kf.rotation, tf.rotation, n)})*PI/180)"
+    PW, PH = W + 2 * KF_PAD, H + 2 * KF_PAD
+    opts = []
+    for i, (cx, cy) in enumerate(((0, 0), (PW, 0), (0, PH), (PW, PH))):
+        dx, dy = cx - PW / 2, cy - PH / 2
+        opts.append(f"x{i}='{_f(PW / 2)}+({X})+({S})*({_f(dx)}*cos({R})-({_f(dy)})*sin({R}))'")
+        opts.append(f"y{i}='{_f(PH / 2)}+({Y})+({S})*({_f(dx)}*sin({R})+({_f(dy)})*cos({R}))'")
+    return [f"pad={PW}:{PH}:(ow-iw)/2:(oh-ih)/2:color=black@0", "perspective=" + ":".join(opts) + ":sense=destination:eval=frame"]
+
+
+def _opacity_filters(clip: "Clip", fps: int, workdir: str, tag: str) -> list[str]:
+    """Static opacity, or per-frame opacity from keyframes via a sendcmd file driving colorchannelmixer."""
+    kf, tf = clip.keyframes, clip.transform
+    if not (kf and kf.opacity):
+        return [f"colorchannelmixer=aa={_f(tf.opacity)}"] if tf.opacity < 1 else []
+    path = os.path.join(workdir, f"opacity-{tag}.cmd")
+    last = None
+    with open(path, "w") as f:
+        for i in range(clip.length):
+            v = round(kf_value(kf.opacity, i, tf.opacity), 4)
+            if v != last:
+                f.write(f"{i / fps:.6f} colorchannelmixer@op{tag} aa {v};\n")
+                last = v
+    first = round(kf_value(kf.opacity, 0, tf.opacity), 4)
+    return [f"sendcmd=f={_ff_path(path)}", f"colorchannelmixer@op{tag}=aa={first}"]
+
+
 def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: str,
                    out_w: int | None = None, out_h: int | None = None, crf: int = 20,
                    workdir: str | None = None) -> tuple[list[str], float]:
@@ -294,12 +428,15 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
                 st, en, dur = clip.start / fps, clip.end / fps, clip.length / fps
                 from .titles import render_title_png
                 png = os.path.join(workdir, f"title{n_titles}.png")
-                render_title_png(ti, tf, W, H, png)
+                anim = clip.keyframes is not None and clip.keyframes.geometric()
+                # animated titles are drawn centred at scale 1; the per-frame transform then moves/scales/rotates them
+                render_title_png(ti, Transform(opacity=tf.opacity) if anim else tf, W, H, png)
                 args.extend(["-loop", "1", "-framerate", str(fps), "-t", _f(dur), "-i", png])
                 n_inputs += 1
                 chain = ["format=yuva420p"]
-                if tf.opacity < 1:
-                    chain.append(f"colorchannelmixer=aa={_f(tf.opacity)}")
+                if anim:
+                    chain += ["setpts=PTS-STARTPTS", *_perspective(clip, W, H)]
+                chain += _opacity_filters(clip, fps, workdir, f"t{n_titles}")
                 if clip.fade_in:
                     chain.append(f"fade=t=in:st=0:d={_f(clip.fade_in / fps)}:alpha=1")
                 if clip.fade_out:
@@ -308,7 +445,8 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
                 lab = f"ti{n_titles}"
                 graph.append(f"[{n_inputs - 1}:v]{','.join(chain)}[{lab}]")
                 nxt = f"tbase{n_titles}"
-                graph.append(f"[{vlabel}][{lab}]overlay=0:0:eof_action=pass:enable='between(t,{_f(st)},{_f(en)})'[{nxt}]")
+                at = f"-{KF_PAD}:-{KF_PAD}" if anim else "0:0"
+                graph.append(f"[{vlabel}][{lab}]overlay={at}:eof_action=pass:enable='between(t,{_f(st)},{_f(en)})'[{nxt}]")
                 vlabel = nxt
                 continue
             a = assets.get(clip.asset_id)
@@ -323,9 +461,14 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
             if use_v:
                 tf = clip.transform
                 bw, bh = max(2, int(W * tf.scale)), max(2, int(H * tf.scale))
+                anim = clip.keyframes is not None and clip.keyframes.geometric()
+                if anim:
+                    bw, bh = W, H  # fit the canvas at scale 1; the per-frame transform does the rest
                 chain = []
                 if clip.speed != 1 and a.kind != "image":
                     chain.append(f"setpts=(PTS-STARTPTS)/{_f(clip.speed)}")
+                elif clip.keyframes:
+                    chain.append("setpts=PTS-STARTPTS")
                 chain.append(f"fps={fps}")
                 if clip.crop and not clip.crop.is_identity():
                     c = clip.crop
@@ -334,11 +477,12 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
                 if clip.color and not clip.color.is_identity():
                     chain += grade_filters(clip.color, workdir, assets, tag=f"c{idx}")
                 chain.append("format=yuva420p")
-                if tf.rotation:
+                if anim:
+                    chain += _perspective(clip, W, H)  # pads to the canvas + border, then transforms per frame
+                elif tf.rotation:
                     r = f"{_f(tf.rotation)}*PI/180"
                     chain.append(f"rotate={r}:c=none:ow=rotw({r}):oh=roth({r})")
-                if tf.opacity < 1:
-                    chain.append(f"colorchannelmixer=aa={_f(tf.opacity)}")
+                chain += _opacity_filters(clip, fps, workdir, f"c{idx}")
                 if clip.fade_in:
                     chain.append(f"fade=t=in:st=0:d={_f(clip.fade_in / fps)}:alpha=1")
                 if clip.fade_out:
@@ -346,9 +490,8 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
                 chain.append(f"setpts=PTS-STARTPTS+{_f(st)}/TB")
                 graph.append(f"[{idx}:v]{','.join(chain)}[cv{idx}]")
                 nxt = f"base{idx + 1}"
-                graph.append(
-                    f"[{vlabel}][cv{idx}]overlay=x=(W-w)/2+({_f(tf.x)}):y=(H-h)/2+({_f(tf.y)})"
-                    f":eof_action=pass:enable='between(t,{_f(st)},{_f(en)})'[{nxt}]")
+                pos = f"x=-{KF_PAD}:y=-{KF_PAD}" if anim else f"x=(W-w)/2+({_f(tf.x)}):y=(H-h)/2+({_f(tf.y)})"
+                graph.append(f"[{vlabel}][cv{idx}]overlay={pos}:eof_action=pass:enable='between(t,{_f(st)},{_f(en)})'[{nxt}]")
                 vlabel = nxt
             if use_a:
                 audio_labels.append(_audio_chain(graph, idx, clip, fps))
@@ -484,6 +627,7 @@ def slice_timeline(src: dict, a: int, b: int) -> dict:
             c.out = min(c.out, c.in_ + max(1, math.floor(new_len * c.speed + 0.5)))
             if c.out <= c.in_:
                 continue
+            c.keyframes = slice_keyframes(c.keyframes, ns - s, ne - s, c.transform)
             c.start = ns - a
             c.fade_in = min(c.fade_in, max(0, c.length - 1)) if ns == s else 0
             c.fade_out = min(c.fade_out, max(0, c.length - 1 - c.fade_in)) if ne == e else 0

@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { RotateCcw, MousePointerClick, ChevronRight } from "lucide-react";
+import { RotateCcw, MousePointerClick, ChevronRight, ChevronLeft, Diamond } from "lucide-react";
 import { Asset } from "../api";
 import { Clip, Timeline, Track, Transform, DEFAULT_TRANSFORM, DEFAULT_TITLE, Title, Crop, framesToTimecode, len, updateClip, setSpeed } from "../timeline";
 import { LOOKS, withLook, sanitizeGrade } from "../grade";
+import { Ease, KfProp, clearProp, isAnimated, keyTimes, removeKey, setKey, tfAt } from "../keyframes";
 
 /** Free typing; applied (and clamped) on Enter or blur. Esc reverts. */
 function NumBox({ id, value, disabled, commit }: { id: string; value: string; disabled?: boolean; commit: (v: number) => void }) {
@@ -13,13 +14,13 @@ function NumBox({ id, value, disabled, commit }: { id: string; value: string; di
     onKeyDown={(e) => { if (e.key === "Enter") { apply(); e.currentTarget.blur(); } if (e.key === "Escape") { setDraft(null); e.currentTarget.blur(); } }} />;
 }
 
-function Field({ label, value, min, max, step, unit, onChange, disabled, onReset }: {
-  label: string; value: number; min: number; max: number; step: number; unit?: string; disabled?: boolean; onChange: (v: number) => void; onReset?: () => void;
+function Field({ label, value, min, max, step, unit, onChange, disabled, onReset, kf }: {
+  label: string; value: number; min: number; max: number; step: number; unit?: string; disabled?: boolean; onChange: (v: number) => void; onReset?: () => void; kf?: React.ReactNode;
 }) {
   const id = `f-${label.replace(/\W/g, "")}`;
   return (
-    <div className="insp-field">
-      <label htmlFor={id}>{label}</label>
+    <div className={`insp-field ${kf ? "has-kf" : ""}`}>
+      <label htmlFor={id}>{kf}{label}</label>
       <input type="range" min={min} max={max} step={step} value={value} disabled={disabled} onChange={(e) => onChange(+e.target.value)} aria-label={label} />
       <div className="insp-num">
         <NumBox id={id} value={String(Math.round(value * 100) / 100)} disabled={disabled} commit={(v) => onChange(Math.min(max, Math.max(min, v)))} />
@@ -38,7 +39,8 @@ const TITLE_STYLES: [string, Partial<Title>][] = [
   ["Neon", { color: "#22d3ee", bg_color: "#0b0d24", bg_opacity: 0.85 }], ["Big headline", { color: "#ffffff", bg_color: null, font_size: 180 }],
 ];
 
-export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab, onAddTitle, onStabilize, toast }: {
+export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab, onAddTitle, onStabilize, toast, playhead = 0, setPlayhead = () => {} }: {
+  playhead?: number; setPlayhead?: (f: number) => void;
   tl: Timeline; sel: { track: Track; clip: Clip } | null; asset: Asset | undefined;
   edit: (t: Timeline | null, coalesce?: string) => boolean; readOnly: boolean;
   tab: "inspector" | "effects" | "transition" | "text" | "metadata"; setTab: (t: any) => void;
@@ -56,7 +58,31 @@ export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab,
   const { clip, track } = sel;
   const ro = readOnly || track.locked;
   const set = (patch: Partial<Clip>, key: string) => edit(updateClip(tl, clip.id, patch), `${clip.id}:${key}`);
-  const setT = (patch: Partial<Transform>, key: string) => set({ transform: { ...clip.transform, ...patch } }, key);
+  const local = Math.min(len(clip) - 1, Math.max(0, playhead - clip.start)), inClip = playhead >= clip.start && playhead < clip.start + len(clip);
+  const cur = tfAt(clip, local);
+  /** Change a transform property: animated properties get a keyframe at the playhead (auto-key); others change statically. */
+  const setT = (patch: Partial<Transform>, key: string) => {
+    let kf = clip.keyframes, stat = { ...clip.transform };
+    for (const [p, v] of Object.entries(patch) as [KfProp, number][]) {
+      if (isAnimated(clip, p)) { if (!inClip) { toast("Move the playhead over this clip to set a keyframe"); return; } kf = setKey(kf, p, local, v); }
+      else stat = { ...stat, [p]: v };
+    }
+    set({ transform: stat, keyframes: kf }, key);
+  };
+  const KfBtns = ({ p }: { p: KfProp }) => {
+    const times = keyTimes(clip, p), here = times.includes(local) && inClip, anim = times.length > 0;
+    const prev = [...times].reverse().find((t) => t < local), next = times.find((t) => t > local);
+    return <span className="kf-btns">
+      {anim && <button className="kf-nav" aria-label={`Previous ${p} keyframe`} disabled={prev === undefined} onClick={() => prev !== undefined && setPlayhead(clip.start + prev)}><ChevronLeft size={10} /></button>}
+      <button className={`kf-diamond ${here ? "on" : anim ? "anim" : ""}`} disabled={ro || !inClip} aria-pressed={here}
+        title={!inClip ? "Move the playhead over this clip" : here ? `Remove ${p} keyframe` : `Add ${p} keyframe at playhead`}
+        aria-label={here ? `Remove ${p} keyframe at playhead` : `Add ${p} keyframe at playhead`}
+        onClick={() => set({ keyframes: here ? removeKey(clip.keyframes, p, local) : setKey(clip.keyframes, p, local, cur[p]) }, `kf:${p}`)}><Diamond size={10} /></button>
+      {anim && <button className="kf-nav" aria-label={`Next ${p} keyframe`} disabled={next === undefined} onClick={() => next !== undefined && setPlayhead(clip.start + next)}><ChevronRight size={10} /></button>}
+    </span>;
+  };
+  const animProps = (["x", "y", "scale", "rotation", "opacity"] as KfProp[]).filter((p) => isAnimated(clip, p));
+  const keyHere = animProps.map((p) => ({ p, k: clip.keyframes![p]!.find((f) => f.t === local) })).filter((x) => x.k && inClip);
   const fps = tl.fps, isTitle = !!clip.title, visual = track.kind === "video" && (asset?.has_video || isTitle), audio = !!asset?.has_audio;
   const ti: Title = clip.title ?? DEFAULT_TITLE;
   const setTitle = (patch: Partial<Title>, key: string) => set({ title: { ...ti, ...patch } }, `title:${key}`);
@@ -72,12 +98,20 @@ export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab,
           {track.locked && <span className="badge warn">Track locked</span>}</div>
         {tab === "inspector" && <>
           {visual && <details open className="insp-sec"><summary>Transform</summary>
-            <Field label="Position X" value={clip.transform.x} min={-tl.width} max={tl.width} step={1} disabled={ro} onChange={(v) => setT({ x: v }, "x")} onReset={() => setT({ x: 0 }, "x0")} />
-            <Field label="Position Y" value={clip.transform.y} min={-tl.height} max={tl.height} step={1} disabled={ro} onChange={(v) => setT({ y: v }, "y")} onReset={() => setT({ y: 0 }, "y0")} />
-            <Field label="Scale" value={Math.round(clip.transform.scale * 100)} min={5} max={400} step={1} unit="%" disabled={ro} onChange={(v) => setT({ scale: v / 100 }, "scale")} onReset={() => setT({ scale: 1 }, "s0")} />
-            <Field label="Rotation" value={clip.transform.rotation} min={-180} max={180} step={0.5} unit="°" disabled={ro} onChange={(v) => setT({ rotation: v }, "rot")} onReset={() => setT({ rotation: 0 }, "r0")} />
-            <Field label="Opacity" value={Math.round(clip.transform.opacity * 100)} min={0} max={100} step={1} unit="%" disabled={ro} onChange={(v) => setT({ opacity: v / 100 }, "op")} onReset={() => setT({ opacity: 1 }, "o0")} />
-            <button className="btn sm ghost" disabled={ro} onClick={() => set({ transform: { ...DEFAULT_TRANSFORM } }, "reset")}><RotateCcw size={12} />Reset transform</button>
+            <Field kf={<KfBtns p="x" />} label="Position X" value={cur.x} min={-tl.width} max={tl.width} step={1} disabled={ro} onChange={(v) => setT({ x: v }, "x")} onReset={() => setT({ x: 0 }, "x0")} />
+            <Field kf={<KfBtns p="y" />} label="Position Y" value={cur.y} min={-tl.height} max={tl.height} step={1} disabled={ro} onChange={(v) => setT({ y: v }, "y")} onReset={() => setT({ y: 0 }, "y0")} />
+            <Field kf={<KfBtns p="scale" />} label="Scale" value={Math.round(cur.scale * 100)} min={5} max={400} step={1} unit="%" disabled={ro} onChange={(v) => setT({ scale: v / 100 }, "scale")} onReset={() => setT({ scale: 1 }, "s0")} />
+            <Field kf={<KfBtns p="rotation" />} label="Rotation" value={cur.rotation} min={-180} max={180} step={0.5} unit="°" disabled={ro} onChange={(v) => setT({ rotation: v }, "rot")} onReset={() => setT({ rotation: 0 }, "r0")} />
+            <Field kf={<KfBtns p="opacity" />} label="Opacity" value={Math.round(cur.opacity * 100)} min={0} max={100} step={1} unit="%" disabled={ro} onChange={(v) => setT({ opacity: v / 100 }, "op")} onReset={() => setT({ opacity: 1 }, "o0")} />
+            {keyHere.length > 0 && <div className="kf-ease" role="group" aria-label="Easing of keyframes at playhead">
+              <span className="dim">From this keyframe:</span>
+              {(["linear", "ease", "hold"] as Ease[]).map((e) => <button key={e} className={`btn sm ${keyHere.every((x) => x.k!.ease === e) ? "toggled" : ""}`} disabled={ro}
+                onClick={() => { let kf = clip.keyframes; for (const x of keyHere) kf = setKey(kf, x.p, local, x.k!.v, e); set({ keyframes: kf }, "kf:ease"); }}>{e === "linear" ? "Linear" : e === "ease" ? "Ease in-out" : "Hold"}</button>)}
+            </div>}
+            {animProps.length > 0 && <div className="dim kf-note">◆ Animated: {animProps.join(", ")}. Changing a value adds a keyframe at the playhead.
+              <button className="btn ghost sm" disabled={ro} onClick={() => { let kf = clip.keyframes; for (const p of animProps) kf = clearProp(kf, p); set({ keyframes: kf }, "kf:clear"); }}>Remove animation</button></div>}
+            {animProps.length === 0 && <div className="dim kf-note">Tip: click ◆ next to a property to start animating it from the playhead.</div>}
+            <button className="btn sm ghost" disabled={ro} onClick={() => set({ transform: { ...DEFAULT_TRANSFORM }, keyframes: null }, "reset")}><RotateCcw size={12} />Reset transform</button>
           </details>}
           {audio && <details open className="insp-sec"><summary>Audio</summary>
             <Field label="Volume" value={Math.round(clip.volume * 100)} min={0} max={400} step={1} unit="%" disabled={ro} onChange={(v) => set({ volume: v / 100 }, "vol")} onReset={() => set({ volume: 1 }, "v0")} />

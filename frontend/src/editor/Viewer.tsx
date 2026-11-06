@@ -3,6 +3,7 @@ import { Play, Pause, SkipBack, SkipForward, Rewind, FastForward, Volume2, Volum
 import { Asset, SequenceDoc } from "../api";
 import { Clip, Timeline, end, framesToTimecode, sp } from "../timeline";
 import { titleFont } from "../fonts";
+import { tfAt } from "../keyframes";
 import { isNeutral, svgFilterBody } from "../grade";
 
 export type Sampler = (w: number) => HTMLCanvasElement | null;
@@ -105,7 +106,7 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
 
   /** Same maths as the FFmpeg compiler: crop the source, fit it into the (scaled) canvas, then offset. */
   const geom = (L: Layer, k: number) => {
-    const a = L.asset, tf = L.clip.transform, cr = L.clip.crop;
+    const a = L.asset, tf = tfAt(L.clip, playhead - L.clip.start), cr = L.clip.crop;
     const fx = cr ? 1 - cr.left - cr.right : 1, fy = cr ? 1 - cr.top - cr.bottom : 1;
     const aw = (a.width || tl.width) * fx, ah = (a.height || tl.height) * fy;
     const fit = Math.min((tl.width * tf.scale) / aw, (tl.height * tf.scale) / ah);
@@ -127,7 +128,7 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
       for (const L of visRef.current) {
         const el = els.current.get(L.clip.id);
         if (L.clip.title) {
-          const ti = L.clip.title, tf = L.clip.transform, fs = ti.font_size * tf.scale * k;
+          const ti = L.clip.title, tf = tfAt(L.clip, playhead - L.clip.start), fs = ti.font_size * tf.scale * k;
           ctx.save(); ctx.globalAlpha = tf.opacity * fadeFactor(L.clip, playhead);
           ctx.translate((tl.width / 2 + tf.x) * k, (tl.height / 2 + tf.y) * k); ctx.rotate((tf.rotation * Math.PI) / 180);
           ctx.font = `700 ${fs}px ${titleFont(ti.text)}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -140,9 +141,9 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
         if (el instanceof HTMLVideoElement && el.readyState < 2) continue;
         const g = geom(L, k);
         ctx.save();
-        ctx.globalAlpha = L.clip.transform.opacity * fadeFactor(L.clip, playhead);
+        ctx.globalAlpha = tfAt(L.clip, playhead - L.clip.start).opacity * fadeFactor(L.clip, playhead);
         if (!isNeutral(L.clip.color)) ctx.filter = `url(#g-${L.clip.id})`;
-        ctx.translate(g.cx, g.cy); ctx.rotate((L.clip.transform.rotation * Math.PI) / 180);
+        ctx.translate(g.cx, g.cy); ctx.rotate((tfAt(L.clip, playhead - L.clip.start).rotation * Math.PI) / 180);
         ctx.beginPath(); ctx.rect(-g.w / 2, -g.h / 2, g.w, g.h); ctx.clip();
         ctx.drawImage(el as CanvasImageSource, -g.w / 2 + g.offX, -g.h / 2 + g.offY, g.fullW, g.fullH);
         ctx.restore();
@@ -188,7 +189,7 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
         <div ref={stageWrap} className="stage-wrap">
           <div className="stage" style={{ width: view.w, height: view.h }}>
             {layers.filter((L) => L.kind === "video").sort((a, b) => a.z - b.z).map((L) => {
-              const a = L.asset, tf = L.clip.transform;
+              const a = L.asset, tf = tfAt(L.clip, playhead - L.clip.start);
               const active = playhead >= L.clip.start && playhead < end(L.clip);
               const opacity = active && !L.trackHidden ? tf.opacity * fadeFactor(L.clip, playhead) : 0;
               if (L.clip.title) {

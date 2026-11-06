@@ -6,6 +6,9 @@ export type Vec3 = [number, number, number];
 export type CurvePoint = [number, number];
 export type Curves = { master: CurvePoint[]; r: CurvePoint[]; g: CurvePoint[]; b: CurvePoint[] };
 export type LutRef = { asset_id: string; strength: number };
+import type { Keyframes } from "./keyframes";
+import { clampToLength, shiftForTrimStart, sliceKeyframes } from "./keyframes";
+
 export type ColorGrade = {
   enabled: boolean; lift: Vec3; gamma: Vec3; gain: Vec3; offset: Vec3;
   exposure: number; contrast: number; saturation: number; temperature: number; tint: number;
@@ -15,7 +18,7 @@ export type Title = { text: string; font_size: number; color: string; bg_color: 
 export type Crop = { left: number; right: number; top: number; bottom: number };
 export type Clip = {
   id: string; asset_id: string | null; start: number; in: number; out: number;
-  volume: number; fade_in: number; fade_out: number; transform: Transform;
+  volume: number; fade_in: number; fade_out: number; transform: Transform; keyframes?: Keyframes | null;
   color?: ColorGrade | null; denoise?: boolean; speed?: number; crop?: Crop | null; title?: Title | null;
 };
 export type Track = { id: string; kind: "video" | "audio"; name: string; muted: boolean; hidden: boolean; locked: boolean; clips: Clip[] };
@@ -83,7 +86,7 @@ export function trimStart(tl: Timeline, id: string, newStart: number): Timeline 
   const nlen = Math.max(1, Math.round((f.clip.out - nin) / sp(f.clip)));
   if (nlen <= f.clip.fade_in + f.clip.fade_out || nlen < 1) return null;
   if (!fits(f.track, newStart, nlen, id)) return null;
-  return mapClip(tl, id, (c) => ({ ...c, start: newStart, in: nin }));
+  return mapClip(tl, id, (c) => ({ ...c, start: newStart, in: nin, keyframes: shiftForTrimStart(c, delta, nlen) }));
 }
 
 export function trimEnd(tl: Timeline, id: string, newEnd: number, sourceMax: number): Timeline | null {
@@ -93,7 +96,7 @@ export function trimEnd(tl: Timeline, id: string, newEnd: number, sourceMax: num
   const nout = f.clip.in + Math.round(nlen * sp(f.clip));
   if (nlen < 1 || nlen <= f.clip.fade_in + f.clip.fade_out || nout > sourceMax || nout <= f.clip.in) return null;
   if (!fits(f.track, f.clip.start, nlen, id)) return null;
-  return mapClip(tl, id, (c) => ({ ...c, out: nout }));
+  return mapClip(tl, id, (c) => ({ ...c, out: nout, keyframes: clampToLength(c, nlen) }));
 }
 
 export function splitAt(tl: Timeline, id: string, frame: number): { tl: Timeline; rightId: string } | null {
@@ -102,8 +105,9 @@ export function splitAt(tl: Timeline, id: string, frame: number): { tl: Timeline
   const cut = f.clip.in + Math.round((frame - f.clip.start) * sp(f.clip));
   if (cut <= f.clip.in || cut >= f.clip.out) return null;
   const rightId = uid();
-  const left: Clip = { ...f.clip, out: cut, fade_out: 0, fade_in: Math.min(f.clip.fade_in, frame - f.clip.start - 1) };
-  const right: Clip = { ...f.clip, id: rightId, start: frame, in: cut, fade_in: 0, fade_out: Math.min(f.clip.fade_out, end(f.clip) - frame - 1) };
+  const at = frame - f.clip.start, total = len(f.clip);
+  const left: Clip = { ...f.clip, out: cut, fade_out: 0, fade_in: Math.min(f.clip.fade_in, frame - f.clip.start - 1), keyframes: sliceKeyframes(f.clip.keyframes, 0, at, f.clip.transform) };
+  const right: Clip = { ...f.clip, id: rightId, start: frame, in: cut, fade_in: 0, fade_out: Math.min(f.clip.fade_out, end(f.clip) - frame - 1), keyframes: sliceKeyframes(f.clip.keyframes, at, total, f.clip.transform) };
   return { rightId, tl: mapClip(tl, id, () => [left, right]) };
 }
 
@@ -138,6 +142,7 @@ export function setSpeed(tl: Timeline, id: string, speed: number): Timeline | nu
   if (!f || f.track.locked || f.clip.title) return null;
   const c2 = { ...f.clip, speed };
   if (len(c2) <= c2.fade_in + c2.fade_out) c2.fade_in = c2.fade_out = 0;
+  c2.keyframes = clampToLength(f.clip, len(c2));
   if (!fits(f.track, c2.start, len(c2), id)) return null;
   return mapClip(tl, id, () => c2);
 }

@@ -203,9 +203,21 @@ def reframe_timeline(src: dict, W2: int, H2: int, assets: dict[uuid.UUID, MediaA
                 x = max(-limit, min(limit, -(sx - 0.5) * dw))
                 c.transform.scale = round(min(10.0, cover / contain), 4)
                 c.transform.x, c.transform.y = round(x, 1), 0.0
+                if c.keyframes:  # keep the animation, relative to the new framing
+                    for f in c.keyframes.scale:
+                        f.v = round(min(10.0, f.v * cover / contain), 4)
+                    for f in c.keyframes.x:
+                        f.v = round(max(-10000, min(10000, f.v * W2 / W1 + x)), 1)
+                    for f in c.keyframes.y:
+                        f.v = round(f.v * H2 / H1, 1)
             else:
                 c.transform.x = round(c.transform.x * W2 / W1, 1)
                 c.transform.y = round(c.transform.y * H2 / H1, 1)
+                if c.keyframes:
+                    for f in c.keyframes.x:
+                        f.v = round(f.v * W2 / W1, 1)
+                    for f in c.keyframes.y:
+                        f.v = round(f.v * H2 / H1, 1)
     tl.width, tl.height = W2, H2
     return tl.model_dump(by_alias=True, mode="json")
 
