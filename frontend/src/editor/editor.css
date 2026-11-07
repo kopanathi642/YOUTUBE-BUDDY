@@ -302,7 +302,7 @@ input[type="range"] { accent-color: var(--purple); width: 100%; }
 .save-block b { display: block; font-size: 12px; } .save-block small { display: block; font-size: 10.5px; color: var(--text-2); }
 .save-block.dirty, .save-block.saving { border-color: rgba(34, 211, 238, .45); background: rgba(34, 211, 238, .06); }
 .save-block.error, .save-block.offline, .save-block.conflict { border-color: rgba(244, 63, 94, .5); background: rgba(244, 63, 94, .08); }
-.rec-live { width: 100%; border-radius: 10px; background: #000; margin-top: 10px; max-height: 300px; }
+.rec-live { width: 100%; aspect-ratio: 16 / 9; object-fit: contain; border-radius: 10px; background: #000; margin-top: 10px; max-height: 300px; }   /* fixed shape: buttons below never jump */
 .rec-dot { width: 10px; height: 10px; border-radius: 50%; background: #475569; flex: none; }
 .rec-dot.on { background: var(--red); box-shadow: 0 0 10px var(--red); animation: blink 1s infinite; }
 @keyframes blink { 50% { opacity: .3; } }

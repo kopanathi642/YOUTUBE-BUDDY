@@ -18,13 +18,20 @@ page.on("console", (m) => { if (m.type() === "error" && !/fonts\.g|TUNNEL|ERR_TU
 page.on("response", (r) => { const u = r.url(); if (u.includes("/api/v1/") && r.status() >= 400 && !(r.status() === 401 && u.endsWith("/auth/me")) && !(phase.startsWith("Sign-up validation") && r.status() === 422)) problems.push(`[${phase}] HTTP ${r.status()} ${r.request().method()} ${u.replace(B, "")}`); });
 page.on("dialog", (d) => d.accept().catch(() => {}));   // confirm() prompts: always answer OK
 const w = (ms) => page.waitForTimeout(ms);
+const closeDialogs = async () => { await page.keyboard.press("Escape").catch(() => {}); await page.locator(".modal button[aria-label='Close']").first().click({ timeout: 1000 }).catch(() => {}); };
 async function step(name, fn) {
+  // A dialog left open by an earlier step would block every click in this one: name it (as a WARN on the step that left it) and close it.
+  const open = await page.locator(".modal[aria-label]").evaluateAll((ms) => ms.map((m) => m.getAttribute("aria-label"))).catch(() => []);
+  if (open.length) { problems.push(`[${phase}] left a dialog open: ${open.join(", ")}`); if (results.length && results[results.length - 1][0] === "PASS") results[results.length - 1][0] = "WARN"; await closeDialogs(); }
   phase = name;
   const before = problems.length;
   try { await fn(); results.push([problems.length > before ? "WARN" : "PASS", name]); }
-  catch (e) { await page.keyboard.press("Escape").catch(() => {}); await page.locator(".modal button[aria-label='Close']").click({ timeout: 1000 }).catch(() => {});
-    results.push(["FAIL", `${name} — ${String(e.message).split("\n")[0].slice(0, 200)}`]); await page.screenshot({ path: `${OUT}/fail-${results.length}.png` }).catch(() => {});
-    await import("node:fs").then((fs) => fs.writeFileSync(`${OUT}/fail-${results.length}.txt`, `${name}\n\n${e.stack ?? e.message}`)).catch(() => {}); }   // full Playwright call log
+  catch (e) {
+    results.push(["FAIL", `${name} — ${String(e.message).split("\n")[0].slice(0, 200)}`]);
+    await page.screenshot({ path: `${OUT}/fail-${results.length}.png` }).catch(() => {});   // before cleaning up, so the cause is visible
+    await import("node:fs").then((fs) => fs.writeFileSync(`${OUT}/fail-${results.length}.txt`, `${name}\n\n${e.stack ?? e.message}`)).catch(() => {});   // full Playwright call log
+    await closeDialogs();
+  }
 }
 const toast = async () => (await page.locator(".toast").allTextContents()).join(" | ");
 const tl = async () => page.evaluate(() => [...document.querySelectorAll(".clip")].map((e) => e.getAttribute("aria-label")));
@@ -35,7 +42,7 @@ const saved = () => page.waitForFunction(() => document.querySelector(".save-blo
 
 // ---------------- public pages
 await step("Landing page loads, nav anchors work, live studio counts", async () => {
-  await page.goto(B + "/"); await page.waitForSelector("text=Reach every language.");
+  await page.goto(B + "/"); await page.waitForSelector("text=studio with AI");
   for (const a of ["#workspaces", "#directory", "#status"]) await page.click(`.lp-links a[href="${a}"]`);
   // Editor + every studio with at least one live tool (studios with none are hidden until their service is connected)
   const live = (await (await page.request.get(B + "/api/v1/public/studios")).json()).studios.filter((s) => s.live > 0).length;
@@ -191,7 +198,7 @@ await step("Sidebar tools: every item gives working result or explicit reason", 
     if (!(await b.count()) || (await b.isDisabled())) continue;
     const before = await page.evaluate(() => window.__toasts);
     const url = page.url();
-    await b.click(); await w(250);
+    await b.click(); await w(400);
     if (page.url() !== url) { if (!page.url().includes("/ai-generator/tool/")) throw new Error(`"${label}" went to ${page.url()}`); await page.goBack(); await page.waitForSelector(".ed-side"); continue; }
     if (await page.locator(".modal").count()) { await page.click(".modal .btn.ghost"); continue; }
     const scrollOnly = /^(Media|Edit|Color Grading|VFX & Fusion|Export & Share|Effects & Filters|Transitions|Voice & Dubbing|Stock Library|Templates & Elements)$/.test(label);
@@ -206,7 +213,8 @@ await step("Snapshot to media bin", async () => {
 await step("Record from (fake) camera and add to project", async () => {
   const n = await page.locator(".bin-item").count();
   await page.click(".ed-bin button:has-text('Record')"); await page.click("button:has-text('Start recording')"); await w(2500);
-  await page.click("button:has-text('Stop')"); await page.click("button:has-text('Add to project')");
+  await page.click(".modal button:has-text('Stop')"); await page.click(".modal button:has-text('Add to project')");
+  await page.waitForSelector(".modal[aria-label='Record']", { state: "detached", timeout: 10000 });   // the dialog must close
   await page.waitForFunction((n) => document.querySelectorAll(".bin-item").length > n, n, { timeout: 30000 });
   await page.waitForFunction(() => [...document.querySelectorAll(".bin-item")].every((e) => !e.className.includes("processing")), null, { timeout: 120000 });
   if (await page.locator(".bin-item.failed, .bin-item.rejected").count()) throw new Error("recording rejected");

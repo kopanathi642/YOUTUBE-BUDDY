@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { History as HistoryIcon, X as XIcon, Cloud, CloudOff, Loader2, AlertTriangle, Undo2, Redo2, Home, FolderOpen, Scissors, Workflow, Palette, AudioLines, Sparkles, Activity, Type, Image as ImageIcon, LayoutTemplate, Bell } from "lucide-react";
+import { History as HistoryIcon, X as XIcon, Cloud, CloudOff, Loader2, AlertTriangle, Undo2, Redo2, Home, FolderOpen, Scissors, Workflow, Palette, AudioLines, Sparkles, Activity, Type, Image as ImageIcon, LayoutTemplate } from "lucide-react";
 import { api, ApiError, Asset, Project, SequenceDoc } from "../api";
 import { useToast } from "../App";
 import { Brand, UserMenu } from "../components/Shell";
@@ -408,7 +408,6 @@ export default function Editor() {
         </div>
         <button className="btn icon ghost" onClick={() => setShowHistory(true)} title="Version history" aria-label="Version history"><HistoryIcon size={17} /></button>
         <SaveBlock state={readOnly ? "readonly" : save} version={version} />
-        <button className="btn icon ghost" aria-label="Notifications (none)" disabled><Bell size={17} /></button>
         <UserMenu />
       </header>
       {save === "conflict" && (

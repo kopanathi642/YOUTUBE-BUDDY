@@ -16,7 +16,7 @@ export default function HeroScene() {
     const onMove = (e: PointerEvent) => { tx = (e.clientX / window.innerWidth - 0.5) * 2; ty = (e.clientY / window.innerHeight - 0.5) * 2; };
     const tick = () => {
       x += (tx - x) * 0.06; y += (ty - y) * 0.06;   // eased follow, no jitter
-      el.style.setProperty("--ry", `${(-14 + x * 9).toFixed(2)}deg`);
+      el.style.setProperty("--ry", `${(-6 + x * 10).toFixed(2)}deg`);
       el.style.setProperty("--rx", `${(9 - y * 7).toFixed(2)}deg`);
       raf = requestAnimationFrame(tick);
     };
@@ -87,4 +87,42 @@ export function useReveal(root: React.RefObject<HTMLElement | null>, active: boo
     el.querySelectorAll(".lp-reveal").forEach((n) => io.observe(n));
     return () => io.disconnect();
   }, [root, active]);
+}
+
+/** Twinkling, slowly drifting star field behind the hero (one small canvas; pauses when off screen or the tab is hidden). */
+export function StarField() {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const cv = ref.current; if (!cv) return;
+    const g = cv.getContext("2d"); if (!g) return;
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let w = 0, h = 0, raf = 0, visible = true;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    type Star = { x: number; y: number; r: number; a: number; s: number; v: number; lime: boolean };
+    let stars: Star[] = [];
+    const size = () => {
+      const r = cv.getBoundingClientRect(); w = r.width; h = r.height;
+      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const n = Math.round(Math.min(220, (w * h) / 5200));
+      stars = Array.from({ length: n }, () => ({ x: Math.random() * w, y: Math.random() * h, r: Math.random() * 1.2 + 0.3,
+        a: Math.random() * Math.PI * 2, s: 0.4 + Math.random() * 1.4, v: 0.04 + Math.random() * 0.12, lime: Math.random() < 0.12 }));
+    };
+    const draw = (t: number) => {
+      g.clearRect(0, 0, w, h);
+      for (const st of stars) {
+        const o = still ? 0.6 : 0.35 + 0.65 * Math.abs(Math.sin(st.a + t * 0.001 * st.s));
+        if (!still) { st.y -= st.v; if (st.y < -2) { st.y = h + 2; st.x = Math.random() * w; } }
+        g.globalAlpha = o; g.fillStyle = st.lime ? "#d6ff6a" : "#ffffff";
+        g.beginPath(); g.arc(st.x, st.y, st.r, 0, Math.PI * 2); g.fill();
+      }
+      g.globalAlpha = 1;
+    };
+    const loop = (t: number) => { if (visible && !document.hidden) draw(t); raf = requestAnimationFrame(loop); };
+    size();
+    const ro = new ResizeObserver(size); ro.observe(cv);
+    const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; }); io.observe(cv);
+    if (still) draw(0); else raf = requestAnimationFrame(loop);
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); io.disconnect(); };
+  }, []);
+  return <canvas ref={ref} className="lp-stars" />;
 }

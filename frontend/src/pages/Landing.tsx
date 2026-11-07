@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, Navigate } from "react-router-dom";
 import {
   Zap, Search, ArrowUpRight, ArrowRight, ChevronDown, Menu, X, Film, Languages, Scissors, ImageIcon,
-  Users, IndianRupee, Clapperboard, AudioLines, Wand2, PenLine, Brain, LineChart, Layers, Video, Globe, Workflow, Sparkles,
+  Users, IndianRupee, Clapperboard, AudioLines, Wand2, PenLine, Brain, LineChart, Layers, Video, Globe, Workflow, Sparkles, Check,
 } from "lucide-react";
 import { api } from "../api";
 import { useAuth, useBrand } from "../App";
@@ -10,7 +10,7 @@ import "@fontsource/space-grotesk/latin-500.css";
 import "@fontsource/space-grotesk/latin-600.css";
 import "@fontsource/space-grotesk/latin-700.css";
 import "../landing.css";
-import HeroScene, { useReveal, useTilt } from "./LandingHero";
+import HeroScene, { StarField, useReveal, useTilt } from "./LandingHero";
 
 /* Signed-out landing ("dashboard before login"). Signed-in visitors go straight to the app at /universes.
    Every number on this page comes from the server's tool registry (/public/studios): nothing here is a placeholder. */
@@ -155,7 +155,7 @@ export default function Landing() {
           <div className="lp-nav-right">
             <button type="button" className="lp-icon" aria-label="Search tools" onClick={() => { setSearching(true); document.getElementById("directory")?.scrollIntoView({ behavior: "smooth" }); }}><Search size={17} /></button>
             <Link to="/signin" className="lp-signin">Sign in</Link>
-            <Link to="/signup" className="lp-btn sm">Open studio <ArrowUpRight size={14} /></Link>
+            <Link to="/signup" className="lp-btn sm">Get started free <ArrowUpRight size={14} /></Link>
             <button type="button" className="lp-icon lp-burger" aria-label={menu ? "Close menu" : "Open menu"} aria-expanded={menu} onClick={() => setMenu((m) => !m)}>{menu ? <X size={18} /> : <Menu size={18} />}</button>
           </div>
         </div>
@@ -163,22 +163,28 @@ export default function Landing() {
 
       <main>
         <section className="lp-hero">
-          <div className="lp-hero-copy">
-          <p className="lp-eyebrow"><span className="lp-pulse" aria-hidden />For Indian creators · free to start</p>
-          <h1>Make one video.<br /><span>Reach every language.</span></h1>
-          <p className="lp-lead">Edit in your browser, caption automatically, dub into Hindi and turn long videos into Shorts. One workspace for the editor and {cat ? cat.live : "dozens of"} working AI tools.</p>
-          <div className="lp-hero-cta">
-            <Link to="/signup" className="lp-btn lg"><Zap size={17} /> Open your creative workspace</Link>
-            <a href="#status" className="lp-btn ghost lg">See what's live</a>
+          <div className="lp-sky" aria-hidden>
+            <StarField />
+            <i className="lp-beam b1" /><i className="lp-beam b2" /><i className="lp-beam b3" />
           </div>
-          <dl className="lp-stats">
-            <div><dt>AI tools live</dt><dd>{cat ? cat.live : "—"}</dd></div>
-            <div><dt>Workspaces</dt><dd>{cat ? cat.studios.length + 1 : "—"}</dd></div>
-            <div><dt>Title scripts</dt><dd>10</dd></div>
-            <div><dt>Pay with</dt><dd>UPI</dd></div>
-          </dl>
+          <div className="lp-hero-copy">
+            <a href="#status" className="lp-pill"><Sparkles size={13} />New: object removal in the editor<ArrowRight size={13} /></a>
+            <h1>Create like a<br /><span>studio with AI</span></h1>
+            <p className="lp-lead">Edit in your browser, caption automatically, dub into Hindi and turn long videos into Shorts. One workspace for the editor and {cat ? cat.live : "dozens of"} working AI tools.</p>
+            <div className="lp-hero-cta">
+              <Link to="/signup" className="lp-btn lg glow"><Zap size={17} /> Start for free</Link>
+              <a href="#status" className="lp-btn ghost lg">See what's live</a>
+            </div>
+            <p className="lp-trust"><span><Check size={13} />Free plan</span><span><Check size={13} />No card needed</span><span><Check size={13} />Pay by UPI when you upgrade</span></p>
+            <dl className="lp-stats">
+              <div><dd>{cat ? cat.live : "—"}</dd><dt>AI tools live</dt></div>
+              <div><dd>{cat ? cat.studios.length + 1 : "—"}</dd><dt>Workspaces</dt></div>
+              <div><dd>10</dd><dt>Title scripts</dt></div>
+              <div><dd>₹0</dd><dt>To start</dt></div>
+            </dl>
           </div>
           <HeroScene />
+          <p className="lp-status-pill"><i className={cat ? "on" : failed ? "off" : ""} />{cat ? `Servers online · ${cat.live} AI tools live right now` : failed ? "Status unavailable" : "Checking status…"}</p>
         </section>
 
         <section className="lp-section lp-reveal" id="workspaces" aria-labelledby="ws-h">

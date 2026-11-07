@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Circle, Square, RotateCcw, Upload, X, Video, Mic } from "lucide-react";
 
 /** Record from the camera/microphone in the browser. Only starts after the user clicks and the browser grants permission. */
@@ -11,6 +11,10 @@ export default function RecordModal({ onClose, onDone }: { onClose: () => void; 
   const [secs, setSecs] = useState(0);
   const [level, setLevel] = useState(0);
   const [err, setErr] = useState<string | null>(null);
+  // One preview URL per take. (Creating it during render made a new URL ~60×/s — the level meter re-renders every
+  // frame — which leaked memory and reloaded the preview, so the buttons below kept jumping.)
+  const preview = useMemo(() => (blob ? URL.createObjectURL(blob) : null), [blob]);
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
   useEffect(() => {
     let st: MediaStream | null = null, raf = 0, ctx: AudioContext | null = null;
@@ -53,7 +57,7 @@ export default function RecordModal({ onClose, onDone }: { onClose: () => void; 
         {err ? <div className="error-box" style={{ marginTop: 12 }}>{err}</div> : <>
           {mode === "video" && <video ref={live} muted playsInline className="rec-live" />}
           {blob && <div className="dim" style={{ fontSize: 12, marginTop: 8 }}>Take ready: {secs}s · preview it below, retake, or add it to the project.</div>}
-          {blob && (mode === "video" ? <video src={URL.createObjectURL(blob)} controls className="rec-live" /> : <audio src={URL.createObjectURL(blob)} controls style={{ width: "100%", marginTop: 8 }} />)}
+          {preview && (mode === "video" ? <video src={preview} controls className="rec-live" /> : <audio src={preview} controls style={{ width: "100%", marginTop: 8 }} />)}
           <div className="row" style={{ marginTop: 10 }}>
             <span className={`rec-dot ${rec ? "on" : ""}`} aria-hidden />{rec ? <b className="mono">REC {String(Math.floor(secs / 60)).padStart(2, "0")}:{String(secs % 60).padStart(2, "0")}</b> : <span className="dim" style={{ fontSize: 12 }}>Input level</span>}
             <div className="progress grow"><i style={{ width: `${Math.round(level * 100)}%`, background: level > 0.95 ? "var(--red)" : undefined }} /></div>

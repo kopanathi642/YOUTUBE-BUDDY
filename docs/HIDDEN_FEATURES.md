@@ -24,6 +24,7 @@ These were shown as "Soon", greyed out, or promised in text. They are gone from 
 | "Blur, glow, sharpen and keying are planned" | Editor → Effects tab | FFmpeg filters wired into preview **and** export (preview == export rule) |
 | YouTube, Automation (greyed top-bar tabs) | Editor top bar | YouTube publishing lives in the export queue once OAuth is set; Automation = Super Universe |
 | "Stabilize footage", "Add captions", "Auto transitions", "Suggest music", "Create shorts & clips" in the AI Magic checklist | Editor → AI Creative Assistant | One-click Magic doesn't do these (they are separate tools). The list now matches `buildPlan` in `smart.ts` |
+| Disabled notification bells ("none yet") | Editor dashboard top bar, editor top bar | Real notifications live in the shared top bar (job updates); bring a bell back here once it shows something |
 | Engines that aren't ready (e.g. lip sync) in status lists | Top-bar Models menu, Gateway "Model availability" | Shown again automatically when ready; the count of hidden ones is shown |
 | Studios with no live tool (Video Generation, Image Generation, Creative Writing without keys) | Public landing page | Appear automatically when their key is set |
 | "Buddy Credits … needs a Razorpay merchant account" | Top-bar Usage menu | Outdated: UPI/PayPal billing works; replaced with a link to Settings → Plans |
