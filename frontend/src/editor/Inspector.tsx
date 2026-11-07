@@ -32,7 +32,6 @@ function Field({ label, value, min, max, step, unit, onChange, disabled, onReset
   );
 }
 
-const SOON_ROWS = ["Motion Tracking", "Mask & Roto"];
 const SPEEDS = [0.25, 0.5, 1, 1.5, 2, 4];
 const TITLE_STYLES: [string, Partial<Title>][] = [
   ["Purple box", { color: "#ffffff", bg_color: "#7c3aed", bg_opacity: 0.9 }], ["Clean white", { color: "#ffffff", bg_color: null }],
@@ -131,7 +130,6 @@ export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab,
             <div className="dim" style={{ fontSize: 11.5, marginBottom: 6 }}>Creates a smoothed copy of this clip's video on the cloud worker (original kept). Then swap it in.</div>
             <button className="btn sm" disabled={ro} onClick={() => onStabilize(asset.id)}>Stabilize this video</button>
           </details>}
-          {SOON_ROWS.map((r) => <div key={r} className="soon-row"><ChevronRight size={13} />{r}<span className="badge soon">Soon</span></div>)}
         </>}
         {tab === "effects" && <div className="insp-sec">
           {visual ? <><div className="label">Looks (colour presets)</div>
@@ -140,7 +138,6 @@ export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab,
             {asset?.analysis?.auto_grade && <button className="btn sm" style={{ marginTop: 8 }} disabled={ro} onClick={() => set({ color: sanitizeGrade(asset.analysis.auto_grade) }, "auto")}>Auto colour (measured)</button>}</>
             : <div className="dim" style={{ fontSize: 12 }}>Looks apply to video and image clips.</div>}
           {audio && <label className="check" style={{ marginTop: 10 }}><input type="checkbox" checked={!!clip.denoise} disabled={ro} onChange={(e) => set({ denoise: e.target.checked }, "dn")} />Audio noise reduction</label>}
-          <div className="dim" style={{ fontSize: 11, marginTop: 10 }}>Blur, glow, sharpen and keying are planned.</div>
         </div>}
         {tab === "transition" && <div className="insp-sec">
           <Field label="Fade in" value={+(clip.fade_in / fps).toFixed(2)} min={0} max={+(len(clip) / fps).toFixed(2)} step={1 / fps} unit="s" disabled={ro}

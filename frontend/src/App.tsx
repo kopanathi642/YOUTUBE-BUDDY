@@ -1,20 +1,44 @@
 import Legal from "./pages/Legal";
-import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, lazy, ReactNode, Suspense, useCallback, useContext, useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { api, ApiError, Me, Workspace } from "./api";
 import Landing from "./pages/Landing";
 import AuthPage from "./pages/Auth";
-import Dashboard from "./pages/Dashboard";
-import Projects from "./pages/Projects";
-import Editor from "./editor/Editor";
-import Shell from "./components/Shell";
-import Gateway from "./pages/Gateway";
-import { AiHub, AiStudio, AiExplorer } from "./pages/AiHub";
-import AiTool from "./pages/AiTool";
-import Super, { SuperLocked } from "./pages/Super";
 import { universeById } from "./universes";
-import Library from "./pages/Library";
-import Settings from "./pages/Settings";
+
+// Signed-in pages load on demand, so the public pages (landing, sign-in, legal) stay small and fast for visitors and Google.
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Projects = lazy(() => import("./pages/Projects"));
+const Editor = lazy(() => import("./editor/Editor"));
+const Shell = lazy(() => import("./components/Shell"));
+const Gateway = lazy(() => import("./pages/Gateway"));
+const AiHub = lazy(() => import("./pages/AiHub").then((m) => ({ default: m.AiHub })));
+const AiStudio = lazy(() => import("./pages/AiHub").then((m) => ({ default: m.AiStudio })));
+const AiExplorer = lazy(() => import("./pages/AiHub").then((m) => ({ default: m.AiExplorer })));
+const AiTool = lazy(() => import("./pages/AiTool"));
+const Super = lazy(() => import("./pages/Super"));
+const SuperLocked = lazy(() => import("./pages/Super").then((m) => ({ default: m.SuperLocked })));
+const Library = lazy(() => import("./pages/Library"));
+const Settings = lazy(() => import("./pages/Settings"));
+
+const Loading = () => <div className="auth-wrap"><div className="spinner" aria-label="Loading" /></div>;
+
+/** Tab title per page (the server sets the same title, description and robots rules in the HTML for crawlers). */
+const TITLES: [RegExp, string][] = [
+  [/^\/$/, "Video editor & AI studio for creators"], [/^\/signin/, "Sign in"], [/^\/signup/, "Create your free account"],
+  [/^\/privacy/, "Privacy"], [/^\/terms/, "Terms"], [/^\/universes/, "Universes"], [/^\/editor\/projects/, "Projects"],
+  [/^\/editor/, "Editor"], [/^\/edit\//, "Editing"], [/^\/ai-generator/, "AI Generator"], [/^\/super/, "Super Universe"],
+  [/^\/library/, "Library"], [/^\/settings/, "Settings"],
+];
+function RouteTitle() {
+  const { pathname } = useLocation();
+  const brand = useBrand();
+  useEffect(() => {
+    const t = TITLES.find(([re]) => re.test(pathname))?.[1] ?? "Page not found";
+    document.title = pathname === "/" ? `${brand} — ${t}` : `${t} · ${brand}`;
+  }, [pathname, brand]);
+  return null;
+}
 
 const BrandCtx = createContext("Creator Universe");
 export const useBrand = () => useContext(BrandCtx);
@@ -66,7 +90,7 @@ function Providers({ children }: { children: ReactNode }) {
 function Private({ children, bare }: { children: ReactNode; bare?: boolean }) {
   const { me, loading } = useAuth();
   const loc = useLocation();
-  if (loading) return <div className="auth-wrap"><div className="spinner" aria-label="Loading" /></div>;
+  if (loading) return <Loading />;
   if (!me) return <Navigate to={`/signin?next=${encodeURIComponent(loc.pathname)}`} replace />;
   return bare ? <>{children}</> : <Shell>{children}</Shell>;
 }
@@ -85,6 +109,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <Providers>
+        <RouteTitle />
+        <Suspense fallback={<Loading />}>
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/signin" element={<AuthPage mode="signin" />} />
@@ -107,6 +133,7 @@ export default function App() {
           <Route path="/edit/:projectId" element={<Private bare><Editor /></Private>} />
           <Route path="*" element={<div className="auth-wrap"><div className="card auth-card"><h2>Page not found</h2><a className="btn" href="/universes">Go to universes</a></div></div>} />
         </Routes>
+        </Suspense>
       </Providers>
     </BrowserRouter>
   );

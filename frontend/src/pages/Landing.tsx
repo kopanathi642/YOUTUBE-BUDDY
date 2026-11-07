@@ -10,6 +10,7 @@ import "@fontsource/space-grotesk/latin-500.css";
 import "@fontsource/space-grotesk/latin-600.css";
 import "@fontsource/space-grotesk/latin-700.css";
 import "../landing.css";
+import HeroScene, { useReveal, useTilt } from "./LandingHero";
 
 /* Signed-out landing ("dashboard before login"). Signed-in visitors go straight to the app at /universes.
    Every number on this page comes from the server's tool registry (/public/studios): nothing here is a placeholder. */
@@ -47,7 +48,8 @@ const SHOWCASE = [
 function useCatalogue() {
   const [cat, setCat] = useState<Catalogue | null>(null);
   const [failed, setFailed] = useState(false);
-  useEffect(() => { api<Catalogue>("/public/studios").then(setCat).catch(() => setFailed(true)); }, []);
+  // Show only what works: studios with no live tool yet are left out (they appear once their service is connected).
+  useEffect(() => { api<Catalogue>("/public/studios").then((c) => setCat({ ...c, studios: c.studios.filter((s) => s.live > 0) })).catch(() => setFailed(true)); }, []);
   return { cat, failed };
 }
 
@@ -89,9 +91,7 @@ function Dropdown({ label, children, wide }: { label: string; children: ReactNod
 }
 
 function liveLabel(s: Studio) {
-  if (s.live === 0) return "Needs setup";
-  if (s.live === s.total) return `All ${s.total} tools live`;
-  return `${s.live} of ${s.total} tools live`;
+  return `${s.live} tool${s.live === 1 ? "" : "s"} live`;
 }
 
 export default function Landing() {
@@ -102,6 +102,10 @@ export default function Landing() {
   const [searching, setSearching] = useState(false);
   const [menu, setMenu] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const page = useRef<HTMLDivElement>(null);
+  const ready = !loading && !me;
+  useTilt(page, ".lp-card", ready);
+  useReveal(page, ready);
 
   useEffect(() => { if (searching) searchRef.current?.focus(); }, [searching]);
 
@@ -117,10 +121,12 @@ export default function Landing() {
   if (me) return <Navigate to="/universes" replace />;
 
   const year = new Date().getFullYear();
+  // Footer links only to studios that work today, in a fixed order.
+  const liveStudios = (ids: string[]) => ids.map((id) => cat?.studios.find((s) => s.id === id)).filter((s): s is Studio => !!s).slice(0, 3);
   const workspaces = (cat?.studios.length ?? 12) + 1;
 
   return (
-    <div className="lp" id="top">
+    <div className="lp" id="top" ref={page}>
       <header className="lp-nav">
         <div className="lp-nav-in">
           <LpBrand />
@@ -157,22 +163,25 @@ export default function Landing() {
 
       <main>
         <section className="lp-hero">
-          <p className="lp-eyebrow">For Indian creators · free to start</p>
+          <div className="lp-hero-copy">
+          <p className="lp-eyebrow"><span className="lp-pulse" aria-hidden />For Indian creators · free to start</p>
           <h1>Make one video.<br /><span>Reach every language.</span></h1>
-          <p className="lp-lead">Edit in your browser, caption automatically, dub into Hindi and turn long videos into Shorts. One workspace for the editor and {cat ? cat.total : 120} AI tools.</p>
+          <p className="lp-lead">Edit in your browser, caption automatically, dub into Hindi and turn long videos into Shorts. One workspace for the editor and {cat ? cat.live : "dozens of"} working AI tools.</p>
           <div className="lp-hero-cta">
             <Link to="/signup" className="lp-btn lg"><Zap size={17} /> Open your creative workspace</Link>
             <a href="#status" className="lp-btn ghost lg">See what's live</a>
           </div>
           <dl className="lp-stats">
-            <div><dt>AI tools</dt><dd>{cat ? cat.total : "—"}</dd></div>
-            <div><dt>Live today</dt><dd>{cat ? cat.live : "—"}</dd></div>
+            <div><dt>AI tools live</dt><dd>{cat ? cat.live : "—"}</dd></div>
+            <div><dt>Workspaces</dt><dd>{cat ? cat.studios.length + 1 : "—"}</dd></div>
             <div><dt>Title scripts</dt><dd>10</dd></div>
             <div><dt>Pay with</dt><dd>UPI</dd></div>
           </dl>
+          </div>
+          <HeroScene />
         </section>
 
-        <section className="lp-section" id="workspaces" aria-labelledby="ws-h">
+        <section className="lp-section lp-reveal" id="workspaces" aria-labelledby="ws-h">
           <div className="lp-head">
             <div><p className="lp-eyebrow">Start where you are</p><h2 id="ws-h">Everything a channel needs, in one place.</h2></div>
           </div>
@@ -186,10 +195,10 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="lp-section" id="directory" aria-labelledby="dir-h">
+        <section className="lp-section lp-reveal" id="directory" aria-labelledby="dir-h">
           <div className="lp-head">
             <div><p className="lp-eyebrow">The complete creative directory</p><h2 id="dir-h">All {workspaces} workspaces. All in reach.</h2></div>
-            <p className="lp-note">Availability is shown per workspace and updates when a service is connected. A listed workspace is not a claim that every tool in it is live.</p>
+            <p className="lp-note">Every workspace listed here works today. More appear automatically as new services are connected.</p>
           </div>
           {searching && (
             <div className="lp-search">
@@ -219,22 +228,23 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="lp-section" id="status" aria-labelledby="st-h">
+        <section className="lp-section lp-reveal" id="status" aria-labelledby="st-h">
           <div className="lp-status">
             <h2 id="st-h">What's live, honestly</h2>
-            <p><b>Live:</b> accounts (email and Google), workspaces and teams, cloud uploads, the multitrack editor with titles, speed, crop, colour grading, curves, LUTs, keyframes and transitions, autosave with history, cloud MP4 export, AI voice, captions, translation, dubbing, background removal, stabilisation, highlights and Shorts{cat ? `, and ${cat.live} of ${cat.total} AI tools` : ""}.</p>
-            <p><b>Not yet:</b> lip sync, object removal, motion tracking and hosted video/image generation until those services are connected. We mark a tool live only when it really works.</p>
+            <p><b>Live:</b> accounts (email and Google), workspaces and teams, cloud uploads, the multitrack editor with titles, speed, crop, colour grading, curves, LUTs, keyframes and transitions, autosave with history, cloud MP4 export, AI voice, captions, translation, dubbing, background removal, stabilisation, object removal for marked areas (logos, watermarks, text), highlights and Shorts{cat ? `, and ${cat.live} AI tools` : ""}.</p>
+            <p><b>Not yet:</b> lip sync, removing moving objects, motion tracking and hosted video/image generation until those services are connected. We mark a tool live only when it really works.</p>
           </div>
         </section>
 
-        <section className="lp-section">
+        <section className="lp-section lp-reveal">
           <div className="lp-band">
             <div><h2>Your idea. Your next step.</h2><p>Start with a simple workspace. Open more controls as your project grows.</p></div>
             <Link to="/signup" className="lp-btn">Get started <ArrowRight size={15} /></Link>
           </div>
         </section>
 
-        <section className="lp-final">
+        <section className="lp-final lp-reveal">
+          <div className="lp-sparks" aria-hidden>{Array.from({ length: 14 }, (_, i) => <i key={i} style={{ left: `${(i * 37) % 100}%`, animationDelay: `${(i * 0.7) % 6}s`, animationDuration: `${7 + (i % 5)}s` }} />)}</div>
           <p className="lp-eyebrow">Start today</p>
           <h2>Build your creator empire<br /><span>with AI.</span></h2>
           <p>Start with the free tools that run on our servers. Add premium AI when you're ready.</p>
@@ -250,14 +260,10 @@ export default function Landing() {
           </div>
           <div><h4>Create</h4>
             <Link to={go("/editor")}>Video editor</Link>
-            <Link to={go(studioRoute("image"))}>Image studio</Link>
-            <Link to={go(studioRoute("video"))}>Video studio</Link>
-            <Link to={go(studioRoute("audio"))}>Audio &amp; music</Link>
+            {liveStudios(["audio", "animation", "imageedit", "transform"]).map((s) => <Link key={s.id} to={go(studioRoute(s.id))}>{s.name.replace(/^AI /, "")}</Link>)}
           </div>
           <div><h4>Grow</h4>
-            <Link to={go(studioRoute("localize"))}>Captions &amp; dubbing</Link>
-            <Link to={go(studioRoute("creator"))}>Creator intelligence</Link>
-            <Link to={go(studioRoute("writing"))}>Scripts &amp; hooks</Link>
+            {liveStudios(["localize", "creator", "videointel", "content"]).map((s) => <Link key={s.id} to={go(studioRoute(s.id))}>{s.name.replace(/^AI /, "")}</Link>)}
           </div>
           <div><h4>Workspace</h4>
             <a href="#directory">All {workspaces} workspaces</a>
@@ -273,7 +279,7 @@ export default function Landing() {
         <div className="lp-foot-bar">
           <span>© {year} {brand}. All rights reserved.</span>
           <span className="lp-live"><i className={cat ? "on" : failed ? "off" : ""} />
-            {cat ? `Servers online · ${cat.live} of ${cat.total} AI tools live` : failed ? "Status unavailable" : "Checking status…"}</span>
+            {cat ? `Servers online · ${cat.live} AI tools live` : failed ? "Status unavailable" : "Checking status…"}</span>
         </div>
       </footer>
     </div>

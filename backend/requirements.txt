@@ -21,7 +21,7 @@ idna==3.20
 numpy==2.5.3
 onnxruntime==1.29.0
 opencv-python-headless==4.10.0.84
-pillow==12.3.0
+pillow==13.0.0
 psycopg-binary==3.3.8
 psycopg==3.3.8
 pycparser==3.0
@@ -29,7 +29,7 @@ pydantic-settings==2.16.2
 pydantic==2.13.5
 python-dotenv==1.2.3
 python-multipart==0.0.32
-rembg==2.0.67
+rembg==2.0.87
 sentencepiece==0.2.3
 starlette==1.7.0
 uvicorn==0.54.0

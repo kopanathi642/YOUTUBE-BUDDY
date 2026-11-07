@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import {
   Home, FolderOpen, Film, Sparkles, Smartphone, Clapperboard, Languages, Palette, AudioLines, Workflow, Type, Image,
-  Download, LogOut, ChevronDown, Bell, Wand2, Orbit, Atom, Scissors, ArrowLeft, Library as LibraryIcon, Lock } from "lucide-react";
+  Download, LogOut, ChevronDown, Wand2, Orbit, Atom, Scissors, ArrowLeft, Library as LibraryIcon, Lock } from "lucide-react";
 import { api } from "../api";
 import { useAuth, useBrand } from "../App";
 import { FeedbackModal } from "./GrowthCards";
@@ -86,7 +86,6 @@ export default function Shell({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div className="grow" />
-        <button className="btn icon ghost" title="Notifications (none yet)" aria-label="Notifications" disabled><Bell size={17} /></button>
         <UserMenu />
       </header>
       <aside className="sidebar" aria-label="Sidebar">

@@ -40,6 +40,8 @@ def create_app() -> FastAPI:
         response.headers["x-frame-options"] = "DENY"
         response.headers["permissions-policy"] = "camera=(self), microphone=(self), geolocation=(), payment=(), usb=()"
         response.headers["cross-origin-opener-policy"] = "same-origin-allow-popups"  # Google sign-in uses a popup
+        if request.url.path.startswith("/api/"):
+            response.headers["x-robots-tag"] = "noindex"
         if not request.url.path.startswith("/api/v1/docs"):
             response.headers["content-security-policy"] = csp
         if hsts:
@@ -116,7 +118,26 @@ def _mount_frontend(app: FastAPI) -> None:
     index = os.path.join(dist, "index.html")
     if not os.path.exists(index):
         return
+    from fastapi.responses import HTMLResponse, PlainTextResponse, Response
+    from . import seo
     app.mount("/assets", StaticFiles(directory=os.path.join(dist, "assets")), name="assets")
+    s = get_settings()
+    cached = {"mtime": None, "html": ""}
+
+    def template() -> str:
+        """index.html, re-read when a new build replaces it (asset file names change on every build)."""
+        m = os.path.getmtime(index)
+        if m != cached["mtime"]:
+            cached["html"], cached["mtime"] = open(index, encoding="utf-8").read(), m
+        return cached["html"]
+
+    @app.get("/robots.txt", include_in_schema=False)
+    def robots():
+        return PlainTextResponse(seo.robots_txt(s.public_base_url))
+
+    @app.get("/sitemap.xml", include_in_schema=False)
+    def sitemap():
+        return Response(seo.sitemap_xml(s.public_base_url), media_type="application/xml")
 
     @app.get("/{path:path}", include_in_schema=False)
     def spa(path: str):
@@ -125,7 +146,10 @@ def _mount_frontend(app: FastAPI) -> None:
         f = os.path.realpath(os.path.join(dist, path))
         if path and f.startswith(os.path.realpath(dist) + os.sep) and os.path.isfile(f):
             return FileResponse(f)
-        return FileResponse(index, headers={"cache-control": "no-cache"})
+        route = "/" + path
+        page = seo.render_index(template(), route, s.brand_name, s.public_base_url)
+        # Unknown paths still get the app (it shows "Page not found") but with a real 404 status for crawlers.
+        return HTMLResponse(page, status_code=200 if seo.known(route) else 404, headers={"cache-control": "no-cache"})
 
 
 app = create_app()

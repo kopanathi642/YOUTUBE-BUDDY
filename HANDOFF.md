@@ -1,6 +1,6 @@
 # HANDOFF — YouTube Buddy X (working name)
 
-Last updated: 2026-11-07 (object removal, basic). Read this first when you pick the project up in Claude Code.
+Last updated: 2026-11-07 (object removal; cleanup, security, SEO, 3D landing). Read this first when you pick the project up in Claude Code.
 
 ## 1. Location
 - **GitHub:** https://github.com/kopanathi642/YOUTUBE-BUDDY, branch **`main`** (the repo is still **public**; the founder should make it private).
@@ -40,11 +40,12 @@ Last updated: 2026-11-07 (object removal, basic). Read this first when you pick 
 The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts` and the browser audits.
 
 **Latest results** (re-run 2026-11-07 in a fresh cloud container):
-- Backend: 109 passed, 4 skipped (the skipped ones are real-model tests, run with `REAL_MODELS=1`).
+- Backend: 113 passed, 4 skipped (the skipped ones are real-model tests, run with `REAL_MODELS=1`).
 - Frontend: 38 vitest passed, tsc clean, build OK.
-- `e2e/audit.mjs`: 63/63, including the new Remove Object step. Start the server with `ADMIN_EMAILS=founder@example.com` or the payments step fails. The "Translate & Voice / Lip Sync panels" step failed once on a tab click and passed on the re-run; treat it as flaky if it recurs.
+- `e2e/audit.mjs`: 63/63 on the final code (also with the backend suite running in parallel), including the Remove Object step. Start the server with `ADMIN_EMAILS=founder@example.com` or the payments step fails. The "Translate & Voice / Lip Sync panels" step is **intermittent**: it failed in 2 of 5 runs (30 s click timeout; the screenshot suggests the "Female" voice click never landed) and passed in the others, including under load. Not yet root-caused. The audit now writes the full Playwright call log to `OUT/fail-N.txt` next to each failure screenshot, so check that file the next time it happens.
 - Captions and dubbing ran as NOTE (not FAIL) in the audit: the build sandbox can't reach huggingface.co to download Whisper. CI's real-models job covers them.
 - AI tool audit: 120/120 UIs render, 40 executed, 0 failed (not re-run this session).
+- Design sweep (12 pages × 4 widths): no horizontal scroll, no page errors. Security scans: 0 known vulnerabilities.
 - Don't run two pytest sessions at once: they share the `creator_test` database and fail each other.
 - CI real-models job: green. It runs Whisper, Argos (Hindi), Piper (Hindi) and a full dub.
 
@@ -114,6 +115,22 @@ The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts`
 - Rate limits: auth, AI, uploads, stock, payments, feedback.
 - Daily paid-AI budget (`AI_DAILY_BUDGET_USD`, `AI_DAILY_PAID_RUNS`).
 - `safeNext` redirect guard.
+- Dependencies scanned 2026-11-07: `pip-audit` and `npm audit --omit=dev` both report **0 known vulnerabilities**. Upgrades: Pillow 12.3 → 13.0 (21 CVEs), rembg 2.0.67 → 2.0.87, react-router-dom 6 → 7.18.5 (open-redirect fix), `@grpc/grpc-js` pinned to ≥ 1.14.7 via `overrides` (only pulled in by Firestore, never shipped to browsers). Re-run both scans before each release.
+- Login gives the same message for unknown email and wrong password; API responses carry `X-Robots-Tag: noindex`.
+- `render.yaml` holds the Firebase **web** API key. That key is public by design, but restrict it to your domain in Google Cloud → APIs & Services → Credentials (HTTP referrer restriction).
+
+**Google-friendly (SEO) and speed** (`backend/app/seo.py`, `tests/test_seo.py`):
+- The server writes title, description, canonical URL, Open Graph / Twitter preview tags and robots rules into the HTML of every page; the home page also gets `SoftwareApplication` structured data and plain crawlable text before the app starts. Brand from `BRAND_NAME`, absolute URLs from `PUBLIC_BASE_URL` (**set it to the real domain in production**).
+- Public pages (`/`, `/signup`, `/signin`, `/privacy`, `/terms`) are indexable; signed-in pages are `noindex`; unknown paths return a real **404**.
+- `/robots.txt` and `/sitemap.xml` are generated; `frontend/public/og.png` is the 1200×630 link-preview image (no brand name on it, so it survives the rename).
+- Signed-in pages are lazy-loaded: the JavaScript a visitor downloads for the landing page dropped from 703 KB to 246 KB (80 KB gzipped).
+- The server re-reads `index.html` when a new build replaces it, so a rebuild without a restart no longer serves stale asset names.
+
+**Landing page 3D / motion** (`frontend/src/pages/LandingHero.tsx`, `landing.css`): pure CSS 3D (no WebGL library). A studio scene (editor window with moving playhead, floating Captions / 9:16 Short / Dub ready / colour-wheel cards) tilts toward the pointer; cards tilt with a spotlight on hover; sections rise into view on scroll; animated border on the call-to-action band; rising sparks behind the final section. All motion stops under `prefers-reduced-motion`, and content is only hidden for the reveal once JavaScript runs (crawlers see everything). Every element shows a real feature.
+
+**Design checks (2026-11-07):** every main page at 390 / 768 / 1366 / 1920 px has no horizontal scroll and no page errors (signed-in pages included). Dim text colours were raised to pass WCAG AA (≥ 4.5:1): landing `--lp-text-3` → `#878c83`, app `--text-3` → `#8a8fc4`. Phone fixes: the editor dashboard's top bar and tiles, and the shared top bar (search moves to its own row).
+
+**Removed from the screens until built** (listed in `docs/HIDDEN_FEATURES.md`): Motion Tracking / Mask & Roto "Soon" rows, the "blur, glow, sharpen, keying are planned" note, greyed YouTube / Automation editor tabs, the disabled notifications bell on the editor dashboard, AI Magic checklist items Magic doesn't do, non-ready engines in status lists, studios with no live tool on the landing page, and the outdated Razorpay note.
 
 ## 4. Incomplete / unverified / known issues
 - **Hidden until keys are set** (`docs/HIDDEN_FEATURES.md`):
@@ -135,6 +152,7 @@ The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts`
   - Multi-layer preview sync is best-effort.
   - Rate limits are in-process; move them to Redis when running more than one API instance.
   - No font picker or bold/italic/outline for titles yet; the founder asked about "word formats".
+  - AI models are not trained in-house: the free features use ready-made open models (Whisper, Argos, Piper, U²-Net); better models are swapped in (see §5), training needs GPUs and data the project doesn't have.
   - Basic object removal fills fixed boxes only: it does not track moving objects, and large areas or busy textures come out smooth/blurred (≤ 25 % of the frame per box). An object cut off by the frame edge can leave a faint streak.
 - **Licensing for the next steps:**
   - Lip sync: use MuseTalk (MIT) or LatentSync (Apache-2.0), not Wav2Lip weights (non-commercial).

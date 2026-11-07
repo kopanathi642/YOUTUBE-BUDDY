@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Bell, Gauge, Cpu, Settings, LayoutGrid, FolderOpen, CheckCircle2, XCircle, Lock } from "lucide-react";
+import { Search, Bell, Gauge, Cpu, Settings, LayoutGrid, FolderOpen, CheckCircle2, XCircle } from "lucide-react";
 import { api, fmtBytes, Job, Project, timeAgo } from "../api";
 import { useAuth } from "../App";
 import { Brand, UserMenu } from "./Shell";
@@ -90,11 +90,12 @@ export default function GlobalBar({ sub, right }: { sub?: string; right?: ReactN
         <div className="gb-kv"><span>Media files</span><b>{sum?.media_count ?? "—"}</b></div>
         <div className="gb-kv"><span>Jobs running</span><b>{sum?.active_jobs ?? "—"}</b></div>
         <div className="gb-kv"><span>Max upload</span><b>{sum ? fmtBytes(sum.limits.max_upload_bytes) : "—"}</b></div>
-        <div className="dim" style={{ fontSize: 11, marginTop: 6 }}>Buddy Credits and paid plans start once billing is connected (needs a Razorpay merchant account).</div>
+        <Link to="/settings#billing" className="dim" style={{ fontSize: 11, marginTop: 6, display: "block" }}>Plans and UPI / PayPal payment: Settings → Plans</Link>
       </Pop>
       <Pop icon={<Cpu size={17} />} label="Models" badge={0} wide>
         <div className="row"><b className="grow">Model &amp; engine status</b><span className="badge ok">{ready}/{caps.length} ready</span></div>
-        <div className="gb-caps">{caps.map((c) => <div key={c.id} className="gb-cap" title={c.needs}>{c.ready ? <CheckCircle2 size={13} color="#4ade80" /> : <Lock size={12} className="dim" />}<span className="grow">{c.label}</span><span className="dim ellipsis" style={{ fontSize: 10.5, maxWidth: 170 }}>{c.needs}</span></div>)}</div>
+        <div className="gb-caps">{caps.filter((c) => c.ready).map((c) => <div key={c.id} className="gb-cap" title={c.needs}><CheckCircle2 size={13} color="#4ade80" /><span className="grow">{c.label}</span><span className="dim ellipsis" style={{ fontSize: 10.5, maxWidth: 170 }}>{c.needs}</span></div>)}</div>
+        {ready < caps.length && <div className="dim" style={{ fontSize: 11, marginTop: 6 }}>{caps.length - ready} more appear automatically once their service is connected.</div>}
       </Pop>
       <Link to="/settings" className="btn icon ghost" title="Settings" aria-label="Settings"><Settings size={17} /></Link>
       <UserMenu />

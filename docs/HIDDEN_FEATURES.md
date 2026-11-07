@@ -14,6 +14,22 @@ Two items are not built yet.
 
 Still visible but locked by choice: **Super Universe** (unlock in `frontend/src/universes.ts`).
 
+## Removed from the screens (not built yet), 2026-11-07 — add back when built
+These were shown as "Soon", greyed out, or promised in text. They are gone from the UI until they really work.
+
+| Was shown as | Where | What it needs |
+|---|---|---|
+| Motion Tracking ("Soon" row) | Editor → Inspector | Tracker (e.g. OpenCV CSRT or SAM 2) + keyframe output |
+| Mask & Roto ("Soon" row) | Editor → Inspector | Mask drawing + matte in `timeline.py` render |
+| "Blur, glow, sharpen and keying are planned" | Editor → Effects tab | FFmpeg filters wired into preview **and** export (preview == export rule) |
+| YouTube, Automation (greyed top-bar tabs) | Editor top bar | YouTube publishing lives in the export queue once OAuth is set; Automation = Super Universe |
+| "Stabilize footage", "Add captions", "Auto transitions", "Suggest music", "Create shorts & clips" in the AI Magic checklist | Editor → AI Creative Assistant | One-click Magic doesn't do these (they are separate tools). The list now matches `buildPlan` in `smart.ts` |
+| Engines that aren't ready (e.g. lip sync) in status lists | Top-bar Models menu, Gateway "Model availability" | Shown again automatically when ready; the count of hidden ones is shown |
+| Studios with no live tool (Video Generation, Image Generation, Creative Writing without keys) | Public landing page | Appear automatically when their key is set |
+| "Buddy Credits … needs a Razorpay merchant account" | Top-bar Usage menu | Outdated: UPI/PayPal billing works; replaced with a link to Settings → Plans |
+
+Can't be "trained" here: the AI features use ready-made open models (Whisper, Argos, Piper, U²-Net). Training new models needs GPUs and data the project doesn't have; better models are swapped in instead (see HANDOFF.md §5).
+
 ## AI Generator Universe — 71 of 120 tools hidden
 
 ### Needs FAL_KEY (fal.ai account — pay per generation) (44)

@@ -26,7 +26,7 @@ export default function NodesPanel({ tl, sel, asset, edit, readOnly }: { tl: Tim
   return (
     <section className="panel strip-panel" aria-label="Fusion nodes">
       <div className="strip-head"><Workflow size={15} /><b>Fusion Nodes (VFX)</b><span className="dim" style={{ fontSize: 11, marginLeft: 6 }}>this clip's real render chain</span></div>
-      {!visual ? <div className="strip-empty">Select a video clip to see its node chain. Free-form node compositing is planned.</div> : (
+      {!visual ? <div className="strip-empty">Select a video clip to see its node chain.</div> : (
         <div className="nodes">
           <svg className="edges" viewBox="0 0 440 120" preserveAspectRatio="none" aria-hidden>
             {edges.map(([a, b]) => { const A = pos[a], B = pos[b]; return <path key={a + b} d={`M${A.x + 96} ${A.y + 11} C ${A.x + 130} ${A.y + 11}, ${B.x - 30} ${B.y + 11}, ${B.x} ${B.y + 11}`} />; })}

@@ -192,7 +192,7 @@ export default function Gateway() {
           </div>
           <div className="card gw-card">
             <div className="gw-card-h"><Cpu size={14} />Model availability</div>
-            <div className="gw-models">{caps.map((c) => <span key={c.id} title={c.label} className={c.ready ? "ok" : "no"}>{c.ready ? <CheckCircle2 size={11} /> : <Lock size={10} />}{c.label.split(" (")[0]}</span>)}</div>
+            <div className="gw-models">{caps.filter((c) => c.ready).map((c) => <span key={c.id} title={c.label} className="ok"><CheckCircle2 size={11} />{c.label.split(" (")[0]}</span>)}</div>
           </div>
           <Link to="/library" className="card gw-card gw-lib"><b>Shared asset library</b><span className="dim" style={{ fontSize: 12 }}>All media across projects</span><ArrowRight size={16} /></Link>
         </section>

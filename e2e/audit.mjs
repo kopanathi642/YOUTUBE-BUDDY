@@ -23,7 +23,8 @@ async function step(name, fn) {
   const before = problems.length;
   try { await fn(); results.push([problems.length > before ? "WARN" : "PASS", name]); }
   catch (e) { await page.keyboard.press("Escape").catch(() => {}); await page.locator(".modal button[aria-label='Close']").click({ timeout: 1000 }).catch(() => {});
-    results.push(["FAIL", `${name} — ${String(e.message).split("\n")[0].slice(0, 200)}`]); await page.screenshot({ path: `${OUT}/fail-${results.length}.png` }).catch(() => {}); }
+    results.push(["FAIL", `${name} — ${String(e.message).split("\n")[0].slice(0, 200)}`]); await page.screenshot({ path: `${OUT}/fail-${results.length}.png` }).catch(() => {});
+    await import("node:fs").then((fs) => fs.writeFileSync(`${OUT}/fail-${results.length}.txt`, `${name}\n\n${e.stack ?? e.message}`)).catch(() => {}); }   // full Playwright call log
 }
 const toast = async () => (await page.locator(".toast").allTextContents()).join(" | ");
 const tl = async () => page.evaluate(() => [...document.querySelectorAll(".clip")].map((e) => e.getAttribute("aria-label")));
@@ -36,7 +37,9 @@ const saved = () => page.waitForFunction(() => document.querySelector(".save-blo
 await step("Landing page loads, nav anchors work, live studio counts", async () => {
   await page.goto(B + "/"); await page.waitForSelector("text=Reach every language.");
   for (const a of ["#workspaces", "#directory", "#status"]) await page.click(`.lp-links a[href="${a}"]`);
-  await page.waitForFunction(() => document.querySelectorAll(".lp-dir-row:not(.skel)").length === 13);
+  // Editor + every studio with at least one live tool (studios with none are hidden until their service is connected)
+  const live = (await (await page.request.get(B + "/api/v1/public/studios")).json()).studios.filter((s) => s.live > 0).length;
+  await page.waitForFunction((n) => document.querySelectorAll(".lp-dir-row:not(.skel)").length === n, live + 1);
   await page.click("button[aria-label='Search tools']"); await page.fill("input[aria-label='Search workspaces']", "dub");
   await page.waitForFunction(() => document.querySelectorAll(".lp-dir-row").length === 1);
 });

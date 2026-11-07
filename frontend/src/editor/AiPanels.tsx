@@ -32,10 +32,10 @@ export function PlanDialog({ ops, onApply, onClose }: { ops: PlanOp[]; onApply: 
   );
 }
 
+// Exactly what "Apply AI Magic" does (buildPlan in smart.ts) — keep the two in step.
 const WHAT = [
-  ["Best cuts & edits", "silence_remove"], ["Color grade (auto)", "auto_color"], ["Audio enhance", "loudness"], ["Remove noise", "loudness"],
-  ["Stabilize footage", "stabilize"], ["Add captions", "transcribe"], ["Improve lighting", "auto_color"], ["Auto transitions", "silence_remove"],
-  ["Suggest music", "music"], ["Create shorts & clips", "smart_reframe"],
+  ["Cut silences", "silence_remove"], ["Auto colour", "auto_color"], ["Fix exposure", "auto_color"], ["Balance levels", "loudness"],
+  ["Remove noise", "loudness"], ["Fade in & out", "silence_remove"],
 ] as const;
 
 export function AssistantPanel({ caps, autoAdjust, setAutoAdjust, onMagic, readOnly, pending }: {
@@ -56,7 +56,8 @@ export function AssistantPanel({ caps, autoAdjust, setAutoAdjust, onMagic, readO
           {WHAT.map(([label, cap]) => {
             const c = caps.get(cap);
             const ok = !!c?.ready;
-            return <span key={label} className={ok ? "ok" : "no"} title={ok ? c!.needs : c ? `Needs: ${c.needs}` : "Planned"}>{ok ? <Check size={12} /> : <Lock size={11} />}{label}</span>;
+            if (!ok) return null;   // only list what works right now
+            return <span key={label} className="ok" title={c!.needs}><Check size={12} />{label}</span>;
           })}
         </div>
       </div>
