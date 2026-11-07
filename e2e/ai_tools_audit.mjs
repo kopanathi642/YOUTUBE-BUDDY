@@ -71,13 +71,23 @@ function paramsFor(t) {
 }
 
 const rows = [];
+const OUT_SHOTS = fs.existsSync(`${OUT}/ui/audit`);   // screenshots only when the folder exists (docs/ui/audit in the repo)
 const NETWORK_BLOCK = /huggingface|ProxyError|Could not load the Whisper|Argos|download/i;
 for (const t of cat.tools) {
   const row = { id: t.id, name: t.name, studio: t.studio, engine: t.engine, state: t.status.state, needs: t.status.needs, models: t.models.map((m) => m.id), timeline: t.timeline, checks: {} };
   for (const width of [1600, 1366]) {
     await p.setViewportSize({ width, height: width === 1600 ? 1000 : 768 });
     pageErrs = [];
-    await p.goto(`${B}/ai-generator/tool/${t.id}`); await p.waitForSelector(".L", { timeout: 20000 }); await p.waitForTimeout(500);
+    await p.goto(`${B}/ai-generator/tool/${t.id}`);
+    if (t.status.state !== "ready") {
+      // "Show only what works": a tool waiting for a key (or not built) is hidden — the page must say so and offer nothing to run.
+      await p.waitForSelector(".empty:has-text(\"isn't available yet\")", { timeout: 20000 }); await p.waitForTimeout(300);
+      const h = await p.evaluate(() => ({ hidden: !document.querySelector(".L, .runbtn") && !!document.querySelector(".empty a[href='/ai-generator']"),
+        overflow: document.documentElement.scrollWidth > innerWidth + 1 }));
+      row.checks[width] = { ...h, layout: true, missing: [], hasIn: true, hasOut: true, honest: h.hidden, errors: [...pageErrs] };
+      continue;
+    }
+    await p.waitForSelector(".L", { timeout: 20000 }); await p.waitForTimeout(500);
     const ui = await p.evaluate(([layout, params, state, needs]) => {
       const root = document.querySelector(".L");
       const labels = [...document.querySelectorAll(".ai-flabel span:first-child, .pnl header span, .bench-h, label")].map((e) => e.textContent.trim().toLowerCase());
@@ -90,7 +100,7 @@ for (const t of cat.tools) {
       return { layout: root.classList.contains(layout), missing, hasIn, hasOut, honest, overflow: document.documentElement.scrollWidth > innerWidth + 1, adv: params.filter((q) => q.group === "advanced").length };
     }, [layoutOf(t), t.params.filter((q) => q.group !== "advanced" && !(t.id === "120")), t.status.state, t.status.needs]);
     row.checks[width] = { ...ui, errors: [...pageErrs] };
-    if (width === 1600 && ["001", "005", "011", "021", "033", "042", "051", "061", "075", "082", "092", "104", "111"].includes(t.id)) await p.screenshot({ path: `${OUT}/ui/audit/${t.id}.png` });
+    if (width === 1600 && OUT_SHOTS && ["001", "005", "011", "021", "033", "042", "051", "061", "075", "082", "092", "104", "111"].includes(t.id)) await p.screenshot({ path: `${OUT}/ui/audit/${t.id}.png` });
   }
   // execute the real backend operation when this server can run it
   if (t.status.state === "ready" && t.id !== "117") {
@@ -120,11 +130,11 @@ fs.writeFileSync(`${OUT}/AI_TOOL_AUDIT.json`, JSON.stringify(rows, null, 1));
 // ------------------------------------------------------------ report
 const studios = Object.fromEntries(cat.studios.map((s) => [s.id, `${s.code} · ${s.name}`]));
 const n = (f) => rows.filter(f).length;
-const verdict = (r) => !r.ui_pass ? "❌ UI issue" : r.run.status === "succeeded" ? "✅ Works (executed)" : r.run.blocked ? "⚠️ Blocked here (model download)" : r.run.status === "not executed" ? (r.state === "unbuilt" ? "🔒 Not built (shown honestly)" : "🔑 Ready once key added") : `❌ ${r.run.status}`;
+const verdict = (r) => !r.ui_pass ? "❌ UI issue" : r.run.status === "succeeded" ? "✅ Works (executed)" : r.run.blocked ? "⚠️ Blocked here (model download)" : r.run.status === "not executed" ? (r.state === "unbuilt" ? "🔒 Not built (hidden)" : "🔑 Hidden until key added") : `❌ ${r.run.status}`;
 let md = `# AI Generator Universe — 120-tool audit\n\nGenerated ${new Date().toISOString()} by \`e2e/ai_tools_audit.mjs\` against a running server.\n\n`;
-md += `Every tool page was opened at 1600×1000 and 1366×768. A tool's UI passes only if: its studio's purpose-built workspace renders, **every** control in its registry entry is on screen, it has input and output areas, its status message is honest (ready → run button; needs key → names the exact key; not built → says so), there is no horizontal overflow at either size, and there are no page or server errors.\n\n`;
+md += `Every tool page was opened at 1600×1000 and 1366×768. A tool's UI passes only if: its studio's purpose-built workspace renders, **every** control in its registry entry is on screen, it has input and output areas, its status is honest (ready → its full workspace with a run button; waiting for a key or not built → hidden: the page says "isn't available yet" and offers nothing to run), there is no horizontal overflow at either size, and there are no page or server errors.\n\n`;
 md += `Every tool that this server can run was then **executed for real** on real media (video, image, music) through the same API the UI uses; compatible outputs were then placed on a timeline with Edit in Timeline.\n\n`;
-md += `| Result | Tools |\n|---|---|\n| UI checks passed | ${n((r) => r.ui_pass)} / 120 |\n| Executed successfully here | ${n((r) => r.run.status === "succeeded")} |\n| Runnable but blocked in this sandbox (model download from huggingface.co) | ${n((r) => r.run.blocked)} |\n| Ready once a provider key is added (not executed — no key here) | ${n((r) => r.run.status === "not executed" && r.state === "needs_key")} |\n| Not built yet (shown honestly, cannot run) | ${n((r) => r.state === "unbuilt")} |\n| Failed | ${n((r) => r.run.status && !["succeeded", "not executed"].includes(r.run.status) && !r.run.blocked)} |\n\n`;
+md += `| Result | Tools |\n|---|---|\n| UI checks passed | ${n((r) => r.ui_pass)} / 120 |\n| Executed successfully here | ${n((r) => r.run.status === "succeeded")} |\n| Runnable but blocked in this sandbox (model download from huggingface.co) | ${n((r) => r.run.blocked)} |\n| Ready once a provider key is added (not executed — no key here) | ${n((r) => r.run.status === "not executed" && r.state === "needs_key")} |\n| Not built yet (hidden, cannot run) | ${n((r) => r.state === "unbuilt")} |\n| Failed | ${n((r) => r.run.status && !["succeeded", "not executed"].includes(r.run.status) && !r.run.blocked)} |\n\n`;
 md += `Hosted-model tools (fal.ai, Claude/OpenAI, YouTube) were not run live here because this build sandbox has no provider keys and no network route to them. Their request building is covered by \`backend/tests/test_ai_tools.py\` against a simulated provider (text-to-video camera direction, image style/palette, music BPM/instruments, multi-shot film stitching, thumbnail typesetting, script writing, Director Agent, YouTube trends). Each must get one live smoke test after the keys are added.\n\n`;
 md += `| ID | Tool | Studio | Engine · models | UI (controls) | Executed here | Timeline | Verdict |\n|---|---|---|---|---|---|---|---|\n`;
 for (const r of rows) {
