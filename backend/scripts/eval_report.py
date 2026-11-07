@@ -5,7 +5,9 @@
 import json
 import sys
 
-from app.speech import catalog
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from app.speech import catalog  # noqa: E402
 
 ev = json.load(open(sys.argv[1]))
 e2e = json.load(open(sys.argv[2])) if len(sys.argv) > 3 else None

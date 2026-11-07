@@ -2,6 +2,7 @@
 // Each step passes or fails independently; console errors, page errors and failed API calls are collected.
 // Run:  BASE=http://localhost:8000 MEDIA=/path/to/media node e2e/audit.mjs
 // MEDIA must contain: Vlog_Intro.mp4 Talk_With_Pause.mp4 Drone_Shot.mp4 Music_BGM.wav Subscribe_Badge.png
+// Optional: Speech_Sample.mp4 (a short video with real speech) — then the Dubbing studio step runs end to end in the browser.
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT ?? "playwright");
@@ -333,11 +334,21 @@ await step("Thumbnail designer → saved to media bin", async () => {
   await page.waitForFunction((n) => document.querySelectorAll(".bin-item").length > n, n, { timeout: 30000 });
 });
 await step("Dubbing studio: detect speech, transcript, two languages, dub, five downloads", async () => {
+  const fs = await import("node:fs");
   await page.locator(".tl-scroll").evaluate((e) => (e.scrollLeft = 0));
-  await page.click('[data-track="v1"] .clip >> nth=0');
+  if (fs.existsSync(`${M}/Speech_Sample.mp4`)) {   // a clip with real speech, uploaded and placed just for this step
+    const n = await page.locator(".bin-item").count();
+    await page.setInputFiles("input[type=file]", `${M}/Speech_Sample.mp4`);
+    await page.waitForFunction((n) => document.querySelectorAll(".bin-item").length > n, n, { timeout: 60000 });
+    await page.waitForSelector('.bin-item.ready:has-text("Speech_Sample.mp4")', { timeout: 300000 });
+    await page.hover('.bin-item:has-text("Speech_Sample.mp4")'); await page.click('button[aria-label="Add Speech_Sample.mp4 to timeline"]');
+    await page.click('.clip[aria-label*="Speech_Sample"]');
+  } else {
+    await page.click('[data-track="v1"] .clip >> nth=0');
+  }
   await page.click(".voice button:has-text('Open Dubbing Studio')");
-  await page.waitForSelector(".dub-modal");
-  if (await page.locator(".dub-setup").count()) {
+  await page.waitForSelector(".dub-modal .dub-setup, .dub-modal .dub-row, .dub-modal .dub-wait, .dub-modal .error-box", { timeout: 30000 });
+  if (await page.locator(".dub-modal .dub-setup").count()) {
     await page.click(".dub-chips .chip:has-text('Spanish')");                     // Hindi is pre-selected
     await page.click(".dub-modal button:has-text('Recognise speech')");
   }

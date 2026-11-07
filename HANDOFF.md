@@ -39,10 +39,31 @@ Last updated: 2026-11-07 (object removal; cleanup, security, SEO, 3D landing). R
 ## 3. Implemented and tested
 The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts` and the browser audits.
 
+**Speech and dubbing, measured on real speech offline** (full tables: `docs/DUBBING_EVAL.md`; language list: `docs/DUBBING_LANGUAGES.md`):
+- **Captions (FLEURS human speech, Whisper small):**
+  - English: WER 6.4%;
+  - Spanish: WER 3.7%;
+  - Hindi: CER 23–34%. With Whisper medium, Hindi drops to 19.5% at ~1.9× real time.
+- **Dub into each language:** pronunciation was judged by Whisper medium re-listening to every voiced line:
+  - most languages: 0–10% CER (Hindi 9.5%, English 1.6%, Spanish 1.7%, French 1.4%, German 2.7%);
+  - Persian 26.9% and Latvian 18.7% are weaker;
+  - Japanese (309%) and Chinese (60%) failed, so they are disabled as targets.
+  
+  Back-translation chrF was 67–94 for most languages (Vietnamese 52.8). Renders take 0.2–0.5× the clip length.
+- **End to end through the running app** (50 s Hindi+English clip, 4 people, 3 target languages):
+  - detection: Hindi + mixed English;
+  - speakers: 4 found;
+  - rendering: all languages took 40 s;
+  - files: MP4/M4A/WAV/SRT/VTT downloaded and checked, dubbed MP4s ready in the media bin;
+  - worker peak RAM: 1.64 GB.
+  
+  A worker without models refused jobs; the real worker verified everything offline (47–65 s) first.
+- **Weak spot:** Hindi as the *source* language. Noisy Hindi can come out garbled with Whisper small, and then the translations are wrong. Creators should check the transcript in the studio, and Hindi channels should use `WHISPER_MODEL=medium` on a ≥ 4 GB worker.
+
 **Latest results** (re-run 2026-11-07 in a fresh cloud container):
-- Backend: 116 passed, 4 skipped (the skipped ones are real-model tests, run with `REAL_MODELS=1`).
+- Backend: 122 passed, 5 skipped (the skipped ones are real-model tests, run with `REAL_MODELS=1`).
 - Frontend: 38 vitest passed, tsc clean, build OK.
-- `e2e/audit.mjs`: 63/63 on the final code (also with the backend suite running in parallel), including the Remove Object step. Start the server with `ADMIN_EMAILS=founder@example.com` or the payments step fails. The old intermittent "Translate & Voice / Lip Sync panels" failure is **root-caused and fixed**: the Record dialog sometimes stayed open and blocked the next step. Cause: `RecordModal` created a new preview blob URL on every render (the level meter re-renders ~60×/s), which leaked memory and kept reloading the preview, so "Add to project" moved and clicks missed. Fix: one memoised URL per take (revoked afterwards), and a fixed 16:9 preview box. The audit now flags any dialog left open by a step (as a WARN naming the dialog) and screenshots failures before cleaning up.
+- `e2e/audit.mjs`: 63/63 on the final code with real models, including Remove Object and the **Dubbing studio** step. It uploads `Speech_Sample.mp4` (optional in MEDIA: any short clip with real speech), recognises it, dubs it into Hindi and finds all five download links. Without that file the step records a NOTE. Before this change it passed 63/63 (also with the backend suite running in parallel). Start the server with `ADMIN_EMAILS=founder@example.com` or the payments step fails. The old intermittent "Translate & Voice / Lip Sync panels" failure is **root-caused and fixed**: the Record dialog sometimes stayed open and blocked the next step. Cause: `RecordModal` created a new preview blob URL on every render (the level meter re-renders ~60×/s), which leaked memory and kept reloading the preview, so "Add to project" moved and clicks missed. Fix: one memoised URL per take (revoked afterwards), and a fixed 16:9 preview box. The audit now flags any dialog left open by a step (as a WARN naming the dialog) and screenshots failures before cleaning up.
 - Captions and dubbing ran as NOTE (not FAIL) in the audit: the build sandbox can't reach huggingface.co to download Whisper. CI's real-models job covers them.
 - AI tool audit (`e2e/ai_tools_audit.mjs`, re-run 2026-11-07): 120/120 tool pages pass. The 49 working tools show their full workspace; the 71 that need a key or aren't built are hidden ("isn't available yet", nothing to run). 40 of 49 executed successfully; the other 9 (captions/transcript based) only failed because this sandbox can't download Whisper from huggingface.co, which CI's real-models job covers. 0 real failures. The audit was updated to check hidden tools are hidden (it still expected the old locked pages and crashed). Report: `docs/AI_TOOL_AUDIT.md`.
 - Design sweep (12 pages × 4 widths): no horizontal scroll, no page errors. Security scans: 0 known vulnerabilities.
@@ -200,6 +221,13 @@ The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts`
 1. **Launch prep** (founder): rename, deploy on Render, set the env vars below, upload the QR codes, make the repo private, onboard the first 20 creators. See `docs/` and the project doc LAUNCH_PLAYBOOK.
 2. **Object removal, next level:** the basic marked-area version is live (see section 3). Upgrade path: SAM 2 (click to mask, tracks the object across frames) + LaMa (realistic fill) per frame, short clips, on the existing worker. Plug in as a second engine behind the same `remove_object` derive op and dialog. Needs huggingface.co access to download weights (blocked in the build sandbox).
 3. **Lip sync on CPU:** MuseTalk with a 10 s limit and queue. A rented GPU later.
+3a. **Dubbing quality next steps** (measured gaps, `docs/DUBBING_EVAL.md`):
+    - Whisper medium for Hindi on a 4 GB worker;
+    - misaki ja/zh phonemizer to re-enable Japanese/Chinese voices;
+    - IndicTrans2 + Indic Parler-TTS for Tamil/Telugu/Marathi/Bengali (`docs/FINE_TUNING_PLAN.md` §2);
+    - vocal separation (e.g. Demucs, MIT) to remove the original voice instead of ducking it.
+    
+    Fine-tuning is a separate phase with its own dataset, budget and evaluation plan (`docs/FINE_TUNING_PLAN.md`).
 4. Kaggle test notebooks for 2 and 3 to check quality and speed. The founder runs them; never take a password.
 5. Title text formatting: font picker, bold, italic, outline.
 6. Audio crossfades for transitions.
