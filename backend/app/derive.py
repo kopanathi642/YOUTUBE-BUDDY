@@ -24,6 +24,42 @@ def stabilize(src: str, out: str, has_audio: bool, progress) -> None:
         raise RuntimeError("stabilization failed: " + r.stderr[-300:])
 
 
+MAX_OBJECT_BOXES = 8
+MAX_BOX_AREA = 0.25  # of the frame; bigger areas can't be filled convincingly from their edges
+
+
+def object_boxes_px(boxes: list[dict], width: int, height: int) -> list[tuple[int, int, int, int]]:
+    """Normalised boxes (0..1, as drawn on the preview) -> pixel boxes that FFmpeg's delogo accepts.
+    Each box grows by a small margin: any sliver of the object left outside the box gets smeared across the fill,
+    and hand-drawn boxes are usually tight. delogo needs a 1 px border of real picture, so edges are pulled in by 1 px."""
+    out = []
+    for b in boxes:
+        mx = max(4, round(b["w"] * width * 0.06)); my = max(4, round(b["h"] * height * 0.06))
+        x0 = max(1, round(b["x"] * width) - mx); y0 = max(1, round(b["y"] * height) - my)
+        x1 = min(width - 2, round((b["x"] + b["w"]) * width) + mx); y1 = min(height - 2, round((b["y"] + b["h"]) * height) + my)
+        if x1 - x0 < 3 or y1 - y0 < 3:
+            raise ValueError("An area is too small to remove — draw a box at least a few pixels wide")
+        out.append((x0, y0, x1 - x0, y1 - y0))
+    return out
+
+
+def remove_object(src: str, out: str, has_audio: bool, width: int, height: int, boxes: list[dict], progress) -> None:
+    """Basic object removal on the CPU: every frame, each marked area is rebuilt from the pixels around it
+    (FFmpeg delogo). Works for fixed things — logos, watermarks, timestamps, a small object while the camera is still.
+    It does not track moving objects or invent new detail (that needs SAM 2 + LaMa, see HANDOFF.md)."""
+    if not boxes:
+        raise ValueError("Mark at least one area to remove")
+    px = object_boxes_px(boxes, width, height)
+    progress(0.05, f"removing {len(px)} area{'s' if len(px) > 1 else ''}")
+    vf = ",".join(f"delogo=x={x}:y={y}:w={w}:h={h}" for x, y, w, h in px)
+    cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", src, "-vf", vf,
+           "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p"]
+    cmd += ["-c:a", "aac", "-b:a", "192k"] if has_audio else ["-an"]
+    r = run(cmd + ["-movflags", "+faststart", out], timeout=3 * 3600)
+    if r.returncode != 0:
+        raise RuntimeError("object removal failed: " + r.stderr[-300:])
+
+
 def remove_background(src: str, out: str, asset, progress) -> None:
     """Person/subject segmentation per frame with the open-source U²-Net (u2netp, downloaded from GitHub on first use).
     Output: MOV with PNG frames (lossless alpha), max 720p, original audio kept."""

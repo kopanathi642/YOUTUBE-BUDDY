@@ -35,7 +35,8 @@ def _caps() -> list[tuple]:
         ("translate", "Translation", True, mt),
         ("dubbing", "Translate & dub", True, f"{stt} + {mt} + Piper voices"),
         ("lip_sync", "Lip sync", False, "Needs a GPU lip-sync model provider (e.g. sync.so or Replicate) + recorded consent"),
-        ("object_remove", "Object removal", False, "Needs a GPU video-inpainting model provider"),
+        ("object_remove", "Object removal (marked areas)", True, BUILT_IN + " (FFmpeg delogo) — fills fixed areas such as logos, "
+         "watermarks and text from their surroundings; does not follow moving objects"),
     ]
 
 

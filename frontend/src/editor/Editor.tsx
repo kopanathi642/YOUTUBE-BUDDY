@@ -8,6 +8,7 @@ import { useHistory } from "./useHistory";
 import { Timeline, Clip, duration, splitAllAt, splitAt, deleteClip, findClip, insertClip, insertTitle, updateClip, end, fits, freeSlot, addTrack, uid, DEFAULT_TRANSFORM } from "../timeline";
 import { CaptionsModal, TTSModal, VoiceCatalog } from "./AiTools";
 import { HighlightsModal, ThumbnailModal, Moment } from "./Creator";
+import ObjectRemoveModal from "./ObjectRemove";
 import HistoryPanel from "./HistoryPanel";
 import { LOOKS, svgFilterBody, withLook, sanitizeGrade } from "../grade";
 import { buildPlan, applyCuts, silenceCuts, applySceneSplits, sceneSplits, loudnessGain } from "../smart";
@@ -60,7 +61,6 @@ export default function Editor() {
     Promise.all([loadCatalogue().catch(() => null), api<{ pexels: boolean; pixabay: boolean }>("/stock/status").catch(() => null)]).then(([cat, st]) => {
       const ready = new Set((cat?.tools ?? []).map((t) => t.id));
       const h = new Set<string>();
-      if (!ready.has("024")) h.add("obj");
       if (!ready.has("033")) h.add("lipsync");
       if (!st?.pexels && !st?.pixabay) h.add("stock");
       setHide(h);
@@ -78,6 +78,7 @@ export default function Editor() {
   type Pending = { type: "swap"; sourceId: string } | { type: "dub"; clipId: string; keep: boolean; target: string } | { type: "tts"; at: number };
   const [pending, setPending] = useState<Record<string, Pending>>({}); // new asset id -> what to do when it is ready
   const [catalog, setCatalog] = useState<VoiceCatalog | null>(null);
+  const [objFor, setObjFor] = useState<{ assetId: string; at: number } | null>(null);
   const [aiModal, setAiModal] = useState<null | "captions" | "transcript" | "tts" | "highlights" | "thumbnail">(null);
   const [dubBusy, setDubBusy] = useState<string | null>(null);
   const [autoAdjust, setAutoAdjustState] = useState(() => { try { return localStorage.getItem("cu.autoAdjust") === "1"; } catch { return false; } });
@@ -155,9 +156,9 @@ export default function Editor() {
 
   useEffect(() => { api<VoiceCatalog>("/ai/voices").then(setCatalog).catch(() => {}); }, []);
 
-  async function derive(assetId: string, op: string, label: string) {
+  async function derive(assetId: string, op: string, label: string, extra: object = {}) {
     try {
-      const a = await api<Asset>(`/media/${assetId}/derive`, { method: "POST", body: { op } });
+      const a = await api<Asset>(`/media/${assetId}/derive`, { method: "POST", body: { op, ...extra } });
       setAssets((xs) => [a, ...xs]); setPending((m) => ({ ...m, [a.id]: { type: "swap", sourceId: assetId } }));
       toast(`${label} on the cloud worker… “${a.filename}” will replace the original on the timeline when ready`);
     } catch (e) { toast((e as Error).message); }
@@ -333,7 +334,13 @@ export default function Editor() {
       case "export": setExportFocus((n) => n + 1); scroll(".export-dock"); break;
       case "bg": { const id = videoSel(); if (id) derive(id, "remove_bg", "Removing the background"); break; }
       case "stabilize": { const id = videoSel(); if (id) derive(id, "stabilize", "Stabilizing"); break; }
-      case "obj": toGenerator("024"); break;   // Object Removal lives in the AI Generator (hosted video-inpainting model)
+      case "obj": {   // basic remover on the worker; mark areas on the selected clip's own frame
+        const id = videoSel(); if (!id || !tl) break;
+        const c = findClip(tl, selected!)!.clip;
+        const into = Math.min(Math.max(0, playhead - c.start), Math.max(0, Math.round((c.out - c.in) / (c.speed ?? 1)) - 1));
+        setObjFor({ assetId: id, at: (c.in + into * (c.speed ?? 1)) / tl.fps });
+        break;
+      }
       case "subtitle": setAiModal("captions"); break;
       case "voice": scroll(".voice"); break;
       case "tts": setAiModal("tts"); break;
@@ -479,6 +486,8 @@ export default function Editor() {
           setAiModal(null);
           if (first) { openSequence(first); toast(`Created ${ms.length} short${ms.length > 1 ? "s" : ""} — switch between them with the Program menu`); }
         }} />}
+      {objFor && assetMap.get(objFor.assetId) && <ObjectRemoveModal asset={assetMap.get(objFor.assetId)!} at={objFor.at} onClose={() => setObjFor(null)}
+        onApply={(boxes) => { const id = objFor.assetId; setObjFor(null); derive(id, "remove_object", "Removing the marked areas", { boxes }); }} />}
       {aiModal === "thumbnail" && <ThumbnailModal samplerRef={samplerRef} onClose={() => setAiModal(null)}
         onSave={(f) => { uploadRef.current?.([f]); setAiModal(null); toast("Thumbnail saved to your media bin"); }} />}
       {aiModal === "tts" && <TTSModal catalog={catalog} projectId={project.id} onClose={() => setAiModal(null)}

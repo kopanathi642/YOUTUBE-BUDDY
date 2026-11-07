@@ -8,7 +8,6 @@ Two items are not built yet.
 | Feature | Shows again when | Cost |
 |---|---|---|
 | Lip Sync (sidebar, Voice panel) | `FAL_KEY` is set (opens AI tool 033) | paid per run |
-| Object Removal (sidebar, Quick Actions) | `FAL_KEY` is set (opens AI tool 024) | paid per run |
 | Stock Library (sidebar + media bin tab) | `PEXELS_API_KEY` or `PIXABAY_API_KEY` | free |
 | Publish to YouTube (export queue, Settings card) | `GOOGLE_OAUTH_CLIENT_ID` + `GOOGLE_OAUTH_CLIENT_SECRET` + `TOKEN_ENCRYPTION_KEY` | free |
 | Any editor tool whose engine fails its server check | the engine is installed/reachable | — |

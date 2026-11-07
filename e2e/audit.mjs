@@ -294,6 +294,20 @@ await step("Background removal on selected clip → transparent copy swapped in"
   await page.click('[data-track="v1"] .clip >> nth=1'); await page.click(".qa:has-text('Background Remove')");
   await page.waitForSelector('.clip[aria-label*="(no background)"]', { timeout: 600000 });
 });
+await step("Remove Object: mark an area on the clip's frame → cleaned copy swapped in", async () => {
+  await page.locator(".tl-scroll").evaluate((e) => (e.scrollLeft = 0));
+  await page.click('[data-track="v1"] .clip >> nth=0'); await page.click(".ed-side .tool:has-text('Remove Object')");
+  await page.waitForSelector(".obj-modal"); await page.waitForFunction(() => (document.querySelector(".obj-stage video")?.readyState ?? 0) >= 2);
+  const st = await page.locator(".obj-stage").boundingBox();
+  const drag = async (x0, y0, x1, y1) => { await page.mouse.move(st.x + st.width * x0, st.y + st.height * y0); await page.mouse.down();
+    await page.mouse.move(st.x + st.width * x1, st.y + st.height * y1, { steps: 5 }); await page.mouse.up(); };
+  await drag(0.1, 0.1, 0.9, 0.9);                                   // too big: refused with an explanation, nothing added
+  await page.waitForSelector(".obj-modal .error-box:has-text('covers')"); if (await page.locator(".obj-box").count()) throw new Error("big box was added");
+  await drag(0.05, 0.05, 0.25, 0.18);                               // a corner "logo"
+  await page.waitForSelector(".obj-chip:has-text('Area 1')");
+  await page.click(".obj-modal button.primary:has-text('Remove area')");
+  await page.waitForSelector('.clip[aria-label*="(object removed)"]', { timeout: 300000 });
+});
 await step("Highlight finder → 2 shorts created", async () => {
   await page.click(".ed-side .tool:has-text('Highlight Finder')"); await page.selectOption(".modal select >> nth=0", "15"); await page.selectOption(".modal select >> nth=1", "2");
   await page.waitForSelector(".modal .plan-op"); await page.click(".modal button.primary");

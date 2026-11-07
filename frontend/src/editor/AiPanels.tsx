@@ -112,7 +112,7 @@ export function QuickActions({ caps, onAction, readOnly, hide }: { caps: Caps; o
     ["magic", "Auto Edit (Full Video)", Sparkles, "silence_remove"], ["short916", "Shorts Maker (9:16)", Smartphone, "smart_reframe"],
     ["clips", "Clips & Highlights", Clapperboard, "scene_detect"], ["scenes", "Scene Detect", ScanLine, "scene_detect"],
     ["silence", "Silence Remove", AudioWaveform, "silence_remove"], ["bg", "Background Remove", Eraser, "background_remove"],
-    ["obj", "Object Remove", UserRoundX, ""], ["reframe", "Smart Reframe", Crop, "smart_reframe"],
+    ["obj", "Object Remove", Eraser, "object_remove"], ["reframe", "Smart Reframe", Crop, "smart_reframe"],
   ];
   return (
     <section className="panel strip-panel" aria-label="AI quick actions">

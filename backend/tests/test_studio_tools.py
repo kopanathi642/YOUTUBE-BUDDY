@@ -111,7 +111,8 @@ def test_capabilities_are_honest(make_client):
     signup(c)
     caps = {x["id"]: x for x in c.get("/api/v1/ai/capabilities").json()}
     assert caps["scene_detect"]["ready"] and caps["silence_remove"]["ready"] and caps["auto_color"]["ready"]
-    assert not caps["lip_sync"]["ready"] and not caps["object_remove"]["ready"]
+    assert not caps["lip_sync"]["ready"]
+    assert caps["object_remove"]["ready"] and "does not follow moving objects" in caps["object_remove"]["needs"]
     assert caps["tts"]["ready"] and caps["background_remove"]["ready"] and caps["stabilize"]["ready"]
 
 

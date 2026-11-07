@@ -1,6 +1,6 @@
 # HANDOFF — YouTube Buddy X (working name)
 
-Last updated: 2026-11-07. Read this first when you pick the project up in Claude Code.
+Last updated: 2026-11-07 (object removal, basic). Read this first when you pick the project up in Claude Code.
 
 ## 1. Location
 - **GitHub:** https://github.com/kopanathi642/YOUTUBE-BUDDY, branch **`main`** (the repo is still **public**; the founder should make it private).
@@ -39,11 +39,13 @@ Last updated: 2026-11-07. Read this first when you pick the project up in Claude
 ## 3. Implemented and tested
 The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts` and the browser audits.
 
-**Latest results:**
-- Backend: 106 passed, 4 skipped (the skipped ones are real-model tests, run with `REAL_MODELS=1`).
+**Latest results** (re-run 2026-11-07 in a fresh cloud container):
+- Backend: 109 passed, 4 skipped (the skipped ones are real-model tests, run with `REAL_MODELS=1`).
 - Frontend: 38 vitest passed, tsc clean, build OK.
-- `e2e/audit.mjs`: 62/62.
-- AI tool audit: 120/120 UIs render, 40 executed, 0 failed.
+- `e2e/audit.mjs`: 63/63, including the new Remove Object step. Start the server with `ADMIN_EMAILS=founder@example.com` or the payments step fails. The "Translate & Voice / Lip Sync panels" step failed once on a tab click and passed on the re-run; treat it as flaky if it recurs.
+- Captions and dubbing ran as NOTE (not FAIL) in the audit: the build sandbox can't reach huggingface.co to download Whisper. CI's real-models job covers them.
+- AI tool audit: 120/120 UIs render, 40 executed, 0 failed (not re-run this session).
+- Don't run two pytest sessions at once: they share the `creator_test` database and fail each other.
 - CI real-models job: green. It runs Whisper, Argos (Hindi), Piper (Hindi) and a full dub.
 
 **Platform:**
@@ -68,6 +70,7 @@ The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts`
 - Titles in Indian scripts (HarfBuzz) with 6 styles, plus **8 animated title templates** and **24 elements/stickers**.
 - Stabilisation (vid.stab).
 - Background removal (u2netp).
+- **Object removal (basic, marked areas)**: Video tools → *Remove Object (marked area)* or Quick Actions → *Object Remove*. The user drags boxes on the clip's own frame; the worker fills each box from its surroundings on every frame (FFmpeg `delogo`, `backend/app/derive.py: remove_object`) and the cleaned copy is swapped in (Ctrl+Z restores). For logos, watermarks, timestamps, small objects with a still camera. No downloads, CPU only.
 - Captions/SRT, translation and dubbing (Whisper, Argos, Piper).
 - AI voice (Piper).
 - Highlights and batch Shorts, smart reframe (face-centred).
@@ -114,7 +117,7 @@ The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts`
 
 ## 4. Incomplete / unverified / known issues
 - **Hidden until keys are set** (`docs/HIDDEN_FEATURES.md`):
-  - Lip sync (tool 033) and object removal (tool 024) need `FAL_KEY`.
+  - Lip sync (tool 033) and the AI Generator's text-described object removal (tool 024) need `FAL_KEY`. The editor's basic marked-area object removal is always on.
   - Stock library needs `PEXELS_API_KEY` or `PIXABAY_API_KEY` (free).
   - YouTube publishing needs a Google OAuth client.
   - 71 of 120 AI tools: 44 need fal.ai, the rest need an LLM key or `YOUTUBE_API_KEY`.
@@ -132,13 +135,14 @@ The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts`
   - Multi-layer preview sync is best-effort.
   - Rate limits are in-process; move them to Redis when running more than one API instance.
   - No font picker or bold/italic/outline for titles yet; the founder asked about "word formats".
+  - Basic object removal fills fixed boxes only: it does not track moving objects, and large areas or busy textures come out smooth/blurred (≤ 25 % of the frame per box). An object cut off by the frame edge can leave a faint streak.
 - **Licensing for the next steps:**
   - Lip sync: use MuseTalk (MIT) or LatentSync (Apache-2.0), not Wav2Lip weights (non-commercial).
   - Object removal: SAM 2 + LaMa (Apache-2.0), not ProPainter (non-commercial).
 
 ## 5. Next priorities
 1. **Launch prep** (founder): rename, deploy on Render, set the env vars below, upload the QR codes, make the repo private, onboard the first 20 creators. See `docs/` and the project doc LAUNCH_PLAYBOOK.
-2. **Object removal on CPU:** SAM 2 (click to mask) + LaMa per frame, short clips. Free, runs on the existing worker.
+2. **Object removal, next level:** the basic marked-area version is live (see section 3). Upgrade path: SAM 2 (click to mask, tracks the object across frames) + LaMa (realistic fill) per frame, short clips, on the existing worker. Plug in as a second engine behind the same `remove_object` derive op and dialog. Needs huggingface.co access to download weights (blocked in the build sandbox).
 3. **Lip sync on CPU:** MuseTalk with a 10 s limit and queue. A rented GPU later.
 4. Kaggle test notebooks for 2 and 3 to check quality and speed. The founder runs them; never take a password.
 5. Title text formatting: font picker, bold, italic, outline.
@@ -196,6 +200,7 @@ AI_RUNS_PER_10MIN=1000 (on the server) + node e2e/ai_tools_audit.mjs
 | Claude / OpenAI (`LLM_MODEL`) | writing tools, Director agent, Creator Scout AI mode | remote API | MISSING KEY, tested with a fake server |
 | YouTube Data API v3 | trend tools (public data) + publishing (OAuth) | remote API | MISSING KEY/CLIENT, tested with a fake server |
 | Wan 2.2 TI2V-5B (diffusers) | GPU pilot only | Hugging Face, run on Kaggle via `gpu/youtube_buddy_x_wan_pilot.ipynb` | NOT integrated in the app; Kaggle run unverified |
-| MuseTalk / LatentSync, SAM 2 + LaMa | planned lip sync / object removal | — | NOT STARTED |
+| FFmpeg `delogo` | basic object removal (marked areas) | system FFmpeg | VERIFIED (tests + audit) |
+| MuseTalk / LatentSync, SAM 2 + LaMa | planned lip sync / object-removal upgrade | — | NOT STARTED |
 
 No model weights are committed to the repo; everything downloads on first use into `MODEL_CACHE`. On Render, mount a persistent disk there so models aren't re-downloaded.

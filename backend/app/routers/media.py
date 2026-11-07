@@ -174,22 +174,43 @@ def delete_media(asset_id: uuid.UUID, request: Request, user: User = Depends(cur
     return {"ok": True}
 
 
+class Box(BaseModel):
+    """An area to remove, as a fraction of the picture (0..1), measured from the top-left corner."""
+    x: float = Field(ge=0, lt=1)
+    y: float = Field(ge=0, lt=1)
+    w: float = Field(gt=0, le=1)
+    h: float = Field(gt=0, le=1)
+
+
 class DeriveReq(BaseModel):
-    op: str = Field(pattern="^(stabilize|remove_bg)$")
+    op: str = Field(pattern="^(stabilize|remove_bg|remove_object)$")
+    boxes: list[Box] | None = Field(default=None, max_length=8)
 
 
-DERIVE = {"stabilize": (" (stabilized)", "mp4", "video/mp4"), "remove_bg": (" (no background)", "mov", "video/quicktime")}
+DERIVE = {"stabilize": (" (stabilized)", "mp4", "video/mp4"), "remove_bg": (" (no background)", "mov", "video/quicktime"),
+          "remove_object": (" (object removed)", "mp4", "video/mp4")}
 
 
 @router.post("/media/{asset_id}/derive", status_code=201)
 def derive_media(asset_id: uuid.UUID, body: DeriveReq, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    """Create a processed copy (stabilized / background removed) as a NEW media item. The original is never changed."""
-    from ..derive import MAX_BG_SECONDS
+    """Create a processed copy (stabilized / background removed / object removed) as a NEW media item. The original is never changed."""
+    from ..derive import MAX_BG_SECONDS, MAX_BOX_AREA
     src = load_asset(db, user, asset_id, Role.editor)
     if src.status != MediaStatus.ready or src.kind != "video" or not src.has_video:
         raise HTTPException(422, "Only ready video files can be processed this way")
     if body.op == "remove_bg" and (src.duration_s or 0) > MAX_BG_SECONDS:
         raise HTTPException(422, f"Background removal works on clips up to {MAX_BG_SECONDS} seconds for now — trim or split the file first")
+    boxes = None
+    if body.op == "remove_object":
+        if not body.boxes:
+            raise HTTPException(422, "Draw a box over what you want to remove")
+        for b in body.boxes:
+            if b.x + b.w > 1.001 or b.y + b.h > 1.001:
+                raise HTTPException(422, "A box goes outside the picture — redraw it inside the frame")
+            if b.w * b.h > MAX_BOX_AREA:
+                raise HTTPException(422, f"A box covers more than {int(MAX_BOX_AREA * 100)}% of the picture — "
+                                         "this basic remover works on smaller things like logos, watermarks and text")
+        boxes = [{"x": b.x, "y": b.y, "w": min(b.w, 1 - b.x), "h": min(b.h, 1 - b.y)} for b in body.boxes]
     suffix, ext, ctype = DERIVE[body.op]
     stem = src.filename.rsplit(".", 1)[0][:150]
     new_id = uuid.uuid4()
@@ -199,7 +220,7 @@ def derive_media(asset_id: uuid.UUID, body: DeriveReq, request: Request, user: U
     db.add(a)
     db.flush()
     job = jobs.enqueue(db, workspace_id=src.workspace_id, project_id=src.project_id, created_by=user.id, kind="media.derive",
-                       payload={"asset_id": str(new_id), "source_id": str(src.id), "op": body.op},
+                       payload={"asset_id": str(new_id), "source_id": str(src.id), "op": body.op, **({"boxes": boxes} if boxes else {})},
                        idempotency_key=f"derive:{new_id}", max_attempts=2)
     audit(db, request, f"media.derive.{body.op}", user=user, workspace_id=src.workspace_id, target_type="media", target_id=new_id, source=str(src.id))
     db.commit()

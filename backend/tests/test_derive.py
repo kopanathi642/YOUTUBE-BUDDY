@@ -1,4 +1,4 @@
-"""Stabilize and background removal create new, processed media; originals untouched; render keeps alpha."""
+"""Stabilize, background removal and object removal create new, processed media; originals untouched; render keeps alpha."""
 import os
 import subprocess
 
@@ -93,3 +93,65 @@ def test_derive_rejects_audio_and_unknown(make_client, fixtures_media):
     drain()
     assert c.post(f"/api/v1/media/{a['id']}/derive", json={"op": "stabilize"}).status_code == 422
     assert c.post(f"/api/v1/media/{a['id']}/derive", json={"op": "explode"}).status_code == 422
+
+
+def _logo():
+    p = os.path.join(FIX, "logo.mp4")
+    if not os.path.exists(p):  # teal picture with a white "channel logo" in the top-left corner and a tone
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=0x1e8c78:s=640x360:r=25:d=2",
+                        "-f", "lavfi", "-i", "sine=frequency=440:duration=2",
+                        "-vf", "drawbox=x=24:y=20:w=96:h=40:color=white:t=fill,drawbox=x=300:y=150:w=60:h=60:color=0xd03030:t=fill",
+                        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", p], check=True)
+    return p
+
+
+def _pixel(path, x, y, t=1.0):
+    b = subprocess.run(["ffmpeg", "-v", "error", "-ss", str(t), "-i", path, "-frames:v", "1", "-vf", f"crop=4:4:{x}:{y},scale=1:1",
+                        "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True).stdout
+    return tuple(b[:3])
+
+
+def test_remove_object_fills_marked_area_only(make_client):
+    c = make_client()
+    ws = signup(c)["workspaces"][0]["id"]
+    p = new_project(c, ws)
+    a = upload(c, p["id"], _logo(), "video/mp4")
+    drain()
+    # the box as drawn on the preview, slightly larger than the logo (24,20 96x40 in a 640x360 frame)
+    box = {"x": 18 / 640, "y": 14 / 360, "w": 110 / 640, "h": 52 / 360}
+    r = c.post(f"/api/v1/media/{a['id']}/derive", json={"op": "remove_object", "boxes": [box]})
+    assert r.status_code == 201, r.text
+    assert r.json()["filename"] == "logo (object removed).mp4"
+    nid = r.json()["id"]
+    drain()
+    n = c.get(f"/api/v1/media/{nid}").json()
+    assert n["status"] == "ready", n
+    assert n["has_audio"] and n["width"] == 640 and abs(n["duration_s"] - 2) < 0.15
+    assert c.get(f"/api/v1/media/{a['id']}").json()["status"] == "ready"  # original untouched
+    # check the full-quality processed file itself (not the preview proxy)
+    import uuid
+    from app import storage
+    from app.db import session_factory
+    from app.models import MediaAsset
+    out = "/tmp/creator-worker-test/logo_removed.mp4"
+    with session_factory()() as db:
+        storage.download(db.get(MediaAsset, uuid.UUID(nid)).storage_key, out)
+    teal = (0x1e, 0x8c, 0x78)
+    near = lambda px, ref, tol=22: all(abs(u - v) < tol for u, v in zip(px, ref))
+    assert near(_pixel(out, 70, 38), teal), _pixel(out, 70, 38)   # was white: logo gone, filled with the background
+    assert near(_pixel(out, 328, 178), (0xd0, 0x30, 0x30), 30)     # red square outside the box is kept
+    assert near(_pixel(out, 500, 300), teal)                        # rest of the picture unchanged
+
+
+def test_remove_object_rejects_bad_boxes(make_client):
+    c = make_client()
+    ws = signup(c)["workspaces"][0]["id"]
+    p = new_project(c, ws)
+    a = upload(c, p["id"], _logo(), "video/mp4")
+    drain()
+    url = f"/api/v1/media/{a['id']}/derive"
+    assert "Draw a box" in c.post(url, json={"op": "remove_object"}).json()["detail"]
+    assert "outside the picture" in c.post(url, json={"op": "remove_object", "boxes": [{"x": 0.8, "y": 0.1, "w": 0.5, "h": 0.1}]}).json()["detail"]
+    assert "more than 25%" in c.post(url, json={"op": "remove_object", "boxes": [{"x": 0.1, "y": 0.1, "w": 0.6, "h": 0.6}]}).json()["detail"]
+    assert c.post(url, json={"op": "remove_object", "boxes": [{"x": 0.1, "y": 0.1, "w": 0.1, "h": 0.1}] * 9}).status_code == 422
+    assert c.post(url, json={"op": "remove_object", "boxes": [{"x": -0.1, "y": 0.1, "w": 0.1, "h": 0.1}]}).status_code == 422

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Image as ImageIcon, Scissors, Sparkles, Film, ChevronDown, ChevronUp, Zap, LayoutGrid, BarChart3, Layers, Smartphone, Crop, Wrench, AudioLines,
-  Languages, Mic, Type, UserRoundX, FileText, Palette, Library, Wand, ArrowLeftRight, Workflow, Shapes, Upload, Crown, Coins, Lock,
+  Languages, Mic, Type, UserRoundX, FileText, Palette, Library, Wand, ArrowLeftRight, Workflow, Shapes, Upload, Crown, Coins, Lock, Eraser,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Caps } from "./AiPanels";
@@ -23,6 +23,7 @@ const VIDEO_TOOLS: Item[] = [
   { id: "autocolor", label: "Auto Color", icon: Palette, cap: "auto_color" },
   { id: "stabilize", label: "Stabilize (selected clip)", icon: Crop, cap: "stabilize" },
   { id: "bg", label: "Remove Background", icon: Wand, cap: "background_remove" },
+  { id: "obj", label: "Remove Object (marked area)", icon: Eraser, cap: "object_remove" },
 ];
 const AUDIO_TOOLS: Item[] = [
   { id: "loudness", label: "Balance Levels", icon: AudioLines, cap: "loudness" },

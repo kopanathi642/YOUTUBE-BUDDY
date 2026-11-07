@@ -56,7 +56,8 @@ Evidence: `backend/tests/test_editor_flow.py` (pytest, real Postgres + S3 protoc
 | Highlights & batch shorts | Rule-based scoring (energy, speech, scene changes) → N shorts as new sequences (range slice + 9:16/4:5/1:1 reframe) | WORKING | `test_short_from_range_slices_and_trims`, audit |
 | Thumbnail designer | Frame + multi-language headline, outline, tilt, shade, position → PNG download / media bin | WORKING | audit |
 | Version history | Top-bar history window, restore any version | WORKING | audit |
-| AI (providers) | Lip sync, object removal | BLOCKED | need GPU model providers; buttons locked with the reason |
+| AI (providers) | Lip sync | BLOCKED | needs a GPU model provider (or MuseTalk on CPU); hidden until `FAL_KEY` is set |
+| Object removal (marked areas) | Draw boxes on the selected clip's own frame → worker rebuilds each area from its surroundings on every frame (FFmpeg delogo, boxes grown by a small margin) → cleaned copy replaces the clip (undoable); original kept | WORKING (basic) | `test_remove_object_fills_marked_area_only`, `test_remove_object_rejects_bad_boxes`, audit step "Remove Object". Good for logos, watermarks, timestamps, small objects with a still camera. Does **not** follow moving objects or invent detail; boxes ≤ 25 % of the frame, up to 8. Objects cut off by the frame edge can leave a faint streak. The AI Generator's text-described Object Removal (tool 024) still needs `FAL_KEY`. |
 | Export | Server-side FFmpeg render from originals (H.264/AAC MP4; match / 720p / draft 480p) | WORKING | |
 | Export | Real progress from FFmpeg, cancel, retry, idempotency key | WORKING | `test_export_validation_and_cancel` |
 | Export | Output validation: exists, streams, codec, dimensions, fps, duration, decodability | WORKING | stored on each export, shown as “Verified” |

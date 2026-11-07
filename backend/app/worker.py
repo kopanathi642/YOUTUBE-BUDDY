@@ -202,7 +202,7 @@ def handle_render_export(ctx: Ctx, tmp: str):
     return {"export_id": str(exp.id), "duration_s": dur, "width": ow, "height": oh, "bytes": exp.output_size_bytes}
 
 
-# ------------------------------------------------------------------ media.derive (stabilize / remove background)
+# ------------------------------------------------------------------ media.derive (stabilize / remove background / remove object)
 
 def handle_media_derive(ctx: Ctx, tmp: str):
     """Make a new media file from an existing one, then process it like a normal upload. Source stays untouched."""
@@ -221,6 +221,12 @@ def handle_media_derive(ctx: Ctx, tmp: str):
         derive.stabilize(src, out, src_a.has_audio, lambda f, s: ctx.progress(0.05 + 0.6 * f, s))
     elif p["op"] == "remove_bg":
         derive.remove_background(src, out, src_a, lambda f, s: ctx.progress(0.05 + 0.6 * f, s))
+    elif p["op"] == "remove_object":
+        try:
+            derive.remove_object(src, out, src_a.has_audio, src_a.width, src_a.height, p.get("boxes") or [],
+                                 lambda f, s: ctx.progress(0.05 + 0.6 * f, s))
+        except ValueError as e:
+            raise Permanent(str(e))
     else:
         raise Permanent(f"unknown operation {p['op']}")
     new.size_bytes = os.path.getsize(out)
