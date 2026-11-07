@@ -106,7 +106,9 @@ function Workspace({ t, tools, studios }: { t: Tool; tools: Tool[]; studios: any
     try {
       let params = { ...v };
       if (opts.seedBump) params = { ...params, seed: String(Math.floor(Math.random() * 2 ** 31)) };
-      const r = await api<Generation>(`/projects/${pid}/ai/tools/${t.id}/run`, { method: "POST", body: { params, model, parent_id: opts.parent ?? null } });
+      // one key per click: if the request is retried or double-submitted, the server returns the first run instead of paying twice
+      const r = await api<Generation>(`/projects/${pid}/ai/tools/${t.id}/run`, { method: "POST", body: { params, model, parent_id: opts.parent ?? null },
+        headers: { "idempotency-key": crypto.randomUUID() } });
       setCur(r.id);
       setHistory((h) => [r, ...h]);
     } catch (e) { toast((e as Error).message); } finally { setBusy(false); }

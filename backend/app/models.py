@@ -291,3 +291,23 @@ class AgentReport(Base):
     summary: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class Dub(Base, Timestamped):
+    """A multilingual dubbing project for one source clip: editable transcript (with per-segment language and speaker),
+    and per target language an editable translation, voice per speaker, render status and output files."""
+    __tablename__ = "dubs"
+    id: Mapped[uuid.UUID] = uuid_pk()
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), index=True)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    source_asset_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("media_assets.id", ondelete="CASCADE"), index=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="preparing")   # preparing | ready | failed
+    error: Mapped[str | None] = mapped_column(Text)
+    source_language: Mapped[str | None] = mapped_column(String(8))     # user's manual choice; None = auto-detect
+    detected_language: Mapped[str | None] = mapped_column(String(8))
+    detection: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    segments: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    speakers: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    targets: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)

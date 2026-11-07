@@ -1,4 +1,5 @@
 """AI Generator Universe API: tool catalogue, runs (generations), history, versions, approvals and Edit in Timeline."""
+import os
 import uuid
 from typing import Any
 
@@ -205,6 +206,27 @@ def run(project_id: uuid.UUID, tool_id: str, body: RunIn, request: Request, user
         version = 1 + max(g.version for g in db.scalars(select(Generation).where((Generation.root_id == root) | (Generation.id == root))))
     model = body.model or (models[0]["id"] if models and t["engine"]["type"] != "local" else None)
     paid = t["engine"]["type"] in ("fal", "llm", "youtube") or (t["engine"]["type"] == "pipeline" and t["engine"].get("needs")) or premium
+    from ..tools.providers import llm_local
+    if t["engine"]["type"] == "llm" and llm_local() and not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY")):
+        paid = False   # self-hosted writing model: no per-run bill, so it doesn't use the plan's premium credit
+        if (params.get("language") or "en") not in ("en", "auto"):
+            raise HTTPException(422, "The free writing model on this server writes English only — other languages need a Claude or OpenAI key")
+    # Duplicate protection (a double click must never pay twice): an explicit Idempotency-Key header returns the first run;
+    # without one, the same run by the same person that is still queued/running from the last 15 s is returned instead.
+    idem = request.headers.get("idempotency-key")
+    idem_key = f"tool:{user.id}:{idem[:80]}" if idem else None
+    if idem_key:
+        prev_job = db.scalar(select(Job).where(Job.workspace_id == p.workspace_id, Job.idempotency_key == idem_key))
+        if prev_job and (prev := db.scalar(select(Generation).where(Generation.job_id == prev_job.id))):
+            return ser_gen(db, prev)
+    else:
+        from datetime import datetime, timedelta, timezone
+        recent = db.scalars(select(Generation).where(
+            Generation.project_id == p.id, Generation.created_by == user.id, Generation.tool_id == tool_id,
+            Generation.status.in_(("queued", "running")), Generation.created_at >= datetime.now(timezone.utc) - timedelta(seconds=15))).all()
+        for prev in recent:
+            if prev.params == params and prev.model == model:
+                return ser_gen(db, prev)
     est = estimate_cost(t, model, params) if paid else None   # only paid runs carry a cost; spend totals sum exactly these
     if paid:
         est = est if est is not None else get_settings().paid_run_floor_usd   # unknown price still counts against the credit
@@ -216,7 +238,7 @@ def run(project_id: uuid.UUID, tool_id: str, body: RunIn, request: Request, user
     db.flush()
     g.root_id = root or g.id
     j = jobs.enqueue(db, workspace_id=p.workspace_id, project_id=p.id, created_by=user.id, kind="ai.tool",
-                     payload={"generation_id": str(g.id)}, max_attempts=1 if paid else 2)
+                     payload={"generation_id": str(g.id)}, idempotency_key=idem_key, max_attempts=1 if paid else 2)
     g.job_id = j.id
     audit(db, request, "ai.tool.run", user=user, workspace_id=p.workspace_id, target_type="generation", target_id=g.id,
           tool_id=tool_id, model=model, est_cost_usd=g.est_cost_usd)

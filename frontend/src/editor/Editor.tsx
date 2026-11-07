@@ -9,6 +9,7 @@ import { Timeline, Clip, duration, splitAllAt, splitAt, deleteClip, findClip, in
 import { CaptionsModal, TTSModal, VoiceCatalog } from "./AiTools";
 import { HighlightsModal, ThumbnailModal, Moment } from "./Creator";
 import ObjectRemoveModal from "./ObjectRemove";
+import DubStudio from "./DubStudio";
 import HistoryPanel from "./HistoryPanel";
 import { LOOKS, svgFilterBody, withLook, sanitizeGrade } from "../grade";
 import { buildPlan, applyCuts, silenceCuts, applySceneSplits, sceneSplits, loudnessGain } from "../smart";
@@ -75,12 +76,14 @@ export default function Editor() {
   const [recording, setRecording] = useState(false);
   const [exportFocus, setExportFocus] = useState(0);
   const [showHistory, setShowHistory] = useState(false);
-  type Pending = { type: "swap"; sourceId: string } | { type: "dub"; clipId: string; keep: boolean; target: string } | { type: "tts"; at: number };
+  type Pending = { type: "swap"; sourceId: string } | { type: "dub"; clipId: string; keep: boolean; target: string } | { type: "tts"; at: number } | { type: "place" };
   const [pending, setPending] = useState<Record<string, Pending>>({}); // new asset id -> what to do when it is ready
+  const placeLater = useRef<Asset[]>([]);
+  const addRef = useRef<((a: Asset) => void) | null>(null);
   const [catalog, setCatalog] = useState<VoiceCatalog | null>(null);
   const [objFor, setObjFor] = useState<{ assetId: string; at: number } | null>(null);
+  const [studioFor, setStudioFor] = useState<string | null>(null);
   const [aiModal, setAiModal] = useState<null | "captions" | "transcript" | "tts" | "highlights" | "thumbnail">(null);
-  const [dubBusy, setDubBusy] = useState<string | null>(null);
   const [autoAdjust, setAutoAdjustState] = useState(() => { try { return localStorage.getItem("cu.autoAdjust") === "1"; } catch { return false; } });
   const setAutoAdjust = (v: boolean) => { setAutoAdjustState(v); try { localStorage.setItem("cu.autoAdjust", v ? "1" : "0"); } catch { /* ignore */ } };
   const samplerRef = useRef<Sampler | null>(null);
@@ -123,13 +126,12 @@ export default function Editor() {
       const a = assets.find((x) => x.id === nid);
       if (!a || a.status === "processing") continue;
       done.push(nid);
-      if (a.status !== "ready") { msgs.push(`${a.filename} failed: ${a.status_detail ?? a.job?.error ?? "processing error"}`); if (job.type === "dub") setDubBusy(null); continue; }
+      if (a.status !== "ready") { msgs.push(`${a.filename} failed: ${a.status_detail ?? a.job?.error ?? "processing error"}`); continue; }
       if (job.type === "swap") {
         let n = 0;
         for (const t of next.tracks) for (const c of t.clips) if (c.asset_id === job.sourceId) { next = updateClip(next, c.id, { asset_id: nid }) ?? next; n++; }
         msgs.push(n ? `Swapped in “${a.filename}” on ${n} clip${n > 1 ? "s" : ""} — Ctrl+Z to go back to the original` : `“${a.filename}” is ready in the media bin`);
       } else if (job.type === "dub") {
-        setDubBusy(null);
         const src = findClip(next, job.clipId)?.clip;
         if (!src) { msgs.push(`“${a.filename}” is ready in the media bin`); continue; }
         const dubClip: Clip = { id: uid(), asset_id: nid, start: src.start, in: src.in, out: Math.min(src.out, Math.floor((a.duration_s ?? 0) * next.fps)), speed: src.speed ?? 1,
@@ -140,6 +142,9 @@ export default function Editor() {
         next = { ...next, tracks: next.tracks.map((t) => (t.id === tid ? { ...t, clips: [...t.clips, dubClip] } : t)) };
         next = updateClip(next, src.id, { volume: job.keep ? 0.15 : 0 }) ?? next;
         msgs.push(`Dubbed audio added under the clip; original voice ${job.keep ? "lowered to 15%" : "muted"} — Ctrl+Z to undo`);
+      } else if (job.type === "place") {
+        placeLater.current.push(a);
+        msgs.push(`“${a.filename}” added to the timeline`);
       } else if (job.type === "tts") {
         const frames = Math.max(1, Math.floor((a.duration_s ?? 1) * next.fps));
         const track = next.tracks.find((t) => t.kind === "audio" && !t.locked) ;
@@ -152,6 +157,8 @@ export default function Editor() {
     setPending((m) => { const n = { ...m }; done.forEach((d) => delete n[d]); return n; });
     if (next !== tl) edit(next);
     msgs.forEach(toast);
+    const later = placeLater.current.splice(0);
+    if (later.length) setTimeout(() => later.forEach((x) => addRef.current?.(x)), 0);
   }, [assets]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { api<VoiceCatalog>("/ai/voices").then(setCatalog).catch(() => {}); }, []);
@@ -172,15 +179,6 @@ export default function Editor() {
     const base = [...tl.tracks].reverse().find((t) => t.kind === "video");
     return base?.clips.find((c) => assetMap.get(c.asset_id)?.has_audio) ?? null;
   })();
-  async function startDub(target: string, voiceId: string, keep: boolean) {
-    if (!dubSource?.asset_id) return;
-    try {
-      setDubBusy("Starting…");
-      const a = await api<Asset>(`/media/${dubSource.asset_id}/dub`, { method: "POST", body: { target, voice_id: voiceId } });
-      setAssets((xs) => [a, ...xs]); setPending((m) => ({ ...m, [a.id]: { type: "dub", clipId: dubSource.id, keep, target } }));
-      setDubBusy("Transcribing, translating and voicing on the cloud worker — keeps running if you close the tab");
-    } catch (e) { setDubBusy(null); toast((e as Error).message); }
-  }
   function videoSel(): string | null {
     const s = selected && tl ? findClip(tl, selected)?.clip : null;
     const a = s?.asset_id ? assetMap.get(s.asset_id) : undefined;
@@ -385,6 +383,8 @@ export default function Editor() {
   const analysed = [...onTl].every((id) => { const a = assetMap.get(id); return a && a.status === "ready" && (a.kind === "image" || a.analysis); });
   const NAV: [string, any, string | null][] = [["Fusion (Nodes)", Workflow, "fusion"], ["Color", Palette, "color"], ["Audio", AudioLines, "loudness-nav"], ["VFX", Activity, "fusion"], ["Motion", Type, "motion"], ["Graphics", ImageIcon, "media"], ["Design", ImageIcon, "design"], ["AI Studio", Sparkles, "magic"], ["Templates", LayoutTemplate, "templates"]];
 
+  addRef.current = (a: Asset) => addAssetToTimeline(a);
+
   return (
     <div className="ed2">
       <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden>
@@ -433,7 +433,7 @@ export default function Editor() {
               onNewSeq={() => createSequence({ name: `Sequence ${sequences.length + 1}`, format: tl.width >= tl.height ? "landscape" : "vertical" }, "New empty sequence created")}
               onSnapshot={snapshot} />
             <AssistantPanel caps={caps} autoAdjust={autoAdjust} setAutoAdjust={setAutoAdjust} onMagic={() => action("magic")} readOnly={readOnly} pending={!analysed} />
-            <VoicePanel caps={caps} catalog={catalog} busy={dubBusy} onDub={startDub} onLipSync={hide.has("lipsync") ? undefined : () => action("lipsync")}
+            <VoicePanel caps={caps} catalog={catalog} onStudio={() => dubSource?.asset_id && setStudioFor(dubSource.asset_id)} onLipSync={hide.has("lipsync") ? undefined : () => action("lipsync")}
               source={dubSource ? { name: assetMap.get(dubSource.asset_id)?.filename ?? "clip" } : null} />
           </div>
           <div className="r2">
@@ -485,6 +485,8 @@ export default function Editor() {
           setAiModal(null);
           if (first) { openSequence(first); toast(`Created ${ms.length} short${ms.length > 1 ? "s" : ""} — switch between them with the Program menu`); }
         }} />}
+      {studioFor && assetMap.get(studioFor) && <DubStudio asset={assetMap.get(studioFor)!} onClose={() => setStudioFor(null)} toast={toast}
+        onPlace={(id) => { loadMedia(); setPending((m) => ({ ...m, [id]: { type: "place" } })); toast("Adding the dubbed file to the timeline as soon as it's processed…"); setStudioFor(null); }} />}
       {objFor && assetMap.get(objFor.assetId) && <ObjectRemoveModal asset={assetMap.get(objFor.assetId)!} at={objFor.at} onClose={() => setObjFor(null)}
         onApply={(boxes) => { const id = objFor.assetId; setObjFor(null); derive(id, "remove_object", "Removing the marked areas", { boxes }); }} />}
       {aiModal === "thumbnail" && <ThumbnailModal samplerRef={samplerRef} onClose={() => setAiModal(null)}

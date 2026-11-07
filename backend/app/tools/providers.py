@@ -129,13 +129,31 @@ def download(url: str, dest: str, max_bytes: int = 2 * 1024**3) -> str:
 # ---------------------------------------------------------------- language model (Claude or OpenAI)
 
 
+def llm_local() -> bool:
+    """A self-hosted, OpenAI-compatible model server (e.g. llama.cpp) at LLM_BASE_URL: free per run, no key."""
+    return bool(os.environ.get("LLM_BASE_URL"))
+
+
 def llm_ready() -> bool:
-    return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY"))
+    return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY") or llm_local())
 
 
 def llm_json(system: str, user: str, max_tokens: int = 4000) -> tuple[dict, str]:
     """Ask for one JSON object. Returns (parsed, model_name)."""
-    if os.environ.get("ANTHROPIC_API_KEY"):
+    if llm_local():
+        model = os.environ.get("LLM_LOCAL_MODEL", "local")
+        base = os.environ["LLM_BASE_URL"].rstrip("/")
+        try:
+            r = httpx.post(f"{base}/v1/chat/completions", timeout=float(os.environ.get("LLM_TIMEOUT", "600")),
+                           json={"model": model, "max_tokens": min(max_tokens, int(os.environ.get("LLM_MAX_TOKENS", "1500"))),
+                                 "temperature": 0.4, "response_format": {"type": "json_object"},
+                                 "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]})
+        except httpx.HTTPError as e:
+            raise ProviderError(f"The writing model server isn't answering ({type(e).__name__})") from e
+        if r.status_code >= 400:
+            raise ProviderError(f"Language model error {r.status_code}: {_err_text(r)}")
+        text = r.json()["choices"][0]["message"]["content"]
+    elif os.environ.get("ANTHROPIC_API_KEY"):
         model = os.environ.get("LLM_MODEL", "claude-sonnet-5-5")
         base = os.environ.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com").rstrip("/")
         r = httpx.post(f"{base}/v1/messages", timeout=180, headers={

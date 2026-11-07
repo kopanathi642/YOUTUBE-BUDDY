@@ -1,0 +1,812 @@
+{
+ "argos/ar_en": {
+  "sha256": "bc98cd4e27ca1cebfae9b7086b2ebc635e4dbed45e7cb5f0891cb7d22feacfad",
+  "size": 81869670,
+  "url": "https://argos-net.com/v1/translate-ar_en-1_0.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/az_en": {
+  "sha256": "6d5c5d44d268433aaa33b75ac0e50b857bb20350652dcf5b5dbbe10e07990981",
+  "size": 120826770,
+  "url": "https://argos-net.com/v1/translate-az_en-1_5.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/bg_en": {
+  "sha256": "a9fd00e8d67fbe6dd9cf07012a284d51916f2d0480a4bfe8add9ba7fd4375055",
+  "size": 72511292,
+  "url": "https://argos-net.com/v1/translate-bg_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/bn_en": {
+  "sha256": "1fdc080e676a930bae436b82bf856077191b1497c086d3d3d15cf63a7ad476fe",
+  "size": 70704005,
+  "url": "https://argos-net.com/v1/translate-bn_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/ca_en": {
+  "sha256": "d1fd06e9f3d919440b05470b3268b8c9077f15519f2a375e19d78825020c8771",
+  "size": 75431251,
+  "url": "https://argos-net.com/v1/translate-ca_en-1_7.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/cs_en": {
+  "sha256": "f1683b1ac5e826c7e3db2b0ea5d73191cdd695d6523b112363d8a769203dcb62",
+  "size": 71354355,
+  "url": "https://argos-net.com/v1/translate-cs_en-1_9_6.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/da_en": {
+  "sha256": "cf0e4ddc78a6cc4c9093fcd8b5f22285fc5d0a8fe8650940cdc913da6295c585",
+  "size": 69084740,
+  "url": "https://argos-net.com/v1/translate-da_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/de_en": {
+  "sha256": "becc2b0011f8249fcb89be9ecb75ba0d876b1fab93c28ee6ff0420936897d637",
+  "size": 150512831,
+  "url": "https://argos-net.com/v1/translate-de_en-1_3.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/el_en": {
+  "sha256": "51fa664c561a25d48150ab1d334e2f43e43c082c37bc82222b7c98804614563c",
+  "size": 72161252,
+  "url": "https://argos-net.com/v1/translate-el_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_ca": {
+  "sha256": "67a1ef9e3bab7e1b39b7a75d30aa18beb251489a895b12d8be61c14eab6fca18",
+  "size": 72211311,
+  "url": "https://argos-net.com/v1/translate-en_ca-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_cs": {
+  "sha256": "f2f5b93fc5a5aa3aa6bece99e0fa9f80487bb9a2ea4e0c3def58d6a4af37c81f",
+  "size": 67275814,
+  "url": "https://argos-net.com/v1/translate-en_cs-1_9_6.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_da": {
+  "sha256": "58c22c1b2f78cdfcb1777cccd88c7959c9eef57647a00440148574d6626d6393",
+  "size": 67523692,
+  "url": "https://argos-net.com/v1/translate-en_da-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_de": {
+  "sha256": "6cd847f0c06c9c66013e6b0932e07fd54a6d90894659c02bf6c5247b72fb25b1",
+  "size": 150508297,
+  "url": "https://argos-net.com/v1/translate-en_de-1_3.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_el": {
+  "sha256": "ac5a359363b14490a2c6614e6c5ae4a58a8bbbc739b17a4cb3616fe46f2c329b",
+  "size": 69660890,
+  "url": "https://argos-net.com/v1/translate-en_el-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_es": {
+  "sha256": "d698d0ef87ad70d5d184b7fa6965905bf4368f09a2bb9ffb165a79bac96af0c4",
+  "size": 87503191,
+  "url": "https://argos-net.com/v1/translate-en_es-1_0.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_fa": {
+  "sha256": "9960466e7c3ea1732ef8a2260e8f25581498e9b4c3319b442ee1ea8ba0264466",
+  "size": 124013736,
+  "url": "https://argos-net.com/v1/translate-en_fa-1_5.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_fi": {
+  "sha256": "172c32485b89233983d1bd4d9e73fc22924ec0cb59bae4c97e299fdd4f083e0e",
+  "size": 69132412,
+  "url": "https://argos-net.com/v1/translate-en_fi-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_fr": {
+  "sha256": "3a65ed83364f4e7b06e30f9dd823db1934899ed3ce839e63f46dc7b09dc797b4",
+  "size": 65472327,
+  "url": "https://argos-net.com/v1/translate-en_fr-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_hi": {
+  "sha256": "60470a003a9c7339db8c060ed8eafc7cf999ba90dfa5dceebd8d0a4f75f1d3f0",
+  "size": 106752178,
+  "url": "https://argos-net.com/v1/translate-en_hi-1_1.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_hu": {
+  "sha256": "63cd48e94fce5041fb0b3ef6394900a5f4ea014f90f9509e57bf10d79d8bbb10",
+  "size": 67859271,
+  "url": "https://argos-net.com/v1/translate-en_hu-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_it": {
+  "sha256": "dde2180001a47904ecbbd688a41e35db8a040e4fd5b52e4f29b4bb499516ab32",
+  "size": 87660780,
+  "url": "https://argos-net.com/v1/translate-en_it-1_0.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_ja": {
+  "sha256": "16300cc4eaa85320520cabcf433b63d01be40ef6966251de72043a083408f716",
+  "size": 120470284,
+  "url": "https://argos-net.com/v1/translate-en_ja-1_1.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_lv": {
+  "sha256": "c95a467af846f67531685c57ff42f10548fc2eaf5e7c59f50c05e95a6e00ce73",
+  "size": 68206333,
+  "url": "https://argos-net.com/v1/translate-en_lv-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_nb": {
+  "sha256": "57968230195e64e07ed44f3becc9222b9c7f23e88b6cebaeba3d4b56d3d140fc",
+  "size": 66218935,
+  "url": "https://argos-net.com/v1/translate-en_nb-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_nl": {
+  "sha256": "91406f040619fb519e16af9c304709e9f3195297e626eec6924d62c7c981a33b",
+  "size": 71504559,
+  "url": "https://argos-net.com/v1/translate-en_nl-1_8.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_pb": {
+  "sha256": "1d1cd5e9540c6b38c258bed002a42d3b311b8a189acb74feaa311ef30d175c5b",
+  "size": 66179201,
+  "url": "https://argos-net.com/v1/translate-en_pb-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_pl": {
+  "sha256": "85d865369326b6d8220876fbd7bc552fa5ec8b99e81161fab4a26f78187cedbc",
+  "size": 67294886,
+  "url": "https://argos-net.com/v1/translate-en_pl-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_ro": {
+  "sha256": "bf8909d2b1e734f73ef4e892fd53c68fa4a96853b5b786b16da596a5ed258003",
+  "size": 71049078,
+  "url": "https://argos-net.com/v1/translate-en_ro-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_ru": {
+  "sha256": "591d743ae103752b88ffc38785c50421320f4eff93c8967e0d3d2e14d4e27811",
+  "size": 195746693,
+  "url": "https://argos-net.com/v1/translate-en_ru-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_sk": {
+  "sha256": "937a73ea56435772a60623959b4f3873dbe65c3de7446f3462919a32c62fd788",
+  "size": 71114489,
+  "url": "https://argos-net.com/v1/translate-en_sk-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_sl": {
+  "sha256": "19bd9c6188f5a36722aac4ed1601b4824b10081efa25fff39de50f1879c37f57",
+  "size": 69632517,
+  "url": "https://argos-net.com/v1/translate-en_sl-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_sv": {
+  "sha256": "d697224b443d212a04d24eb2ea0b615cb663eb24d4d21b70979673507b4d1e49",
+  "size": 107585048,
+  "url": "https://argos-net.com/v1/translate-en_sv-1_5.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_tr": {
+  "sha256": "2d553a00880a0c21dea5b1c375535659e6bf18c9bf2ce9847c2a2fd2ff50316a",
+  "size": 124742526,
+  "url": "https://argos-net.com/v1/translate-en_tr-1_5.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_uk": {
+  "sha256": "037ebc690c0f7287bff01b09006f76707d7089134205a91ef3d823a3c73811e3",
+  "size": 119889246,
+  "url": "https://argos-net.com/v1/translate-en_uk-1_4.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_vi": {
+  "sha256": "86957101aa4099aa9a1a7492e41987d938d3cf0fdaf4fb684c0797a9d567dd16",
+  "size": 67770159,
+  "url": "https://argos-net.com/v1/translate-en_vi-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/en_zh": {
+  "sha256": "433e7c4f034d87fbe2353161e05f18646d7999452f801a4e1f0378522b9850ab",
+  "size": 70743021,
+  "url": "https://argos-net.com/v1/translate-en_zh-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/es_en": {
+  "sha256": "c54df2b62fceaf54a3ce5d97db6bf56efd7940063329f6778f4212d2acb370d4",
+  "size": 285208831,
+  "url": "https://argos-net.com/v1/translate-es_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/et_en": {
+  "sha256": "385c288fa814f60734a0668672f205b71e1e81c5a5d4862b96a41dba649618f0",
+  "size": 156230482,
+  "url": "https://argos-net.com/v1/translate-et_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/eu_en": {
+  "sha256": "8660002a61a6fb23c67f4b454bf615ecc95557acdf93086b20b785734b374271",
+  "size": 75734576,
+  "url": "https://argos-net.com/v1/translate-eu_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/fa_en": {
+  "sha256": "ee79b584708fefff1cf61181fcb89b9c207b3bfeb2287c5610c3399dd034074c",
+  "size": 118419119,
+  "url": "https://argos-net.com/v1/translate-fa_en-1_5.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/fi_en": {
+  "sha256": "7be1ad3a02c160ac1a2a33697b59a20ae49cbfe92f4cb34fd6185841a7bd00fe",
+  "size": 69019776,
+  "url": "https://argos-net.com/v1/translate-fi_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/fr_en": {
+  "sha256": "3b3052fee6bb1e8e8e632a26a723eb2a2c7710dfe73ba61ffd9b83e85d4f14c1",
+  "size": 66585033,
+  "url": "https://argos-net.com/v1/translate-fr_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/gl_en": {
+  "sha256": "2bf8e715366e906260ba1ef77f1f935555e0dcc40f013add9a8801767f1aa34e",
+  "size": 75843745,
+  "url": "https://argos-net.com/v1/translate-gl_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/he_en": {
+  "sha256": "ff8ac0ce734a82f8508ff39eaa90c110f66a2df3a93f03cf6ca72c4a60093470",
+  "size": 115704948,
+  "url": "https://argos-net.com/v1/translate-he_en-1_5.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/hi_en": {
+  "sha256": "f99eadf297073c0f5a320df5d634ebb73e9ab0b819404edf7bd0a0daf6b1ce43",
+  "size": 102381771,
+  "url": "https://argos-net.com/v1/translate-hi_en-1_1.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/hu_en": {
+  "sha256": "aa47290c64ba26a59dff60da464a4eb4466841241594b4dd023ab597b9f6faba",
+  "size": 71809926,
+  "url": "https://argos-net.com/v1/translate-hu_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/id_en": {
+  "sha256": "b494f6109dd7ceae32cb44cc721a14039abce938dc773a70087e73301ef4fed4",
+  "size": 68650073,
+  "url": "https://argos-net.com/v1/translate-id_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/it_en": {
+  "sha256": "d2dd23b8b702f612b8127f07c7a0391f5f2a8b93344e6ddc9dd93c81824e85cb",
+  "size": 87190224,
+  "url": "https://argos-net.com/v1/translate-it_en-1_0.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/ja_en": {
+  "sha256": "623e3477959a815eb0a5ef53e09079ae8f1f9d3bbcd230473baf28c03fb83335",
+  "size": 117155716,
+  "url": "https://argos-net.com/v1/translate-ja_en-1_1.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/ko_en": {
+  "sha256": "6da8f3db6ca40f42b1875570a1c06856f6e17c7ef62845d85de217ba548c1471",
+  "size": 118852077,
+  "url": "https://argos-net.com/v1/translate-ko_en-1_1.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/lt_en": {
+  "sha256": "8ae06df7e47a344c9e58edfd92156333d7e4e69ede9adb7a77c17bcfa498dac7",
+  "size": 71408160,
+  "url": "https://argos-net.com/v1/translate-lt_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/lv_en": {
+  "sha256": "a61c1b467ce51f5449496fc6a4e01fba098a1a3b1f1dafcafb12a512a3aef485",
+  "size": 71393221,
+  "url": "https://argos-net.com/v1/translate-lv_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/ms_en": {
+  "sha256": "4582268f79c733749a58566f5d796cf7749000633fddf406b3c23e808ebcb3b0",
+  "size": 68979493,
+  "url": "https://argos-net.com/v1/translate-ms_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/nb_en": {
+  "sha256": "ee2e3b3541abecb51566b095d3409d97c61b920c9e37956d211fb8b9e9e7d027",
+  "size": 67407741,
+  "url": "https://argos-net.com/v1/translate-nb_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/nl_en": {
+  "sha256": "f49ac90c5812e0cb86a2858f4cfa61accec8709612728e6f805f0771c9a91e0e",
+  "size": 69944805,
+  "url": "https://argos-net.com/v1/translate-nl_en-1_8.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/pl_en": {
+  "sha256": "07eda9edbd6ae5121df7c1d7bd847030423269b8c5056f1c222495c4a81e1721",
+  "size": 71696499,
+  "url": "https://argos-net.com/v1/translate-pl_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/pt_en": {
+  "sha256": "ae76df6f650895c16f2b582065014fab496755ca846ecb19fae81d51f332a38e",
+  "size": 69447231,
+  "url": "https://argos-net.com/v1/translate-pt_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/ro_en": {
+  "sha256": "21dba44a9a2455d385264ff103e9eaa5bfc6c0b83eef69e6d1df4c497bcd00af",
+  "size": 70545301,
+  "url": "https://argos-net.com/v1/translate-ro_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/ru_en": {
+  "sha256": "e9ba8bf722d10a4a4c39f74289d5938fd47eac08dbe4ed0afd22d89445a5c3ac",
+  "size": 156239112,
+  "url": "https://argos-net.com/v1/translate-ru_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/sk_en": {
+  "sha256": "864f50eec15c0bb2978130cec3457d16ae5645a2737d58a3c290dcb63aa0eae5",
+  "size": 71441991,
+  "url": "https://argos-net.com/v1/translate-sk_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/sl_en": {
+  "sha256": "dc7d0b60329aaa941067bb14068f977e4cf10b86c336a36bb6b14e912d49371d",
+  "size": 71989365,
+  "url": "https://argos-net.com/v1/translate-sl_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/sq_en": {
+  "sha256": "3cdafddb8067bc056d7495639830d1551d2c2a892d27531a8aac789cd0b15884",
+  "size": 70457340,
+  "url": "https://argos-net.com/v1/translate-sq_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/sv_en": {
+  "sha256": "b4afa5e9ad1834e80bf3f87c74f497bab118d358dbf174320d3e5acdfcdae2f8",
+  "size": 94928329,
+  "url": "https://argos-net.com/v1/translate-sv_en-1_5.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/sw_en": {
+  "sha256": "2db0e60b4af88a60a540469190c2fd549d9d007389e93259f74c27817c3b5448",
+  "size": 75702951,
+  "url": "https://argos-net.com/v1/translate-sw_en-1_11.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/th_en": {
+  "sha256": "b6642c07389b156f568aa08c64140243bc1b1926f82df2559a2eae08316f84ce",
+  "size": 71737116,
+  "url": "https://argos-net.com/v1/translate-th_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/tl_en": {
+  "sha256": "fa5638666100e86aaba09095b990ad5ab1209f6636efe00924aa14e06458dc7c",
+  "size": 71472754,
+  "url": "https://argos-net.com/v1/translate-tl_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/tr_en": {
+  "sha256": "15217905586561fac843efb5730aabff9a1534d5a9aa3f6ebcc0f9641394ac2d",
+  "size": 120561223,
+  "url": "https://argos-net.com/v1/translate-tr_en-1_5.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/uk_en": {
+  "sha256": "374fd797fd403875c241d018398c77f239b092c6ba5ed7488320838fa1532850",
+  "size": 76077099,
+  "url": "https://argos-net.com/v1/translate-uk_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/ur_en": {
+  "sha256": "0d722bb7c4686a58ad1361202b192294cb939518d6f851741e68b36bb2e56d73",
+  "size": 69679858,
+  "url": "https://argos-net.com/v1/translate-ur_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/vi_en": {
+  "sha256": "ebd51b7189b13eccb9238a5777de1d343008c4c05284a8b89610242364433953",
+  "size": 65895840,
+  "url": "https://argos-net.com/v1/translate-vi_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "argos/zh_en": {
+  "sha256": "62e7af5a3a48b530e47b7b3e5c78c2de79073ecd815750d2bf3ab35b4a67da2d",
+  "size": 74481402,
+  "url": "https://argos-net.com/v1/translate-zh_en-1_9.argosmodel",
+  "licence": "MIT project / OPUS data"
+ },
+ "kokoro/kokoro-v1.0.onnx": {
+  "sha256": "7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5",
+  "size": 325532387,
+  "url": "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx",
+  "licence": "Apache-2.0"
+ },
+ "kokoro/voices-v1.0.bin": {
+  "sha256": "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d",
+  "size": 28214398,
+  "url": "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin",
+  "licence": "Apache-2.0"
+ },
+ "piper-bin": {
+  "sha256": "a50cb45f355b7af1f6d758c1b360717877ba0a398cc8cbe6d2a7a3a26e225992",
+  "size": 26460462,
+  "url": "https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz",
+  "licence": "MIT"
+ },
+ "piper/ca_ES-upc_ona-medium.onnx": {
+  "sha256": "fdb652db8c11a4475527346cf3241cb064d1ba393cf370f3f2ec09a872d118fd",
+  "size": 63201294,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/ca/ca_ES/upc_ona/medium/ca_ES-upc_ona-medium.onnx",
+  "licence": "CC-BY-SA-3.0"
+ },
+ "piper/ca_ES-upc_ona-medium.onnx.json": {
+  "sha256": "7f76acc9c06f4eda9e6aef2997b75782d97855aab48d4b401eb956a6e655eddc",
+  "size": 4875,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/ca/ca_ES/upc_ona/medium/ca_ES-upc_ona-medium.onnx.json",
+  "licence": "CC-BY-SA-3.0"
+ },
+ "piper/cs_CZ-jirka-medium.onnx": {
+  "sha256": "cbd5c900acacc8e8cbecd64347abb8de39c00a9d3104bed06fee92e4f319efc8",
+  "size": 63201294,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/cs/cs_CZ/jirka/medium/cs_CZ-jirka-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/cs_CZ-jirka-medium.onnx.json": {
+  "sha256": "fb38b1799b7354808227c065efa97b1ffa2b0cde59505babb56a36d35af9c637",
+  "size": 5025,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/cs/cs_CZ/jirka/medium/cs_CZ-jirka-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/da_DK-talesyntese-medium.onnx": {
+  "sha256": "b9271efd25f7b8494bbd28d48dd675c8c119daa284f3ee488008935f515f1241",
+  "size": 63201294,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/da/da_DK/talesyntese/medium/da_DK-talesyntese-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/da_DK-talesyntese-medium.onnx.json": {
+  "sha256": "89fe13bd251406cc0088570d103ea7ac35823211d8466faf913268ab8506f41b",
+  "size": 4878,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/da/da_DK/talesyntese/medium/da_DK-talesyntese-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/de_DE-thorsten-medium.onnx": {
+  "sha256": "7e64762d8e5118bb578f2eea6207e1a35a8e0c30595010b666f983fc87bb7819",
+  "size": 63201294,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/de_DE-thorsten-medium.onnx.json": {
+  "sha256": "974adee790533adb273a1ac88f49027d2a1b8f0f2cf4905954a4791e79264e85",
+  "size": 4819,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/el_GR-rapunzelina-low.onnx": {
+  "sha256": "eebb335946c5d868743ff35fbb66b6f00e431b5b9b2e18caf47d3f609a2bf2e1",
+  "size": 63104526,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/el/el_GR/rapunzelina/low/el_GR-rapunzelina-low.onnx",
+  "licence": "CC0"
+ },
+ "piper/el_GR-rapunzelina-low.onnx.json": {
+  "sha256": "24ccc31c1306df4364fd85b56aeb09aba8c185a1fdf7db1367a72d4affe478e4",
+  "size": 4198,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/el/el_GR/rapunzelina/low/el_GR-rapunzelina-low.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/fa_IR-amir-medium.onnx": {
+  "sha256": "fb815380d969ea372b0b21b0de14421f58fe481047e153e69685d079b6e1a9d1",
+  "size": 63531379,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/fa/fa_IR/amir/medium/fa_IR-amir-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/fa_IR-amir-medium.onnx.json": {
+  "sha256": "75f918a3bf0f57a9179abe725af529f2a5c79d6c899e2a84aec76c685d5dfb9a",
+  "size": 4958,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/fa/fa_IR/amir/medium/fa_IR-amir-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/fa_IR-ganji-medium.onnx": {
+  "sha256": "6a98504bb77dc2fd3a863c977d37e67a6a525fdf661917385d569a3ff78e6cae",
+  "size": 63516050,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/fa/fa_IR/ganji/medium/fa_IR-ganji-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/fa_IR-ganji-medium.onnx.json": {
+  "sha256": "9d3e0c0cf00156d8bf38fb7f96bdfbcb21911b37e062a328da0632e3c2cbc465",
+  "size": 4958,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/fa/fa_IR/ganji/medium/fa_IR-ganji-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/fi_FI-harri-medium.onnx": {
+  "sha256": "a44167faa34caed940e4fcad139fcc35922266b2593bcebe77701774c0fb2389",
+  "size": 63201294,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/fi/fi_FI/harri/medium/fi_FI-harri-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/fi_FI-harri-medium.onnx.json": {
+  "sha256": "3f9c9f76f74adf1fbe7279e41eea17d6610757e45effd6808bbea6be74b8916d",
+  "size": 4873,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/fi/fi_FI/harri/medium/fi_FI-harri-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/hu_HU-anna-medium.onnx": {
+  "sha256": "968c0c3a66cb667811242cc88653bff9247395fc7a0517fbeef7d8c08cdae62a",
+  "size": 63201294,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/hu/hu_HU/anna/medium/hu_HU-anna-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/hu_HU-anna-medium.onnx.json": {
+  "sha256": "ccf967d8db8018c9d8ffdb0edc8814ffcb6b75273bb0d84337317240f710283a",
+  "size": 5018,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/hu/hu_HU/anna/medium/hu_HU-anna-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/hu_HU-imre-medium.onnx": {
+  "sha256": "af7d98e2031b4f00cf3693cafc47b0b5347f23c28cd6a5957a693f76d7202c2d",
+  "size": 63201294,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/hu/hu_HU/imre/medium/hu_HU-imre-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/hu_HU-imre-medium.onnx.json": {
+  "sha256": "bb9c31dd8429b1414d486e5d52d52f0790949c63bfaf1345075d42e23ad10c83",
+  "size": 5019,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/hu/hu_HU/imre/medium/hu_HU-imre-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/lv_LV-aivars-medium.onnx": {
+  "sha256": "9d855a47c22e2b94795be9e0eb9e8c4c02ce251dc89461dede94de20ff08bd8e",
+  "size": 63511038,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/lv/lv_LV/aivars/medium/lv_LV-aivars-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/lv_LV-aivars-medium.onnx.json": {
+  "sha256": "08ae2c297be8aa04f15f3f97b7ffeae0146b30b0bd8f7baebcdc46bc2c2f33dc",
+  "size": 7242,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/lv/lv_LV/aivars/medium/lv_LV-aivars-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/nl_BE-nathalie-medium.onnx": {
+  "sha256": "49cf48023861f9fd42e13a8632f068fee67d1ce244a6ee38f29595afbf0a6be4",
+  "size": 63201294,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/nl/nl_BE/nathalie/medium/nl_BE-nathalie-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/nl_BE-nathalie-medium.onnx.json": {
+  "sha256": "4704af2736022e910a3f32672480d5530dd39da5c2bcc079f315f604166ff0de",
+  "size": 4879,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/nl/nl_BE/nathalie/medium/nl_BE-nathalie-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/nl_NL-pim-medium.onnx": {
+  "sha256": "403e58c3675c394f505c2428117bf34cc56e9542dcf6eadbdd3a84706c12e048",
+  "size": 63516050,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/nl/nl_NL/pim/medium/nl_NL-pim-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/nl_NL-pim-medium.onnx.json": {
+  "sha256": "08b58456ca00cf77123826b1712758f99d5fd19ddfb7ec7da8e1a715b047f642",
+  "size": 5037,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/nl/nl_NL/pim/medium/nl_NL-pim-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/no_NO-talesyntese-medium.onnx": {
+  "sha256": "b763aebe02e72c4628c4074c4b8b448f05ffe523b975bfcd58e2c5d531270c13",
+  "size": 63201294,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/no/no_NO/talesyntese/medium/no_NO-talesyntese-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/no_NO-talesyntese-medium.onnx.json": {
+  "sha256": "b0eb0491fc8bf9843d2beac8acf8773b6cf59274316406b36ff579ae8a1909d5",
+  "size": 4880,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/no/no_NO/talesyntese/medium/no_NO-talesyntese-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/pl_PL-darkman-medium.onnx": {
+  "sha256": "db505438a5364e8e2e0242c4324130a873ed660dfbe8d9689cef428ffb1b645f",
+  "size": 63201294,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/pl/pl_PL/darkman/medium/pl_PL-darkman-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/pl_PL-darkman-medium.onnx.json": {
+  "sha256": "70f999f11fa8ad13d3ef779041ee93c9f38be5abdbacdfad42449712fe91c81b",
+  "size": 4816,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/pl/pl_PL/darkman/medium/pl_PL-darkman-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/pl_PL-gosia-medium.onnx": {
+  "sha256": "38f66464240ed74f186e6b7dc13c6e3b22e023426299f25c2b3cc9dfa9373fbc",
+  "size": 63201294,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/pl/pl_PL/gosia/medium/pl_PL-gosia-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/pl_PL-gosia-medium.onnx.json": {
+  "sha256": "1aefb31a9d53ffe44a8163ff73ec833acb7a6253848f6bb0403d8a66f9c7510d",
+  "size": 4814,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/pl/pl_PL/gosia/medium/pl_PL-gosia-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/ro_RO-mihai-medium.onnx": {
+  "sha256": "e0608bbbd53c80267c09ece681b09f5199f54e792356684c8073738e5f15d29f",
+  "size": 63201294,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/ro/ro_RO/mihai/medium/ro_RO-mihai-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/ro_RO-mihai-medium.onnx.json": {
+  "sha256": "8cc0c9f077dc0cec3c25a6a055ec8046db8e40a2510591582f2c9c869f4bc47e",
+  "size": 4877,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/ro/ro_RO/mihai/medium/ro_RO-mihai-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/ru_RU-denis-medium.onnx": {
+  "sha256": "15fab56e11a097858ee115545d0f697fc2a316c41a291a5362349fb870411b0a",
+  "size": 63201294,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/ru/ru_RU/denis/medium/ru_RU-denis-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/ru_RU-denis-medium.onnx.json": {
+  "sha256": "831c860dac0b5073eaa81610a0a638ec23d90a6cf8e5f871b4485c2cec3767c8",
+  "size": 4823,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/ru/ru_RU/denis/medium/ru_RU-denis-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/ru_RU-dmitri-medium.onnx": {
+  "sha256": "f073356ebc4bd0f80c5af58df2953a5988bd5bdab1eb38635ce960b071fbefcb",
+  "size": 63201294,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/ru/ru_RU/dmitri/medium/ru_RU-dmitri-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/ru_RU-dmitri-medium.onnx.json": {
+  "sha256": "667ef3117bc642c2892dff7690d8bdc8ca4228aeaa783b2dc1416df632855e0d",
+  "size": 4824,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/ru/ru_RU/dmitri/medium/ru_RU-dmitri-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/sk_SK-lili-medium.onnx": {
+  "sha256": "d8e21603e0165252849efe0bcb3fbffd1b3193c36bd1f556e1106911e8015526",
+  "size": 63201294,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/sk/sk_SK/lili/medium/sk_SK-lili-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/sk_SK-lili-medium.onnx.json": {
+  "sha256": "b7c474eba411913f9feb65b9da322463e8698e7b200d2b757f6e684802951333",
+  "size": 4963,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/sk/sk_SK/lili/medium/sk_SK-lili-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/sl_SI-artur-medium.onnx": {
+  "sha256": "9222ed93ef425524ad4be0b083369af8ea8db18455576a6016b154192f4ed38c",
+  "size": 63200492,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/sl/sl_SI/artur/medium/sl_SI-artur-medium.onnx",
+  "licence": "CC-BY-4.0"
+ },
+ "piper/sl_SI-artur-medium.onnx.json": {
+  "sha256": "741283430f1fa2be5c61717c6f1fe795a7b9f537491927340dd12f90f3b3cc04",
+  "size": 4970,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/sl/sl_SI/artur/medium/sl_SI-artur-medium.onnx.json",
+  "licence": "CC-BY-4.0"
+ },
+ "piper/sv_SE-nst-medium.onnx": {
+  "sha256": "df011f56825a59dd1efc080c38a65a1ef70407e60f63050e9246f43a3d7e471e",
+  "size": 63104526,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/sv/sv_SE/nst/medium/sv_SE-nst-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/sv_SE-nst-medium.onnx.json": {
+  "sha256": "d45dd74cbb4eca58694bf04a97e243044092476f28a55ae26424f0653086980a",
+  "size": 4157,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/sv/sv_SE/nst/medium/sv_SE-nst-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/tr_TR-fahrettin-medium.onnx": {
+  "sha256": "39081c47270180e8a0dfac69b07bf329fb6d039fcc1279dbe26c2daf2848b190",
+  "size": 63201294,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/tr/tr_TR/fahrettin/medium/tr_TR-fahrettin-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/tr_TR-fahrettin-medium.onnx.json": {
+  "sha256": "93741b234acc5f123430a0e343f619e01cfda6b1dc0970ee80bce7da22b1a09b",
+  "size": 5022,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/tr/tr_TR/fahrettin/medium/tr_TR-fahrettin-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/tr_TR-fettah-medium.onnx": {
+  "sha256": "5d14d5222f36aea2b8fc8dba097fcb18dcf8f5b33e5b2aa76b5e0b44602aa8d7",
+  "size": 63201294,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/tr/tr_TR/fettah/medium/tr_TR-fettah-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/tr_TR-fettah-medium.onnx.json": {
+  "sha256": "0738ecd770d4102fa967a784ae89f64d846b1b5f104076e410c978fefa70b3e7",
+  "size": 4877,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/tr/tr_TR/fettah/medium/tr_TR-fettah-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/uk_UA-ukrainian_tts-medium.onnx": {
+  "sha256": "7920419ac5f6fd8b6450520f24b52ed5a319cb53dd018fbcd71c9e079cbac84f",
+  "size": 76735663,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/uk/uk_UA/ukrainian_tts/medium/uk_UA-ukrainian_tts-medium.onnx",
+  "licence": "CC0"
+ },
+ "piper/uk_UA-ukrainian_tts-medium.onnx.json": {
+  "sha256": "4e96e72917ca9b94edc77d6ccfee03a73f450ba2fc1ca93c2e562bc014e5aa55",
+  "size": 2002,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/uk/uk_UA/ukrainian_tts/medium/uk_UA-ukrainian_tts-medium.onnx.json",
+  "licence": "CC0"
+ },
+ "piper/vi_VN-vais1000-medium.onnx": {
+  "sha256": "ec7c89e2c85f4d1edc24b6120c18aaf1bda614f06b511567eb9c7c0de15e2dab",
+  "size": 63201294,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/vi/vi_VN/vais1000/medium/vi_VN-vais1000-medium.onnx",
+  "licence": "CC-BY-4.0"
+ },
+ "piper/vi_VN-vais1000-medium.onnx.json": {
+  "sha256": "fafb9da1354ed4b77c31af228ed41fb41cd825c14cffa105454b25e6ae751ee0",
+  "size": 4860,
+  "url": "https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/vi/vi_VN/vais1000/medium/vi_VN-vais1000-medium.onnx.json",
+  "licence": "CC-BY-4.0"
+ },
+ "wespeaker-resnet34": {
+  "sha256": "7bb2f06e9df17cdf1ef14ee8a15ab08ed28e8d0ef5054ee135741560df2ec068",
+  "size": 26530309,
+  "url": "https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34-LM/resolve/f0c48c298fd835726c27956a5d617bad7115627e/voxceleb_resnet34_LM.onnx",
+  "licence": "CC-BY-4.0"
+ },
+ "whisper-medium/config.json": {
+  "sha256": "3622a2ddc41ec0e0fd4e68c13c6830f03b90c38d89aaad184de02c8c642cf807",
+  "size": 2257,
+  "url": "https://huggingface.co/Systran/faster-whisper-medium/resolve/08e178d48790749d25932bbc082711ddcfdfbc4f/config.json",
+  "licence": "MIT"
+ },
+ "whisper-medium/model.bin": {
+  "sha256": "9b45e1009dcc4ab601eff815b61d80e60ce3fd8c74c1a14f4a282258286b51ae",
+  "size": 1527906378,
+  "url": "https://huggingface.co/Systran/faster-whisper-medium/resolve/08e178d48790749d25932bbc082711ddcfdfbc4f/model.bin",
+  "licence": "MIT"
+ },
+ "whisper-medium/tokenizer.json": {
+  "sha256": "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab",
+  "size": 2203239,
+  "url": "https://huggingface.co/Systran/faster-whisper-medium/resolve/08e178d48790749d25932bbc082711ddcfdfbc4f/tokenizer.json",
+  "licence": "MIT"
+ },
+ "whisper-medium/vocabulary.txt": {
+  "sha256": "34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913",
+  "size": 459861,
+  "url": "https://huggingface.co/Systran/faster-whisper-medium/resolve/08e178d48790749d25932bbc082711ddcfdfbc4f/vocabulary.txt",
+  "licence": "MIT"
+ },
+ "whisper-small/config.json": {
+  "sha256": "b55496ac7940a7ae47d2c01eab40edfd8701feec1229d9cce3b40014383fb828",
+  "size": 2370,
+  "url": "https://huggingface.co/Systran/faster-whisper-small/resolve/536b0662742c02347bc0e980a01041f333bce120/config.json",
+  "licence": "MIT"
+ },
+ "whisper-small/model.bin": {
+  "sha256": "3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671",
+  "size": 483546902,
+  "url": "https://huggingface.co/Systran/faster-whisper-small/resolve/536b0662742c02347bc0e980a01041f333bce120/model.bin",
+  "licence": "MIT"
+ },
+ "whisper-small/tokenizer.json": {
+  "sha256": "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab",
+  "size": 2203239,
+  "url": "https://huggingface.co/Systran/faster-whisper-small/resolve/536b0662742c02347bc0e980a01041f333bce120/tokenizer.json",
+  "licence": "MIT"
+ },
+ "whisper-small/vocabulary.txt": {
+  "sha256": "34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913",
+  "size": 459861,
+  "url": "https://huggingface.co/Systran/faster-whisper-small/resolve/536b0662742c02347bc0e980a01041f333bce120/vocabulary.txt",
+  "licence": "MIT"
+ }
+}

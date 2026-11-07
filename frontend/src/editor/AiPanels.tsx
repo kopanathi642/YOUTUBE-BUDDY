@@ -65,18 +65,13 @@ export function AssistantPanel({ caps, autoAdjust, setAutoAdjust, onMagic, readO
   );
 }
 
-export function VoicePanel({ caps, catalog, source, onDub, busy, onLipSync }: {
+export function VoicePanel({ caps, catalog, source, onStudio, onLipSync }: {
   caps: Caps; catalog: import("./AiTools").VoiceCatalog | null; source: { name: string } | null;
-  onDub: (target: string, voiceId: string, keepOriginal: boolean) => void; busy: string | null; onLipSync?: () => void;
+  onStudio: () => void; onLipSync?: () => void;
 }) {
   const [tab, setTab] = useState<"tv" | "ls">("tv");
   const langs = [...new Set((catalog?.voices ?? []).map((v) => v.language))];
-  const [to, setTo] = useState("hi");
-  const voices = (catalog?.voices ?? []).filter((v) => v.language === to);
-  const [voice, setVoice] = useState("");
-  const [keep, setKeep] = useState(true);
   const dub = caps.get("dubbing"), ls = caps.get("lip_sync");
-  const vid = voices.find((v) => v.id === voice) ? voice : voices[0]?.id ?? "";
   return (
     <section className="panel ai-panel voice" aria-label="Translate and voice">
       <div className="mini-tabs wide" role="tablist">
@@ -86,18 +81,12 @@ export function VoicePanel({ caps, catalog, source, onDub, busy, onLipSync }: {
       {tab === "tv" ? <>
         <div className="row" style={{ fontSize: 13, fontWeight: 600 }}><Languages size={15} />Translate Video with Voice (Dubbing)</div>
         <div className="dim" style={{ fontSize: 11.5 }}>Source: {source ? <b style={{ color: "var(--text)" }}>{source.name}</b> : "select a clip with speech"}</div>
-        <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <label><span className="label">From (Original)</span><select className="select sm" disabled><option>Auto-detect</option></select></label>
-          <label><span className="label">To (Translate)</span><select className="select sm" value={to} onChange={(e) => setTo(e.target.value)}>
-            {langs.map((l) => <option key={l} value={l}>{catalog?.languages[l] ?? l}</option>)}</select></label>
-        </div>
-        <div><span className="label">Voice Style</span>
-          <div className="voices">{voices.map((v) => <button key={v.id} className={vid === v.id ? "on" : ""} onClick={() => setVoice(v.id)} aria-pressed={vid === v.id} title={v.label}><Mic size={15} />{v.style}</button>)}</div></div>
-        <label className="check"><input type="checkbox" checked={keep} onChange={(e) => setKeep(e.target.checked)} />Keep Original Audio (Background)</label>
-        <div className="provider-note">Lip sync to the dubbed voice: dub first, then use the Lip Sync tab.</div>
-        <button className="btn primary dub" disabled={!dub?.ready || !source || !vid || !!busy} onClick={() => onDub(to, vid, keep)}>
-          {busy ? <span className="spinner" /> : <Mic size={16} />}{busy ? "Dubbing…" : "Translate & Dub"}</button>
-        {busy ? <div className="provider-note">{busy}</div> : <div className="provider-note">{dub?.needs}</div>}
+        <div className="dim" style={{ fontSize: 12, lineHeight: 1.5 }}>
+          Dub into {langs.length} languages at once: speech and language are detected automatically (mixed Hinglish included), speakers keep their own voice,
+          and you can edit the transcript and every translation before the voices are made. Exports a dubbed MP4, audio and SRT/VTT subtitles per language.</div>
+        <div className="voices">{langs.slice(0, 8).map((l) => <span key={l} className="chip sm">{catalog?.languages[l] ?? l}</span>)}{langs.length > 8 && <span className="chip sm">+{langs.length - 8}</span>}</div>
+        <button className="btn primary dub" disabled={!dub?.ready || !source} onClick={onStudio}><Mic size={16} />Open Dubbing Studio</button>
+        <div className="provider-note">{dub?.needs}</div>
       </> : <>
         <div className="row" style={{ fontSize: 13, fontWeight: 600 }}><UserRoundX size={15} />AI Lip Sync</div>
         <div className="provider-note" style={{ marginTop: 4 }}>Lip sync changes a real person's face. It will require the person's recorded consent and adds a visible “AI-altered” label to exports.</div>

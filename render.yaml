@@ -85,8 +85,8 @@ services:
     region: singapore
     dockerCommand: python -m app.worker --queues media,render
     autoDeploy: true
-    disk:                      # keeps downloaded AI models (Whisper, voices, translation, U2-Net) across restarts
-      name: models
-      mountPath: /var/models
-      sizeGB: 5
+    disk:                      # pinned AI models (backend/app/speech/models.lock.json): ~9 GB for all 45 source / 28 target languages
+      name: models             # (narrow with DUB_SOURCES / DUB_TARGETS to save disk). The worker downloads, SHA-256 checks and
+      mountPath: /var/models   # load-tests them at start-up and takes no job until they all pass (MODELS_REQUIRED, on in production).
+      sizeGB: 15
     envVars: *shared

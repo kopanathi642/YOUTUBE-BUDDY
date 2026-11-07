@@ -13,7 +13,8 @@ from sqlalchemy.orm import Session
 from .models import Job, JobStatus
 
 QUEUES = {"media.process": "media", "media.derive": "media", "media.import": "media", "render.export": "render",
-          "ai.transcribe": "media", "ai.translate": "media", "ai.tts": "media", "ai.dub": "media", "ai.tool": "media", "youtube.upload": "media"}
+          "ai.transcribe": "media", "ai.translate": "media", "ai.tts": "media", "ai.dub": "media", "ai.tool": "media", "youtube.upload": "media",
+          "dub.prepare": "media", "dub.translate": "media", "dub.render": "media"}
 
 
 def enqueue(db: Session, *, workspace_id, kind: str, payload: dict, project_id=None, created_by=None,

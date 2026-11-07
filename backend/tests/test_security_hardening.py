@@ -101,3 +101,75 @@ def test_paid_ai_needs_plan_credit_and_respects_platform_wall(env, fake_provider
         assert r.status_code == 201, r.text                   # free tools are never blocked
     finally:
         get_settings.cache_clear()
+
+
+def test_double_click_never_pays_twice(env, fake_provider):
+    from app.db import session_factory
+    from app.models import Generation
+    c, pid = env["c"], env["pid"]
+    body = {"params": {"prompt": "A drone shot over Goa beach", "duration": 5}, "model": "fal-ai/veo3.1"}
+    a = c.post(f"/api/v1/projects/{pid}/ai/tools/001/run", json=body, headers={"idempotency-key": "click-1"})
+    b = c.post(f"/api/v1/projects/{pid}/ai/tools/001/run", json=body, headers={"idempotency-key": "click-1"})   # retried request
+    assert a.status_code == 201 and a.json()["id"] == b.json()["id"]
+    d = c.post(f"/api/v1/projects/{pid}/ai/tools/001/run", json=body)       # no key: the identical run still queued is reused
+    assert d.json()["id"] == a.json()["id"]
+    f = c.post(f"/api/v1/projects/{pid}/ai/tools/001/run", json={**body, "params": {**body["params"], "prompt": "Mumbai rain"}})
+    g = c.post(f"/api/v1/projects/{pid}/ai/tools/001/run", json={**body, "params": {**body["params"], "prompt": "Mumbai rain"}})
+    assert f.json()["id"] != a.json()["id"] and g.json()["id"] == f.json()["id"]   # a different request is a new run, once
+    with session_factory()() as db:
+        assert db.query(Generation).filter(Generation.project_id == pid, Generation.tool_id == "001",
+                                           Generation.params["prompt"].astext.in_(["A drone shot over Goa beach", "Mumbai rain"])).count() >= 2
+
+
+def test_self_hosted_writing_model_is_free_and_needs_no_key(env, fake_provider, monkeypatch):
+    from tests.test_editor_flow import drain
+    c, pid = env["c"], env["pid"]
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv("LLM_BASE_URL", f"http://127.0.0.1:{_port(fake_provider)}")
+    monkeypatch.setenv("LLM_LOCAL_MODEL", "qwen2.5-1.5b-instruct")
+    monkeypatch.setenv("FREE_PLAN_AI_CREDIT_INR", "0")              # Free plan: no premium credit at all
+    get_settings.cache_clear()
+    try:
+        r = c.post(f"/api/v1/projects/{pid}/ai/tools/052/run", json={"params": {"brief": "Street food in Hyderabad"}})
+        assert r.status_code == 201, r.text
+        hi = c.post(f"/api/v1/projects/{pid}/ai/tools/052/run", json={"params": {"brief": "x", "language": "hi"}})
+        assert hi.status_code == 422 and "English only" in hi.text
+        assert r.json()["est_cost_usd"] is None                       # self-hosted: no charge against the credit
+        drain()
+        g = c.get(f"/api/v1/generations/{r.json()['id']}").json()
+        assert g["status"] == "succeeded", g
+        call = [x for x in fake_provider.calls if x[0] == "llm-openai"][-1]
+        assert call[1] is None and call[2]["model"] == "qwen2.5-1.5b-instruct"   # no API key sent anywhere
+        # tools that failed review on the free model stay hidden; other languages are refused, not silently English
+        tools = {t["id"]: t for t in c.get("/api/v1/ai/tools").json()["tools"]}
+        assert tools["051"]["status"]["state"] == "needs_key" and tools["119"]["status"]["state"] == "needs_key"
+        r = c.post(f"/api/v1/projects/{pid}/ai/tools/051/run", json={"params": {"brief": "x"}})
+        assert r.status_code == 409 and "ANTHROPIC_API_KEY" in r.text, r.text   # hidden tool refused, names the key
+    finally:
+        get_settings.cache_clear()
+
+
+def _port(fake) -> int:
+    import os
+    return int(os.environ["FAL_QUEUE_URL"].rsplit(":", 1)[1])
+
+
+def test_worker_takes_no_job_until_models_verified(monkeypatch):
+    import threading
+    from app import worker
+    from app.speech import assets
+    calls = []
+    def broken(progress=print):
+        calls.append(1)
+        raise assets.AssetError("whisper-small/model.bin is missing and MODELS_OFFLINE=1 forbids downloading it")
+    monkeypatch.setattr(assets, "load_check", broken)
+    stop = threading.Event()
+    stop.wait = lambda t=None: stop.set()            # don't sleep 5 minutes in a test: stop after the first failed check
+    worker.wait_for_models(stop)
+    assert calls == [1] and stop.is_set()             # it checked, failed, and returned without ever claiming a job
+    ok = []
+    monkeypatch.setattr(assets, "load_check", lambda progress=print: ok.append(1) or {"whisper": "small", "voices": {}, "translation": {}})
+    worker.wait_for_models(threading.Event())
+    assert ok == [1]
+    monkeypatch.setenv("MODELS_REQUIRED", "1"); assert worker.models_required()
+    monkeypatch.setenv("MODELS_REQUIRED", "0"); assert not worker.models_required()

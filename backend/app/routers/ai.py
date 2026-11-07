@@ -19,9 +19,8 @@ BUILT_IN = "Built in — runs on the cloud worker, no extra cost"
 
 
 def _caps() -> list[tuple]:
-    oa = bool(os.environ.get("OPENAI_API_KEY"))
-    stt = "OpenAI Whisper (your key)" if oa else "Free Whisper model on the worker (downloads ~460 MB from huggingface.co on first use)"
-    mt = "OpenAI (your key)" if oa else "Free Argos models on the worker (one download per language pair on first use)"
+    stt = f"Whisper ({os.environ.get('WHISPER_MODEL', 'small')}) on our worker — pinned model, per-sentence language detection"
+    mt = "Argos translation models on our worker (pinned; other pairs go through English)"
     return [
         ("scene_detect", "Scene detection", True, BUILT_IN),
         ("silence_remove", "Silence removal", True, BUILT_IN),
@@ -30,10 +29,10 @@ def _caps() -> list[tuple]:
         ("smart_reframe", "Smart reframe (9:16, 1:1, 4:5)", True, BUILT_IN + " — static subject-centred crop"),
         ("stabilize", "Stabilisation", True, BUILT_IN + " (FFmpeg vid.stab)"),
         ("background_remove", "Background removal", True, BUILT_IN + " (open-source U²-Net, ~15× real time, clips ≤ 60 s)"),
-        ("tts", "AI voice / text to speech", True, "Free Piper voices on the worker"),
+        ("tts", "AI voice / text to speech", True, "Kokoro and Piper voices on our worker (commercial-use licences only)"),
         ("transcribe", "Speech to text / captions", True, stt),
         ("translate", "Translation", True, mt),
-        ("dubbing", "Translate & dub", True, f"{stt} + {mt} + Piper voices"),
+        ("dubbing", "Translate & dub", True, "Multilingual dubbing on our worker: Whisper + Argos + Kokoro/Piper voices, speaker detection"),
         ("lip_sync", "Lip sync", False, "Needs a GPU lip-sync model provider (e.g. sync.so or Replicate) + recorded consent"),
         ("object_remove", "Object removal (marked areas)", True, BUILT_IN + " (FFmpeg delogo) — fills fixed areas such as logos, "
          "watermarks and text from their surroundings; does not follow moving objects"),
@@ -129,7 +128,7 @@ def dub(asset_id: uuid.UUID, body: DubReq, request: Request, user: User = Depend
     if src.status != MediaStatus.ready or not src.has_audio:
         raise HTTPException(422, "Choose a ready clip that has speech")
     voice = body.voice_id or default_voice(body.target, body.style)
-    if not voice or voice not in VOICE_BY_ID or VOICE_BY_ID[voice][2] != body.target:
+    if not voice or voice not in VOICE_BY_ID or VOICE_BY_ID[voice]["language"] != body.target:
         raise HTTPException(422, f"No AI voice available for {LANG_NAMES.get(body.target, body.target)} yet")
     stem = src.filename.rsplit(".", 1)[0][:120]
     a = _new_audio(db, src.workspace_id, src.project_id, user, f"{stem} (dub {body.target}).wav")

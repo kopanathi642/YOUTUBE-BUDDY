@@ -72,8 +72,8 @@ The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts`
 - Stabilisation (vid.stab).
 - Background removal (u2netp).
 - **Object removal (basic, marked areas)**: Video tools → *Remove Object (marked area)* or Quick Actions → *Object Remove*. The user drags boxes on the clip's own frame; the worker fills each box from its surroundings on every frame (FFmpeg `delogo`, `backend/app/derive.py: remove_object`) and the cleaned copy is swapped in (Ctrl+Z restores). For logos, watermarks, timestamps, small objects with a still camera. No downloads, CPU only.
-- Captions/SRT, translation and dubbing (Whisper, Argos, Piper).
-- AI voice (Piper).
+- Captions/SRT, translation and **multilingual dubbing studio** (self-hosted speech stack, see "Speech stack" below).
+- AI voice (Kokoro and Piper, commercial-licence voices only).
 - Highlights and batch Shorts, smart reframe (face-centred).
 - Thumbnail designer.
 - Webcam recording and frame snapshot.
@@ -140,6 +140,35 @@ The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts`
 **Design checks (2026-11-07):** every main page at 390 / 768 / 1366 / 1920 px has no horizontal scroll and no page errors (signed-in pages included). Dim text colours were raised to pass WCAG AA (≥ 4.5:1): landing `--lp-text-3` → `#878c83`, app `--text-3` → `#8a8fc4`. Phone fixes: the editor dashboard's top bar and tiles, and the shared top bar (search moves to its own row).
 
 **Removed from the screens until built** (listed in `docs/HIDDEN_FEATURES.md`): Motion Tracking / Mask & Roto "Soon" rows, the "blur, glow, sharpen, keying are planned" note, greyed YouTube / Automation editor tabs, the disabled notifications bells (editor dashboard and editor top bar), AI Magic checklist items Magic doesn't do, non-ready engines in status lists, studios with no live tool on the landing page, and the outdated Razorpay note.
+
+**Speech stack** (`backend/app/speech/`, 2026-11-07); full details in `docs/DUBBING_LANGUAGES.md` and `docs/DUBBING_EVAL.md`:
+- **Pinned models:** `models.lock.json` pins 135 files (10.4 GB including Whisper medium; ~8.9 GB for all languages with Whisper small), each by exact revision + SHA-256.
+- **Startup check:** `python -m app.speech.assets prefetch | verify | list | lock`. In production (`MODELS_REQUIRED`), the worker downloads, hash-checks and **load-tests every model before taking any job**, and retries every 5 minutes if one fails. With `MODELS_OFFLINE=1`, nothing ever downloads; a missing or altered file is an error. Offline verify: 29 s, 1.2 GB peak RAM.
+- **Engines:**
+  - speech-to-text: Whisper small (MIT), with per-sentence language detection for mixed speech;
+  - translation: Argos (CTranslate2; SentencePiece *and* BPE packages; non-English pairs go through English; at most 3 language pairs kept in memory);
+  - voices: Kokoro-82M (Apache-2.0: Hindi ×4, English ×5, Spanish, French, Italian, Portuguese BR, Japanese, Chinese) plus Piper voices with CC0/CC-BY licences (20 more languages);
+  - speakers: WeSpeaker ResNet34 ONNX (CC-BY-4.0) + clustering.
+- **Licence fix:** both Hindi Piper voices (Pratham, Priyamvada) and several English ones were **CC BY-NC-SA, non-commercial** and must not be used in a paid product. They are removed; Kokoro voices replace them, keeping the same voice IDs (`hi-female`, `hi-male`, `en-female`…).
+- **Dubbing studio** (editor → Voice panel → *Open Dubbing Studio*; API `/dub/languages`, `/media/{id}/dubs`, `/dubs/{id}`, `/dubs/{id}/targets`, `/dubs/{id}/render`; table `dubs`, migration 0008):
+  - spoken language auto-detected, with manual correction (which re-recognises the speech);
+  - mixed-language sentences marked and translated from their own language;
+  - speakers detected and renameable, one consistent voice per speaker per language;
+  - transcript and translation editing, with a version check against lost edits;
+  - up to 10 target languages per video;
+  - render per language: voice on original timing (up to 1.45× speed-up, overruns reported), original audio ducked under speech;
+  - outputs: **dubbed MP4, mixed M4A, voice-only WAV, SRT, VTT**, plus MP4/M4A added to the media bin;
+  - one render per language per revision: a double click doesn't render twice.
+- **Paid speech APIs:** OpenAI is no longer used for captions, translation or dubbing (it bypassed plan credits). Dubbing costs ₹0, CPU time only.
+
+**Writing tools on a free self-hosted model:** `LLM_BASE_URL` points to an OpenAI-compatible server such as llama.cpp, with no key and ₹0 per run. It was tested with Qwen2.5-1.5B-Instruct (Apache-2.0); real outputs are in `docs/WRITING_TOOLS_EVAL.md`.
+- Only the 6 tools that passed review are enabled (`LLM_LOCAL_TOOLS`, default `052,054,055,056,057,059`), and in **English only**: Hindi requests came back in English, so other languages are refused with a clear message.
+- The Director Agent, the scorers and the SEO analyzer gave misleading output and stay hidden until a Claude/OpenAI key is set.
+- Hosted writing models are untested here (no key): run `backend/scripts/eval_writing.py` after adding one.
+
+**Duplicate-job protection:**
+- AI tool runs accept an `Idempotency-Key` header, which the frontend sends on every click. Without one, an identical run from the same person that is still queued in the last 15 s is reused. A double click never pays twice.
+- Dub prepare, translate and render are keyed per dub and revision.
 
 ## 4. Incomplete / unverified / known issues
 - **Hidden until keys are set** (`docs/HIDDEN_FEATURES.md`):
@@ -211,16 +240,19 @@ AI_RUNS_PER_10MIN=1000 (on the server) + node e2e/ai_tools_audit.mjs
 - **YouTube publishing:** `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY` (same value on web and worker)
 - **AI providers (optional):** `FAL_KEY`, `FAL_QUEUE_URL`, `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`, `LLM_MODEL`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`, `OPENAI_TEXT_MODEL`, `YOUTUBE_API_KEY`, `YOUTUBE_API_URL`
 - **Stock:** `PEXELS_API_KEY`, `PIXABAY_API_KEY`
-- **Local models:** `MODEL_CACHE`, `WHISPER_MODEL` (default `small`), `PIPER_BIN`
+- **Local models / speech stack:** `MODEL_CACHE`, `WHISPER_MODEL` (`small` default, or `medium`), `PIPER_BIN`, `MODELS_REQUIRED`, `MODELS_OFFLINE`, `DUB_SOURCES`, `DUB_TARGETS` (comma lists or `all`), `MT_MAX_LOADED`, `WHISPER_THREADS`
+- **Self-hosted writing model:** `LLM_BASE_URL`, `LLM_LOCAL_MODEL`, `LLM_LOCAL_TOOLS`, `LLM_MAX_TOKENS`, `LLM_TIMEOUT`
 - **Agent:** `AGENT_ENABLED`, `AGENT_RESEARCH_HOURS`, `AGENT_SOURCES`
 - **Test-only overrides:** `REAL_MODELS`, `GOOGLE_TOKEN_URL`, `GOOGLE_AUTH_URL`, `GOOGLE_REVOKE_URL`, `YOUTUBE_UPLOAD_URL`, `PEXELS_API_URL`, `PIXABAY_API_URL`
 
 ## 8. AI integrations and model locations
 | Engine | Used for | Where the model comes from | Status |
 |---|---|---|---|
-| faster-whisper (`WHISPER_MODEL`, default small) | captions, transcripts, dub | huggingface.co on first use → `$MODEL_CACHE/whisper` | VERIFIED in CI (needs `av==18.1.0`) |
-| Argos Translate | translation incl. Hindi | argospm index (GitHub) → `$MODEL_CACHE/argos/<src>_<dst>` | VERIFIED in CI; quality limits |
-| Piper TTS | voices, dub (Hindi voices from HF) | binary from GitHub releases → `$MODEL_CACHE/piper`; voices from huggingface.co `rhasspy/piper-voices` v1.0.0 | VERIFIED in CI |
+| faster-whisper small (MIT; `WHISPER_MODEL`) | captions, transcripts, dub, per-sentence language | pinned HF revision → `$MODEL_CACHE/whisper/small` | VERIFIED offline (DUBBING_EVAL.md) |
+| Argos Translate (71 packages, SPM + BPE) | translation, 45 sources × 28 targets via English | argos-net.com, pinned versions + SHA-256 → `$MODEL_CACHE/argos` | VERIFIED offline (every pair load-tested) |
+| Kokoro-82M ONNX (Apache-2.0) | Hindi/English/es/fr/it/pt/ja/zh voices | GitHub release `model-files-v1.0` → `$MODEL_CACHE/kokoro` | VERIFIED offline |
+| Piper (MIT) + 25 CC0/CC-BY voices | 20 more voice languages | pinned GitHub release + HF `rhasspy/piper-voices` @ v1.0.0 → `$MODEL_CACHE/piper*` | VERIFIED offline |
+| WeSpeaker ResNet34 ONNX (CC-BY-4.0) | speaker labels | pinned HF revision → `$MODEL_CACHE/wespeaker` | VERIFIED (eval) |
 | rembg u2netp | background removal | downloaded by rembg on first use (home cache) | VERIFIED (tests) |
 | FFmpeg / vid.stab / OpenCV / Pillow + HarfBuzz | editing, export, stabilise, analysis, titles | system packages / pip | VERIFIED |
 | fal.ai queue (Veo, Kling, Seedance, Wan, FLUX, Nano Banana, ElevenLabs, Sync lip sync, OmniHuman, Tripo…) | 44 hosted tools | remote API, `FAL_KEY` | MISSING KEY, code tested with a fake provider |

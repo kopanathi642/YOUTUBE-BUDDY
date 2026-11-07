@@ -564,8 +564,22 @@ for s in STUDIOS:
 # ---------------------------------------------------------------- live status
 
 
+# Writing tools whose output from the free self-hosted model (Qwen2.5-1.5B-Instruct, Apache-2.0) passed review on
+# 2026-11-07 (docs/WRITING_TOOLS_EVAL.md): English only. Others stay hidden until a Claude/OpenAI key is set.
+LOCAL_LLM_TOOLS_DEFAULT = "052,054,055,056,057,059"
+
+
+def local_llm_only() -> bool:
+    return bool(os.environ.get("LLM_BASE_URL")) and not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY"))
+
+
+def local_llm_tools() -> set[str]:
+    return {x.strip() for x in os.environ.get("LLM_LOCAL_TOOLS", LOCAL_LLM_TOOLS_DEFAULT).split(",") if x.strip()}
+
+
 def keys() -> dict:
-    return {"fal": bool(os.environ.get("FAL_KEY")), "llm": bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY")),
+    return {"fal": bool(os.environ.get("FAL_KEY")),
+            "llm": bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_BASE_URL")),
             "youtube": bool(os.environ.get("YOUTUBE_API_KEY"))}
 
 
@@ -581,8 +595,10 @@ def status(t: dict, k: dict | None = None) -> dict:
         return {"state": "unbuilt", "needs": [], "detail": e["note"]}
     need = {"fal": ["fal"], "llm": ["llm"], "youtube": ["youtube", "llm"], "local": [], "pipeline": list(e.get("needs", []))}[typ]
     missing = [n for n in need if not k[n]]
+    if "llm" in need and "llm" not in missing and local_llm_only() and t["id"] not in local_llm_tools():
+        missing.append("llm")   # the free local model didn't pass review for this tool: needs a hosted model
     if missing:
-        return {"state": "needs_key", "needs": [NEEDS_TEXT[m] for m in missing], "detail": e["note"]}
+        return {"state": "needs_key", "needs": [NEEDS_TEXT[m] for m in dict.fromkeys(missing)], "detail": e["note"]}
     return {"state": "ready", "needs": [], "detail": e["note"]}
 
 

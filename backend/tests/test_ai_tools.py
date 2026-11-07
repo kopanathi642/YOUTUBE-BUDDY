@@ -353,6 +353,10 @@ class Fake(BaseHTTPRequestHandler):
             else:
                 out = {"title": "Chai Story", "logline": "x", "scenes": [{"heading": "Open", "narration": "Hi", "visuals": "tea", "on_screen_text": "", "duration_s": 5}], "cta": "Subscribe"}
             return self._json({"content": [{"type": "text", "text": "```json\n" + json.dumps(out) + "\n```"}]})
+        if self.path == "/v1/chat/completions":  # OpenAI-compatible (also a self-hosted llama.cpp server at LLM_BASE_URL)
+            Fake.calls.append(("llm-openai", self.headers.get("authorization"), body))
+            out = {"title": "Chai Story", "logline": "x", "scenes": [{"heading": "Open", "narration": "Hi", "visuals": "tea", "on_screen_text": "", "duration_s": 5}], "cta": "Subscribe"}
+            return self._json({"choices": [{"message": {"content": json.dumps(out)}}]})
         auth = self.headers.get("authorization")
         Fake.calls.append(("fal", self.path.lstrip("/"), auth, body))
         rid = uuid.uuid4().hex

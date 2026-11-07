@@ -10,15 +10,18 @@ jobs:
         ports: ["5432:5432"]
         options: --health-cmd "pg_isready -U creator" --health-interval 5s --health-retries 10
     defaults: { run: { working-directory: backend } }
+    env: { MODEL_CACHE: /tmp/models }   # the AI-voice test downloads one pinned voice (SHA-256 checked) on first use
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.13" }
+      - uses: actions/cache@v4
+        with: { path: /tmp/models, key: "voice-models-${{ hashFiles('backend/app/speech/models.lock.json') }}" }
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: pip install -r requirements.txt -r requirements-dev.txt
       - run: python -m pytest -q
   real-models:
-    # Free AI models for real (Whisper captions, Argos translation, Piper voices incl. Hindi, full dub through the API).
+    # Pinned self-hosted models for real (Whisper, Argos, Kokoro/Piper voices incl. Hindi, multilingual dub through the API), offline.
     runs-on: ubuntu-24.04
     services:
       postgres:
@@ -27,16 +30,20 @@ jobs:
         ports: ["5432:5432"]
         options: --health-cmd "pg_isready -U creator" --health-interval 5s --health-retries 10
     defaults: { run: { working-directory: backend } }
-    env: { REAL_MODELS: "1", MODEL_CACHE: /tmp/models, WHISPER_MODEL: small }
+    env: { REAL_MODELS: "1", MODEL_CACHE: /tmp/models, WHISPER_MODEL: small, DUB_SOURCES: "en,hi,es", DUB_TARGETS: "en,hi,es,de" }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.13" }
       - uses: actions/cache@v4
-        with: { path: /tmp/models, key: free-models-v1 }
+        with: { path: /tmp/models, key: "pinned-models-${{ hashFiles('backend/app/speech/models.lock.json') }}" }
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: python -m app.speech.assets prefetch          # download + SHA-256 check (pinned in models.lock.json)
+      - run: python -m app.speech.assets verify            # load every model, one inference each, with downloads forbidden
+        env: { MODELS_OFFLINE: "1", HF_HUB_OFFLINE: "1" }
       - run: python -m pytest -q -s tests/test_real_models.py
+        env: { MODELS_OFFLINE: "1", HF_HUB_OFFLINE: "1" }
   frontend:
     runs-on: ubuntu-24.04
     defaults: { run: { working-directory: frontend } }

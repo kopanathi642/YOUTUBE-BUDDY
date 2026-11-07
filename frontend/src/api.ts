@@ -7,14 +7,14 @@ export class ApiError extends Error {
   }
 }
 
-export async function api<T = any>(path: string, opts: { method?: string; body?: unknown; signal?: AbortSignal } = {}): Promise<T> {
+export async function api<T = any>(path: string, opts: { method?: string; body?: unknown; signal?: AbortSignal; headers?: Record<string, string> } = {}): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${BASE}/api/v1${path}`, {
       method: opts.method ?? "GET",
       credentials: "include",
       signal: opts.signal,
-      headers: { "x-requested-with": "creator-universe", ...(opts.body !== undefined ? { "content-type": "application/json" } : {}) },
+      headers: { "x-requested-with": "creator-universe", ...(opts.body !== undefined ? { "content-type": "application/json" } : {}), ...(opts.headers ?? {}) },
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
     });
   } catch (e) {

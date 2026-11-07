@@ -220,8 +220,8 @@ await step("Record from (fake) camera and add to project", async () => {
   if (await page.locator(".bin-item.failed, .bin-item.rejected").count()) throw new Error("recording rejected");
 });
 await step("Translate & Voice / Lip Sync panels: controls respond, locked buttons explain", async () => {
-  await page.selectOption(".voice select >> nth=1", "Hindi"); await page.click(".voices button:has-text('Female')");
   await page.click(".voice [role=tab]:has-text('Lip Sync')"); await page.click(".voice [role=tab]:has-text('Translate')");
+  await page.waitForSelector(".voice button:has-text('Open Dubbing Studio')");
 });
 await step("Sequence menu: new sequence, switch back", async () => {
   await page.click(".viewer-head .pill:has-text('Program')"); await page.click(".menu-item:has-text('New sequence')");
@@ -332,15 +332,27 @@ await step("Thumbnail designer → saved to media bin", async () => {
   await page.click(".modal button:has-text('Save to media bin')");
   await page.waitForFunction((n) => document.querySelectorAll(".bin-item").length > n, n, { timeout: 30000 });
 });
-await step("Translate & Dub runs (pipeline) and reports engine status honestly", async () => {
+await step("Dubbing studio: detect speech, transcript, two languages, dub, five downloads", async () => {
   await page.locator(".tl-scroll").evaluate((e) => (e.scrollLeft = 0));
   await page.click('[data-track="v1"] .clip >> nth=0');
-  await page.click(".voice button:has-text('Translate & Dub')");
-  await page.waitForFunction(() => !document.querySelector(".voice .dub .spinner"), null, { timeout: 600000 });
-  const t = await toast();
-  if (/Dubbed audio added/.test(t)) return;
-  if (/huggingface|Whisper|speech model|OpenAI/i.test(t)) { results.push(["NOTE", "Dubbing engine blocked in this sandbox: " + t.slice(0, 140)]); return; }
-  throw new Error("no clear outcome: " + t);
+  await page.click(".voice button:has-text('Open Dubbing Studio')");
+  await page.waitForSelector(".dub-modal");
+  if (await page.locator(".dub-setup").count()) {
+    await page.click(".dub-chips .chip:has-text('Spanish')");                     // Hindi is pre-selected
+    await page.click(".dub-modal button:has-text('Recognise speech')");
+  }
+  await page.waitForSelector(".dub-modal .dub-row, .dub-modal .error-box", { timeout: 900000 });
+  const err = await page.locator(".dub-modal .error-box").allTextContents();
+  if (err.length) {
+    if (/No speech|huggingface|MODELS_OFFLINE|missing/i.test(err[0])) { results.push(["NOTE", "Dubbing: " + err[0].slice(0, 140)]); await page.click(".dub-modal button[aria-label='Close']"); return; }
+    throw new Error(err[0]);
+  }
+  await page.click(".dub-modal [role=tab]:has-text('Hindi')");
+  await page.waitForSelector(".dub-modal .dub-row.tr", { timeout: 300000 });
+  await page.click(".dub-modal button:has-text('Dub into Hindi')");
+  await page.waitForSelector(".dub-modal a:has-text('Dubbed MP4')", { timeout: 900000 });
+  for (const f of ["Dubbed MP4", "Audio (M4A)", "Voice only (WAV)", "SRT", "VTT"]) await page.waitForSelector(`.dub-modal a:has-text('${f}')`);
+  await page.click(".dub-modal button[aria-label='Close']");
 });
 await step("Export: tabs, queue, render, verified download", async () => {
   for (const t of ["Presets", "Queue", "Export"]) await page.click(`.export-dock [role=tab]:has-text("${t}")`);

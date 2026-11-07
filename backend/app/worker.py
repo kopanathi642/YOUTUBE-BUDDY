@@ -414,9 +414,17 @@ def handle_ai_tool(ctx: Ctx, tmp: str):
         raise Permanent(str(e))
 
 
+def _dubbing():
+    from . import dubbing   # imported lazily: it pulls in the speech stack
+    return dubbing
+
+
 HANDLERS = {"media.process": handle_media_process, "media.derive": handle_media_derive, "media.import": handle_media_import, "youtube.upload": handle_youtube_upload, "render.export": handle_render_export,
             "ai.transcribe": handle_ai_transcribe, "ai.translate": handle_ai_translate, "ai.tts": handle_ai_tts, "ai.dub": handle_ai_dub,
-            "ai.tool": handle_ai_tool}
+            "ai.tool": handle_ai_tool,
+            "dub.prepare": lambda ctx, tmp: _dubbing().handle_prepare(ctx, tmp),
+            "dub.translate": lambda ctx, tmp: _dubbing().handle_translate(ctx, tmp),
+            "dub.render": lambda ctx, tmp: _dubbing().handle_render(ctx, tmp)}
 
 
 def process_one(worker_id: str, queues: list[str]) -> bool:
@@ -459,6 +467,10 @@ def process_one(worker_id: str, queues: list[str]) -> bool:
 
 
 def _mark_media_failed(db, job: Job, msg: str):
+    if job.kind.startswith("dub."):
+        from . import dubbing
+        dubbing.mark_failed(db, job, msg)
+        return
     if job.kind == "ai.tool":
         from .models import Generation
         g = db.get(Generation, uuid.UUID(job.payload["generation_id"]))
@@ -474,6 +486,29 @@ def _mark_media_failed(db, job: Job, msg: str):
             db.commit()
 
 
+def models_required() -> bool:
+    """Production workers verify every speech/voice/translation model before taking ANY job (MODELS_REQUIRED, on by default
+    in production). Development and tests skip it unless MODELS_REQUIRED=1."""
+    v = os.environ.get("MODELS_REQUIRED")
+    return v.lower() in ("1", "true", "yes") if v else get_settings().env == "production"
+
+
+def wait_for_models(stop: threading.Event) -> None:
+    from .speech import assets
+    while not stop.is_set():
+        with open(ALIVE_FILE, "w") as f:
+            f.write(str(time.time()))
+        try:
+            t0 = time.time()
+            rep = assets.load_check(progress=lambda m: log.info(f"models: {m}"))
+            log.info(f"models verified in {time.time() - t0:.0f}s: whisper {rep['whisper']}; {len(rep['voices'])} voices; "
+                     f"{len(rep['translation'])} translation pairs — accepting jobs")
+            return
+        except Exception as e:  # noqa: BLE001
+            log.error(f"models NOT ready, not accepting jobs yet: {e} — retrying in 5 minutes")
+            stop.wait(300)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--queues", default="media,render")
@@ -485,6 +520,8 @@ def main():
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
     signal.signal(signal.SIGINT, lambda *_: stop.set())
     log.info(f"worker {worker_id} started queues={queues}")
+    if not a.once and models_required():
+        wait_for_models(stop)
     agent_t = 0.0
     while not stop.is_set():
         with open(ALIVE_FILE, "w") as f:

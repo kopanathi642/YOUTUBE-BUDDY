@@ -1,6 +1,7 @@
-"""REAL free AI models, end to end — no stand-ins. Runs only with REAL_MODELS=1 (GitHub Actions job `real-models`),
-because the build sandbox can't download models. Proves: Piper voice → Whisper captions (round trip) → Argos translation
-to Hindi → Hindi Piper voice → full dub of a video through the API, exactly as a user would run it."""
+"""REAL pinned models, end to end — no stand-ins. Runs only with REAL_MODELS=1 (GitHub Actions job `real-models`), after
+`python -m app.speech.assets prefetch` and with MODELS_OFFLINE=1, so nothing downloads during the tests. Proves:
+Kokoro voice → Whisper captions (round trip) → Argos translation → Kokoro Hindi voice → full dub through the API,
+and the multilingual dubbing studio into several languages at once with downloadable MP4/M4A/SRT/VTT."""
 import os
 import re
 import subprocess
@@ -76,3 +77,31 @@ def test_full_dub_of_a_video_through_the_api(make_client, tmp_path):
     tr = c.get(f"/api/v1/media/{v['id']}").json()["analysis"]["translations"]["hi"]["segments"]
     print("HINDI SUBTITLES:", tr)
     assert any(DEVANAGARI.search(s["text"]) for s in tr)
+
+
+def test_multilingual_dub_studio(make_client, tmp_path):
+    import httpx
+    wav = str(tmp_path / "talk.wav")
+    dur = ai_engines.tts(SENTENCE + " The food here is amazing and the people are very friendly.", "en-male", wav)
+    mp4 = str(tmp_path / "talk2.mp4")
+    subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", f"testsrc2=s=640x360:r=25:d={dur + 1:.2f}",
+                    "-i", wav, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", mp4], check=True)
+    c = make_client()
+    p = new_project(c, signup(c)["workspaces"][0]["id"])
+    v = upload(c, p["id"], mp4, "video/mp4")
+    drain()
+    targets = [t for t in ("hi", "es", "de") if t in {x["code"] for x in c.get("/api/v1/dub/languages").json()["targets"]}]
+    d = c.post(f"/api/v1/media/{v['id']}/dubs", json={"targets": targets}).json()
+    drain()
+    d = c.get(f"/api/v1/dubs/{d['id']}").json()
+    assert d["status"] == "ready" and d["detected_language"] == "en", d
+    c.post(f"/api/v1/dubs/{d['id']}/render", json={"languages": targets})
+    drain()
+    d = c.get(f"/api/v1/dubs/{d['id']}").json()
+    for lang in targets:
+        t = d["targets"][lang]
+        print(lang, t["status"], t.get("report", {}) and {k: t["report"][k] for k in ("seconds", "lines", "lines_sped_up", "lines_overrunning")})
+        assert t["status"] == "done", t
+        srt = httpx.get(t["files"]["srt"]).text
+        assert srt.count("-->") >= 1 and (lang != "hi" or DEVANAGARI.search(srt)), srt
+        assert httpx.get(t["files"]["mp4"]).status_code == 200
