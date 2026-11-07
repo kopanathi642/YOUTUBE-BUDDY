@@ -30,3 +30,42 @@ Prices checked 5 Nov 2026 from render.com/pricing and developers.cloudflare.com/
 
 ## Before charging money (Phase 8)
 Measure real cost per render-minute (worker $/hour ÷ minutes rendered per hour) and per stored GB, then set Buddy Credit prices = cost + payment fees (Razorpay ≈ 2%) + GST + support + margin. Do not publish prices before that measurement.
+
+## Profitability review (2026-11-07)
+
+Checked against the founder's reference *"How to Make Your Business Profitable | Why Startups Fail? ft. Teja Gudluru – SriLakshmi Iyengar EP 2"* (YouTube `kRdr01w-jEc`) and public research on why startups fail. CB Insights' post-mortems put **no market need** and **running out of cash** at the top, with **pricing/cost problems** and **no business model** also common. Indian SaaS write-ups recommend rupee pricing, UPI, and a free-forever tier over a short trial.
+
+**What was wrong:**
+- Plans promised premium AI by *runs per day*: Creator 50/day for ₹299/month, Pro 200/day for ₹799.
+- One hosted video generation costs $0.50–$3+, and every workspace (Free included) could spend up to **$10/day**.
+- Nothing capped the whole platform.
+
+One busy user could cost more than a hundred paying users bring in. That is the "price below cost → run out of cash" failure.
+
+**What the code does now** (`backend/app/billing.py`, `routers/tools.py`):
+
+| Plan | Price | After 18% GST* | Premium-AI credit (max provider cost) | Worst-case margin / month |
+|---|---|---|---|---|
+| Free | ₹0 | — | ₹0 (`FREE_PLAN_AI_CREDIT_INR`); free tools unlimited | − CPU time only |
+| Creator | ₹299 / month or ₹2,990 / year | ₹253 (yearly ≈ ₹211/mo) | ₹100 per rolling 30 days | ≥ ₹153 (yearly ≥ ₹111) |
+| Pro | ₹799 / month or ₹7,990 / year | ₹677 (yearly ≈ ₹564/mo) | ₹300 per rolling 30 days | ≥ ₹377 (yearly ≥ ₹264) |
+
+\*Only if GST-registered; check the turnover threshold with a CA. UPI-to-QR has no gateway fee.
+
+- **Credits are counted in money, not runs.** The estimated provider cost of every paid run counts, including premium runs of local tools, and runs with an unknown price at `PAID_RUN_FLOOR_USD`.
+- **Walls around the credit:**
+  - per workspace per day: `AI_DAILY_BUDGET_USD` (default $3) and `AI_DAILY_PAID_RUNS`;
+  - whole platform per calendar month: `AI_MONTHLY_BUDGET_USD` (default $50). Set it to what you can actually pay. When it's reached, premium AI pauses and the free tools keep working.
+- **Test guard:** `test_plan_credits_and_yearly_price` fails if a plan's credit goes above half its after-GST price.
+- **Pro's "priority" is real now:** jobs from active Pro workspaces are claimed first (`jobs.claim`), with a test.
+- **Yearly plans:** 12 months for the price of 10. Cash up front extends runway.
+- **Prices are public:** the landing page Pricing section reads the same `PLANS` the payment flow charges.
+
+**Break-even** on fixed costs (≈ ₹3,600/month from the table above), worst case with every credit fully used: about **24 Creator** or **10 Pro** monthly subscribers. With typical use, half the credit, about 18 Creator.
+
+**Founder checklist:**
+1. Set a spending limit in the fal.ai account too. It's a second wall outside the app.
+2. Set `AI_MONTHLY_BUDGET_USD` to what you can afford this month, and raise it only as paid revenue grows.
+3. "No market need" is the number one killer. Before building more features, get the first 20 creators using the free plan. Watch activation and conversion in Settings → Founder metrics. Ask the ones who export every week what they would pay for.
+4. Add a second worker ($25) only when paid revenue covers it. Until then Pro jobs jump the queue.
+5. Re-check provider prices (`usd_per_s` / `usd_per_run` in `tools/registry.py`) and `USD_INR` every few months, since credits depend on them.

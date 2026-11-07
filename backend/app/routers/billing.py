@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .. import storage
-from ..billing import PLANS, active_plan, is_platform_admin, paid_runs_limit
+from ..billing import PLANS, YEAR_MONTHS, YEAR_PRICE_MONTHS, active_plan, ai_credit_inr, ai_spent_inr, is_platform_admin, price_inr
 from ..db import get_db
 from ..models import Payment, PlatformSetting, Role, User, Workspace, WorkspaceMember
 from ..security import RateLimiter, audit, current_user
@@ -62,21 +62,35 @@ def ser_payment(p: Payment) -> dict:
             "reviewed_at": p.reviewed_at.isoformat() if p.reviewed_at else None}
 
 
+def public_plans() -> list[dict]:
+    from ..config import get_settings
+    free_credit = get_settings().free_plan_ai_credit_inr
+    return [{"id": k, **v, "ai_credit_inr": free_credit if k == "free" else v["ai_credit_inr"],
+             "year_price_inr": price_inr(k, YEAR_MONTHS)} for k, v in PLANS.items()]
+
+
+@router.get("/public/plans")
+def plans_public():
+    """Prices for the signed-out landing page — the same PLANS the billing flow charges."""
+    return {"plans": public_plans(), "year_months": YEAR_MONTHS, "year_price_months": YEAR_PRICE_MONTHS, "currency": "INR"}
+
+
 @router.get("/billing")
 def overview(workspace_id: uuid.UUID, user: User = Depends(current_user), db: Session = Depends(get_db)):
     ws = _member_ws(db, user, workspace_id)
     pays = db.scalars(select(Payment).where(Payment.workspace_id == ws.id).order_by(Payment.created_at.desc()).limit(20)).all()
     plan = active_plan(ws)
-    return {"plans": [{"id": k, **v} for k, v in PLANS.items()], "plan": plan,
+    return {"plans": public_plans(), "plan": plan,
             "plan_expires_at": ws.plan_expires_at.isoformat() if plan != "free" and ws.plan_expires_at else None,
-            "paid_runs_per_day": paid_runs_limit(ws), "upi": _upi(db), "payments": [ser_payment(p) for p in pays],
+            "ai_credit_inr": ai_credit_inr(ws), "ai_spent_inr": ai_spent_inr(db, ws.id),
+            "upi": _upi(db), "payments": [ser_payment(p) for p in pays],
             "is_platform_admin": is_platform_admin(user)}
 
 
 class PayIn(BaseModel):
     workspace_id: uuid.UUID
     plan: str = Field(pattern="^(creator|pro)$")
-    months: int = Field(1, ge=1, le=12)
+    months: int = Field(1, ge=1, le=12)   # 12 = yearly, charged as YEAR_PRICE_MONTHS
     utr: str = Field(min_length=12, max_length=22)
     method: str = Field("upi", pattern="^(upi|paypal)$")
 
@@ -93,7 +107,7 @@ def submit_payment(body: PayIn, request: Request, user: User = Depends(current_u
     if db.scalar(select(func.count()).select_from(Payment).where(Payment.user_id == user.id, Payment.status == "pending")) >= 3:
         raise HTTPException(429, "You already have 3 payments waiting for approval")
     p = Payment(user_id=user.id, workspace_id=ws.id, plan=body.plan, months=body.months,
-                amount_inr=PLANS[body.plan]["price_inr"] * body.months, utr=utr, method=body.method, status="pending")
+                amount_inr=price_inr(body.plan, body.months), utr=utr, method=body.method, status="pending")
     db.add(p)
     try:
         db.flush()

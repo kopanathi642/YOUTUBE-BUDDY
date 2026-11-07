@@ -11,7 +11,8 @@ os.environ["ENV"] = "test"
 os.environ["MULTIPART_PART_SIZE"] = str(5 * 1024 * 1024)
 os.environ["SCRATCH_DIR"] = "/tmp/creator-worker-test"
 os.environ.setdefault("AI_DAILY_BUDGET_USD", "1000")
-os.environ.setdefault("FREE_PLAN_PAID_RUNS", "1000")
+os.environ.setdefault("FREE_PLAN_AI_CREDIT_INR", "1000000")   # plan credits are tested in test_billing / test_security_hardening
+os.environ.setdefault("AI_MONTHLY_BUDGET_USD", "1000000")
 os.environ.setdefault("FREE_PLAN_WATERMARK", "false")  # pixel tests elsewhere; the watermark is tested in test_growth.py  # plan limits are tested in test_billing.py
 os.environ.setdefault("ADMIN_EMAILS", "founder@example.com")  # the budget itself is tested in test_security_hardening.py
 

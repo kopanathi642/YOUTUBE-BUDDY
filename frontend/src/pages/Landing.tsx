@@ -53,6 +53,55 @@ function useCatalogue() {
   return { cat, failed };
 }
 
+type PublicPlan = { id: string; name: string; price_inr: number; year_price_inr: number; ai_credit_inr: number | null; blurb: string };
+
+/** Same prices the billing flow charges (backend billing.PLANS), so the page can never advertise a stale price. */
+function usePlans() {
+  const [plans, setPlans] = useState<PublicPlan[] | null>(null);
+  useEffect(() => { api<{ plans: PublicPlan[] }>("/public/plans").then((r) => setPlans(r.plans)).catch(() => setPlans([])); }, []);
+  return plans;
+}
+
+const PLAN_POINTS: Record<string, string[]> = {
+  free: ["Full multitrack editor", "Captions, translation, Hindi dubbing, voices", "Background & object removal", "1080p export (small badge)"],
+  creator: ["Everything in Free", "No badge on exports", "Premium AI credit every month", "Hosted video, image & voice models"],
+  pro: ["Everything in Creator", "More premium AI credit", "Priority queue for exports & AI", "For teams and busy channels"],
+};
+
+function Pricing({ plans }: { plans: PublicPlan[] | null }) {
+  const [yearly, setYearly] = useState(false);
+  if (plans && !plans.length) return null;   // prices couldn't load: show nothing rather than a guess
+  return (
+    <section className="lp-section lp-reveal" id="pricing" aria-labelledby="pr-h">
+      <div className="lp-head">
+        <div><p className="lp-eyebrow">Simple pricing in rupees</p><h2 id="pr-h">Start free. Upgrade when your channel grows.</h2></div>
+        <div className="lp-toggle" role="radiogroup" aria-label="Billing period">
+          <button role="radio" aria-checked={!yearly} className={!yearly ? "on" : ""} onClick={() => setYearly(false)}>Monthly</button>
+          <button role="radio" aria-checked={yearly} className={yearly ? "on" : ""} onClick={() => setYearly(true)}>Yearly <em>2 months free</em></button>
+        </div>
+      </div>
+      <div className="lp-plans">
+        {(plans ?? []).map((p) => (
+          <div key={p.id} className={`lp-plan ${p.id === "creator" ? "hl" : ""}`}>
+            {p.id === "creator" && <span className="lp-plan-tag">For growing channels</span>}
+            <h3>{p.name}</h3>
+            <div className="lp-price">{p.price_inr === 0 ? <b>₹0</b> : yearly
+              ? <><b>₹{p.year_price_inr.toLocaleString("en-IN")}</b><span>/year</span></>
+              : <><b>₹{p.price_inr}</b><span>/month</span></>}</div>
+            {p.ai_credit_inr ? <p className="lp-credit">₹{p.ai_credit_inr} premium AI credit / month</p> : <p className="lp-credit dim">Free AI tools, unlimited</p>}
+            <ul>{(PLAN_POINTS[p.id] ?? [p.blurb]).map((x) => <li key={x}><Check size={14} />{x}</li>)}</ul>
+            <Link to={p.price_inr ? `/signup?next=${encodeURIComponent("/settings#billing")}` : "/signup"} className={`lp-btn ${p.id === "creator" ? "" : "ghost"}`}>
+              {p.price_inr ? `Choose ${p.name}` : "Start for free"}</Link>
+          </div>
+        ))}
+        {!plans && [0, 1, 2].map((i) => <div key={i} className="lp-plan skel" aria-hidden />)}
+      </div>
+      <p className="lp-note lp-price-note">Pay by UPI (or PayPal from abroad). No auto-debit: a plan runs 30 days for each month paid. Premium AI credit is the
+        provider cost of hosted models; the free AI tools that run on our servers never use it.</p>
+    </section>
+  );
+}
+
 function Mark() {
   return <span className="lp-mark" aria-hidden><Zap size={17} strokeWidth={2.6} /></span>;
 }
@@ -98,6 +147,7 @@ export default function Landing() {
   const { me, loading } = useAuth();
   const brand = useBrand();
   const { cat, failed } = useCatalogue();
+  const plans = usePlans();
   const [q, setQ] = useState("");
   const [searching, setSearching] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -150,6 +200,7 @@ export default function Landing() {
             </Dropdown>
             <a className="lp-navlink" href="#workspaces" onClick={() => setMenu(false)}>Workspaces</a>
             <a className="lp-navlink" href="#directory" onClick={() => setMenu(false)}>All tools</a>
+            <a className="lp-navlink" href="#pricing" onClick={() => setMenu(false)}>Pricing</a>
             <a className="lp-navlink" href="#status" onClick={() => setMenu(false)}>What's live</a>
           </nav>
           <div className="lp-nav-right">
@@ -242,6 +293,8 @@ export default function Landing() {
           </div>
         </section>
 
+        <Pricing plans={plans} />
+
         <section className="lp-section lp-reveal">
           <div className="lp-band">
             <div><h2>Your idea. Your next step.</h2><p>Start with a simple workspace. Open more controls as your project grows.</p></div>
@@ -277,6 +330,7 @@ export default function Landing() {
             <Link to={go("/settings")}>Team &amp; plans</Link>
           </div>
           <div><h4>Resources</h4>
+            <a href="#pricing">Pricing</a>
             <a href="#status">What's live</a>
             <Link to="/privacy">Privacy</Link>
             <Link to="/terms">Terms</Link>

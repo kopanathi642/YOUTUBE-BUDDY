@@ -40,7 +40,9 @@ def claim(db: Session, worker_id: str, queues: list[str], lease_s: int) -> Job |
             WHERE queue = ANY(:queues) AND cancel_requested = false AND (
                   (status='queued' AND run_after <= now())
                OR (status='running' AND lease_until < now()))
-            ORDER BY created_at
+            -- Pro workspaces (active plan) go first: "priority renders" in billing.PLANS. Then oldest first.
+            ORDER BY (SELECT w.plan = 'pro' AND w.plan_expires_at > now() FROM workspaces w WHERE w.id = jobs.workspace_id) DESC NULLS LAST,
+                     created_at
             FOR UPDATE SKIP LOCKED LIMIT 1)
         RETURNING id"""), {"wid": worker_id, "lease": lease_s, "queues": queues}).first()
     db.commit()

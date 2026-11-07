@@ -25,7 +25,7 @@ Last updated: 2026-11-07 (object removal; cleanup, security, SEO, 3D landing). R
 - **Honesty rule:** never show a fake or placeholder control as working. Label rule-based features as rule-based.
 - **Positioning:** Indian YouTubers ("Make one video. Reach every language."): dubbing, captions, Shorts, UPI pricing.
 - **Name:** "YouTube Buddy X" is a working name only. It must be renamed before launch (YouTube brand rules); set via `BRAND_NAME`.
-- **Payments:** no gateway. The founder's UPI QR and/or PayPal QR is uploaded by the platform admin in Settings → Payments admin (never committed to the repo). The user submits the UTR (12 digits) or PayPal transaction ID (17 characters), the admin approves, and the plan runs for 30 days per month paid. Plans are Free / Creator ₹299 / Pro ₹799; prices are placeholders, edit `PLANS` in `backend/app/billing.py`.
+- **Payments:** no gateway. The founder's UPI QR and/or PayPal QR is uploaded by the platform admin in Settings → Payments admin (never committed to the repo). The user submits the UTR (12 digits) or PayPal transaction ID (17 characters), the admin approves, and the plan runs for 30 days per month paid. Plans are Free / Creator ₹299 / Pro ₹799 (yearly = 10 months' price), each with a **monthly premium-AI credit in rupees** (Free ₹0, Creator ₹100, Pro ₹300); edit `PLANS` in `backend/app/billing.py`. See the profitability review in `docs/COST_MODEL.md` before changing prices or credits.
 - **Admin:** `ADMIN_EMAILS` (the founder said `kumarbhargav642@gmail.com`; set it in hosting env, not in code). In production an admin must sign in with Google (verified email).
 - **Security asks:** never ask the founder for passwords or keys in chat. Secrets go only into the hosting provider's secret settings. Never commit secrets.
 - **UI requirements:**
@@ -40,7 +40,7 @@ Last updated: 2026-11-07 (object removal; cleanup, security, SEO, 3D landing). R
 The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts` and the browser audits.
 
 **Latest results** (re-run 2026-11-07 in a fresh cloud container):
-- Backend: 113 passed, 4 skipped (the skipped ones are real-model tests, run with `REAL_MODELS=1`).
+- Backend: 116 passed, 4 skipped (the skipped ones are real-model tests, run with `REAL_MODELS=1`).
 - Frontend: 38 vitest passed, tsc clean, build OK.
 - `e2e/audit.mjs`: 63/63 on the final code (also with the backend suite running in parallel), including the Remove Object step. Start the server with `ADMIN_EMAILS=founder@example.com` or the payments step fails. The old intermittent "Translate & Voice / Lip Sync panels" failure is **root-caused and fixed**: the Record dialog sometimes stayed open and blocked the next step. Cause: `RecordModal` created a new preview blob URL on every render (the level meter re-renders ~60×/s), which leaked memory and kept reloading the preview, so "Add to project" moved and clicks missed. Fix: one memoised URL per take (revoked afterwards), and a fixed 16:9 preview box. The audit now flags any dialog left open by a step (as a WARN naming the dialog) and screenshots failures before cleaning up.
 - Captions and dubbing ran as NOTE (not FAIL) in the audit: the build sandbox can't reach huggingface.co to download Whisper. CI's real-models job covers them.
@@ -89,6 +89,13 @@ The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts`
 - Consent checks for face/voice tools.
 - Workflows with approval gates.
 
+**Business (profitability fixes 2026-11-07, see `docs/COST_MODEL.md` → Profitability review):**
+- Premium AI is limited by a rupee credit per plan over a rolling 30 days, not runs per day; plus a platform-wide monthly wall. Every paying plan keeps a positive worst-case margin.
+- Pro "priority" is real: Pro jobs are claimed first.
+- Yearly plans: 12 months for the price of 10 (UPI flow, `months=12`).
+- Public Pricing section on the landing page, from `/api/v1/public/plans` (same `PLANS` the payment flow charges).
+- Billing card shows premium-AI credit used; the payment form no longer overflows in the Settings column.
+
 **Business:**
 - Plans, UPI and PayPal QR, UTR approval flow, plan-based premium-AI daily limits.
 - Referrals: the inviter gets 7 Creator days when a friend finishes a first export, up to 12.
@@ -113,7 +120,7 @@ The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts`
 **Security:**
 - CSP, HSTS, Permissions-Policy, COOP; API docs off in production.
 - Rate limits: auth, AI, uploads, stock, payments, feedback.
-- Daily paid-AI budget (`AI_DAILY_BUDGET_USD`, `AI_DAILY_PAID_RUNS`).
+- Paid-AI spend: plan credit per 30 days, per-workspace daily cap (`AI_DAILY_BUDGET_USD`, `AI_DAILY_PAID_RUNS`) and a platform-wide monthly wall (`AI_MONTHLY_BUDGET_USD`).
 - `safeNext` redirect guard.
 - Dependencies scanned 2026-11-07: `pip-audit` and `npm audit --omit=dev` both report **0 known vulnerabilities**. Upgrades: Pillow 12.3 → 13.0 (21 CVEs), rembg 2.0.67 → 2.0.87, react-router-dom 6 → 7.18.5 (open-redirect fix), `@grpc/grpc-js` pinned to ≥ 1.14.7 via `overrides` (only pulled in by Firestore, never shipped to browsers). Re-run both scans before each release.
 - Login gives the same message for unknown email and wrong password; API responses carry `X-Robots-Tag: noindex`.
@@ -199,7 +206,7 @@ AI_RUNS_PER_10MIN=1000 (on the server) + node e2e/ai_tools_audit.mjs
 - **Core:** `ENV`, `DATABASE_URL`, `CORS_ORIGINS`, `COOKIE_SECURE`, `BRAND_NAME`, `CONTACT_EMAIL`, `PUBLIC_BASE_URL`, `SCRATCH_DIR`, `FRONTEND_DIST`
 - **Storage (S3/R2):** `S3_ENDPOINT_URL`, `S3_PUBLIC_ENDPOINT_URL`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET`
 - **Google sign-in (Firebase):** `FIREBASE_PROJECT_ID` (project `ytbuddy-3`), `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_APP_ID`
-- **Limits / budget:** `AI_DAILY_BUDGET_USD`, `AI_DAILY_PAID_RUNS`, `AI_RUNS_PER_10MIN`, `UPLOADS_PER_10MIN`, `FREE_PLAN_PAID_RUNS`, `FREE_PLAN_WATERMARK`
+- **Limits / budget:** `AI_MONTHLY_BUDGET_USD`, `AI_DAILY_BUDGET_USD`, `AI_DAILY_PAID_RUNS`, `PAID_RUN_FLOOR_USD`, `USD_INR`, `AI_RUNS_PER_10MIN`, `UPLOADS_PER_10MIN`, `FREE_PLAN_AI_CREDIT_INR`, `FREE_PLAN_WATERMARK`
 - **Billing / admin:** `ADMIN_EMAILS`
 - **YouTube publishing:** `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY` (same value on web and worker)
 - **AI providers (optional):** `FAL_KEY`, `FAL_QUEUE_URL`, `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`, `LLM_MODEL`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`, `OPENAI_TEXT_MODEL`, `YOUTUBE_API_KEY`, `YOUTUBE_API_URL`

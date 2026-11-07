@@ -35,14 +35,18 @@ class Settings(BaseSettings):
     session_cookie_name: str = "cu_session"
     session_ttl_hours: int = 24 * 14
     cookie_secure: bool = False
-    ai_daily_budget_usd: float = 10.0   # max estimated spend on PAID AI models per workspace per day (UTC); 0 = paid models off
-    ai_daily_paid_runs: int = 200
+    # Paid AI spending. Each plan has a monthly premium-AI credit in rupees (PLANS in billing.py); these are the safety walls around it.
+    ai_daily_budget_usd: float = 3.0     # abuse cap: max estimated paid-AI spend per workspace per day (UTC); 0 = paid models off
+    ai_daily_paid_runs: int = 200        # abuse cap: max paid-model runs per workspace per day, even when the cost estimate is unknown
+    ai_monthly_budget_usd: float = 50.0  # hard wall for the whole platform per calendar month (UTC) — the founder's real provider budget
+    paid_run_floor_usd: float = 0.01     # cost counted for a paid run whose price isn't known (e.g. language-model calls)
+    usd_inr: float = 88.0                # exchange rate used to show credits in rupees; update now and then
     ai_runs_per_10min: int = 60          # per-user AI run rate limit
-    uploads_per_10min: int = 120         # per-user upload rate limit       # max paid-model runs per workspace per day, even when the cost estimate is unknown
+    uploads_per_10min: int = 120         # per-user upload rate limit
     # Billing (UPI QR + manual approval). Platform admins approve payments; list their emails, comma-separated.
     admin_emails: str = ""
-    free_plan_paid_runs: int = 5
-    free_plan_watermark: bool = True     # small "Made with <brand>" badge on Free-plan exports (growth loop; paid plans remove it)         # paid AI runs per workspace per day on the Free plan (paid plans use their own limits)
+    free_plan_ai_credit_inr: float = 0.0  # premium-AI credit per 30 days on the Free plan (₹); 0 = free tools only, upgrade for premium
+    free_plan_watermark: bool = True     # small "Made with <brand>" badge on Free-plan exports (growth loop; paid plans remove it)
     # YouTube publishing: a free Google Cloud OAuth client (YouTube Data API v3). Tokens are encrypted at rest.
     google_oauth_client_id: str | None = None
     google_oauth_client_secret: str | None = None

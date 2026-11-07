@@ -118,31 +118,40 @@ def _check_params(db: Session, t: dict, params: dict, workspace_id) -> dict:
     return out
 
 
-PAID_ENGINES = ("fal", "llm", "youtube", "pipeline")
 
 
-def _check_daily_budget(db: Session, workspace_id, est: float) -> None:
-    """Hard daily cap on paid AI per workspace, so a bug, a leaked session or a busy user can't run up the provider bill."""
+def _check_ai_budget(db: Session, workspace_id, est: float) -> None:
+    """Paid AI runs only within the plan's monthly credit, a per-workspace daily abuse cap and a platform-wide monthly wall,
+    so pricing always covers the provider bill (docs/COST_MODEL.md)."""
     from datetime import datetime, timezone
     from sqlalchemy import func
-    s = get_settings()
-    if s.ai_daily_budget_usd <= 0:
-        raise HTTPException(403, "Paid AI models are switched off on this server")
-    day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    q = select(func.count(), func.coalesce(func.sum(Generation.est_cost_usd), 0.0)).where(
-        Generation.workspace_id == workspace_id, Generation.created_at >= day, Generation.engine.in_(PAID_ENGINES),
-        Generation.status != "canceled")
-    runs, spent = db.execute(q).one()
-    from ..billing import active_plan, paid_runs_limit
+    from ..billing import active_plan, ai_credit_inr, ai_spent_inr
     from ..models import Workspace
+    s = get_settings()
+    if s.ai_daily_budget_usd <= 0 or s.ai_monthly_budget_usd <= 0:
+        raise HTTPException(403, "Paid AI models are switched off on this server")
     ws = db.get(Workspace, workspace_id)
-    limit = paid_runs_limit(ws)
-    if runs >= limit:
-        up = " — upgrade your plan for more" if active_plan(ws) != "pro" else ""
-        raise HTTPException(429, f"Daily limit of {limit} premium AI runs reached for this workspace{up}. Resets at 05:30 IST")
-    if float(spent) + est > s.ai_daily_budget_usd:
-        raise HTTPException(429, f"Daily paid-AI budget (${s.ai_daily_budget_usd:.2f}) would be exceeded — "
-                                 f"${float(spent):.2f} used today, this run is about ${est:.2f}. Resets at 05:30 IST")
+    plan = active_plan(ws)
+    credit, spent = ai_credit_inr(ws), ai_spent_inr(db, workspace_id)
+    est_inr = est * s.usd_inr
+    if credit <= 0:
+        raise HTTPException(402, "Premium AI models come with the Creator and Pro plans. The free AI tools keep working — "
+                                 "upgrade in Settings → Plans to use this one.")
+    if spent + est_inr > credit:
+        up = " Upgrade to Pro for more." if plan != "pro" else ""
+        raise HTTPException(429, f"Your premium AI credit is used up: ₹{spent:.0f} of ₹{credit:.0f} in the last 30 days, and this run "
+                                 f"costs about ₹{est_inr:.0f}. It frees up as older runs pass 30 days.{up} Free AI tools keep working.")
+    day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    runs, spent_day = db.execute(select(func.count(), func.coalesce(func.sum(Generation.est_cost_usd), 0.0)).where(
+        Generation.workspace_id == workspace_id, Generation.created_at >= day, Generation.est_cost_usd.isnot(None),
+        Generation.status != "canceled")).one()
+    if runs >= s.ai_daily_paid_runs or float(spent_day) + est > s.ai_daily_budget_usd:
+        raise HTTPException(429, "Daily safety limit for premium AI reached on this workspace. It resets at 05:30 IST.")
+    month = day.replace(day=1)
+    platform = db.scalar(select(func.coalesce(func.sum(Generation.est_cost_usd), 0.0)).where(
+        Generation.created_at >= month, Generation.est_cost_usd.isnot(None), Generation.status != "canceled")) or 0.0
+    if float(platform) + est > s.ai_monthly_budget_usd:
+        raise HTTPException(429, "Premium AI is paused for the rest of this month. All free AI tools keep working.")
 
 
 def ser_gen(db: Session, g: Generation, full: bool = True) -> dict:
@@ -196,9 +205,10 @@ def run(project_id: uuid.UUID, tool_id: str, body: RunIn, request: Request, user
         version = 1 + max(g.version for g in db.scalars(select(Generation).where((Generation.root_id == root) | (Generation.id == root))))
     model = body.model or (models[0]["id"] if models and t["engine"]["type"] != "local" else None)
     paid = t["engine"]["type"] in ("fal", "llm", "youtube") or (t["engine"]["type"] == "pipeline" and t["engine"].get("needs")) or premium
-    est = estimate_cost(t, model, params)
+    est = estimate_cost(t, model, params) if paid else None   # only paid runs carry a cost; spend totals sum exactly these
     if paid:
-        _check_daily_budget(db, p.workspace_id, est or 0.0)
+        est = est if est is not None else get_settings().paid_run_floor_usd   # unknown price still counts against the credit
+        _check_ai_budget(db, p.workspace_id, est)
     g = Generation(workspace_id=p.workspace_id, project_id=p.id, created_by=user.id, tool_id=tool_id, engine=t["engine"]["type"],
                    model=model, params=params, status="queued", parent_id=parent and parent.id, version=version,
                    output_asset_ids=[], est_cost_usd=est)

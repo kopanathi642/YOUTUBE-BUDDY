@@ -64,7 +64,7 @@ def test_full_upi_flow(make_client):
 
     b = u.get("/api/v1/billing", params={"workspace_id": ws}).json()
     assert b["plan"] == "creator" and b["plan_expires_at"] and b["payments"][0]["status"] == "approved"
-    assert b["paid_runs_per_day"] == 50
+    assert b["ai_credit_inr"] == 100 and b["ai_spent_inr"] == 0
 
 
 def test_reject_and_validation(make_client):
@@ -82,14 +82,53 @@ def test_reject_and_validation(make_client):
     assert u.post("/api/v1/billing/payments", json={"workspace_id": ows, "plan": "pro", "utr": "111122223333"}).status_code == 404
 
 
-def test_free_plan_paid_run_limit(make_client, monkeypatch):
-    from app.billing import paid_runs_limit
-    from app.models import Workspace
-    monkeypatch.setattr(get_settings(), "free_plan_paid_runs", 5)
-    assert paid_runs_limit(Workspace(plan="free")) == 5
+def test_plan_credits_and_yearly_price(make_client, monkeypatch):
     from datetime import datetime, timedelta, timezone
-    assert paid_runs_limit(Workspace(plan="pro", plan_expires_at=datetime.now(timezone.utc) + timedelta(days=1))) == 200
-    assert paid_runs_limit(Workspace(plan="pro", plan_expires_at=datetime.now(timezone.utc) - timedelta(days=1))) == 5   # expired
+    from app.billing import PLANS, ai_credit_inr, price_inr
+    from app.models import Workspace
+    monkeypatch.setattr(get_settings(), "free_plan_ai_credit_inr", 0.0)
+    soon, past = datetime.now(timezone.utc) + timedelta(days=1), datetime.now(timezone.utc) - timedelta(days=1)
+    assert ai_credit_inr(Workspace(plan="free")) == 0
+    assert ai_credit_inr(Workspace(plan="creator", plan_expires_at=soon)) == 100
+    assert ai_credit_inr(Workspace(plan="pro", plan_expires_at=soon)) == 300
+    assert ai_credit_inr(Workspace(plan="pro", plan_expires_at=past)) == 0          # expired -> free
+    assert price_inr("creator", 1) == 299 and price_inr("creator", 3) == 897
+    assert price_inr("creator", 12) == 2990 and price_inr("pro", 12) == 7990         # 12 months for the price of 10
+    # profitability rule: the AI credit stays under half of what the plan brings in after 18% GST
+    for k, p in PLANS.items():
+        if p["price_inr"]:
+            assert p["ai_credit_inr"] <= 0.5 * p["price_inr"] / 1.18, k
+
+
+def test_yearly_payment_amount_and_public_prices(make_client):
+    u = make_client(); ws = signup(u)["workspaces"][0]["id"]
+    r = u.post("/api/v1/billing/payments", json={"workspace_id": ws, "plan": "creator", "months": 12, "utr": "555566667777"})
+    assert r.status_code == 201 and r.json()["amount_inr"] == 2990
+    anon = make_client()   # signed out
+    pub = anon.get("/api/v1/public/plans").json()
+    assert [p["id"] for p in pub["plans"]] == ["free", "creator", "pro"]
+    assert pub["plans"][1]["price_inr"] == 299 and pub["plans"][1]["year_price_inr"] == 2990 and pub["year_months"] == 12
+
+
+def test_pro_jobs_are_claimed_first(make_client):
+    from datetime import datetime, timedelta, timezone
+    import uuid
+    from app import jobs
+    from app.db import session_factory
+    from app.models import Workspace
+    u1, u2 = make_client(), make_client()
+    free_ws, pro_ws = signup(u1)["workspaces"][0]["id"], signup(u2)["workspaces"][0]["id"]
+    q = f"prio-{uuid.uuid4().hex[:8]}"
+    with session_factory()() as db:
+        db.get(Workspace, uuid.UUID(pro_ws)).plan = "pro"
+        db.get(Workspace, uuid.UUID(pro_ws)).plan_expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+        a = jobs.enqueue(db, workspace_id=uuid.UUID(free_ws), kind="noop", payload={}); a.queue = q
+        db.commit()
+        b = jobs.enqueue(db, workspace_id=uuid.UUID(pro_ws), kind="noop", payload={}); b.queue = q   # queued later
+        db.commit()
+        first = jobs.claim(db, "w1", [q], 60)
+        second = jobs.claim(db, "w1", [q], 60)
+        assert first.id == b.id and second.id == a.id   # Pro first, then the older free job
 
 
 def test_paypal_option(make_client):

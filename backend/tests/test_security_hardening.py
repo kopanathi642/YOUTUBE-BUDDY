@@ -71,7 +71,7 @@ def test_paid_ai_daily_budget_is_enforced(env, fake_provider, monkeypatch):
         before = len(fake_provider.calls)
         r = c.post(f"/api/v1/projects/{pid}/ai/tools/001/run",
                    json={"params": {"prompt": "A drone shot over Goa beach", "duration": 8}, "model": "fal-ai/veo3.1"})
-        assert r.status_code == 429 and "budget" in r.text, r.text
+        assert r.status_code == 429 and "safety limit" in r.text, r.text
         assert len(fake_provider.calls) == before
         monkeypatch.setenv("AI_DAILY_BUDGET_USD", "0")
         get_settings.cache_clear()
@@ -80,5 +80,24 @@ def test_paid_ai_daily_budget_is_enforced(env, fake_provider, monkeypatch):
         # free, built-in tools are never blocked by the paid budget
         r = c.post(f"/api/v1/projects/{pid}/ai/tools/038/run", json={"params": {"text": "Free tool"}})
         assert r.status_code == 201, r.text
+    finally:
+        get_settings.cache_clear()
+
+
+def test_paid_ai_needs_plan_credit_and_respects_platform_wall(env, fake_provider, monkeypatch):
+    c, pid = env["c"], env["pid"]
+    run = lambda: c.post(f"/api/v1/projects/{pid}/ai/tools/001/run",  # noqa: E731  (~$3.20 ≈ ₹282)
+                         json={"params": {"prompt": "A drone shot over Goa beach", "duration": 8}, "model": "fal-ai/veo3.1"})
+    try:
+        before = len(fake_provider.calls)
+        monkeypatch.setenv("FREE_PLAN_AI_CREDIT_INR", "0"); get_settings.cache_clear()
+        r = run(); assert r.status_code == 402 and "Creator and Pro" in r.text, r.text
+        monkeypatch.setenv("FREE_PLAN_AI_CREDIT_INR", "100"); get_settings.cache_clear()
+        r = run(); assert r.status_code == 429 and "credit is used up" in r.text and "₹282" in r.text, r.text
+        monkeypatch.setenv("FREE_PLAN_AI_CREDIT_INR", "1000000"); monkeypatch.setenv("AI_MONTHLY_BUDGET_USD", "1"); get_settings.cache_clear()
+        r = run(); assert r.status_code == 429 and "paused for the rest of this month" in r.text, r.text
+        assert len(fake_provider.calls) == before            # refused before any provider call
+        r = c.post(f"/api/v1/projects/{pid}/ai/tools/038/run", json={"params": {"text": "Free tool"}})
+        assert r.status_code == 201, r.text                   # free tools are never blocked
     finally:
         get_settings.cache_clear()

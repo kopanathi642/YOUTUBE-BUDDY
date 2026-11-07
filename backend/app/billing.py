@@ -1,14 +1,49 @@
-"""Plans and what they unlock. Prices are in INR per month and are the founder's to change (PLANS below)."""
-from datetime import datetime, timezone
+"""Plans and what they unlock. Prices are in INR per month and are the founder's to change (PLANS below).
+
+Profitability rule (docs/COST_MODEL.md): a plan's premium-AI credit must stay well under what the plan brings in after GST,
+so every paying workspace covers its own AI bill plus a share of hosting. Premium AI is measured in rupees of estimated
+provider cost over a rolling 30 days, not in "runs", because one video generation can cost as much as fifty images.
+"""
+from datetime import datetime, timedelta, timezone
 
 from .config import get_settings
 from .models import User, Workspace
 
 PLANS = {
-    "free":    {"name": "Free",    "price_inr": 0,   "paid_runs": None, "blurb": "Full editor, free AI (captions, translate, dub, voices), 1080p export"},
-    "creator": {"name": "Creator", "price_inr": 299, "paid_runs": 50,   "blurb": "Everything in Free + 50 premium AI generations a day"},
-    "pro":     {"name": "Pro",     "price_inr": 799, "paid_runs": 200,  "blurb": "Everything in Creator + 200 premium AI generations a day, priority renders"},
+    "free":    {"name": "Free",    "price_inr": 0,   "ai_credit_inr": None,
+                "blurb": "Full editor and the free AI tools that run on our servers: captions, translation, Hindi dubbing, voices, "
+                         "background and object removal. 1080p export with a small badge."},
+    "creator": {"name": "Creator", "price_inr": 299, "ai_credit_inr": 100,
+                "blurb": "Everything in Free, no badge on exports, plus ₹100 of premium AI each month (hosted video, image and voice models)."},
+    "pro":     {"name": "Pro",     "price_inr": 799, "ai_credit_inr": 300,
+                "blurb": "Everything in Creator, ₹300 of premium AI each month, and priority: your exports and AI jobs go to the front of the queue."},
 }
+YEAR_MONTHS = 12
+YEAR_PRICE_MONTHS = 10   # pay for 10 months, get 12 (cash up front; the single strongest lever for a small team's runway)
+CREDIT_WINDOW = timedelta(days=30)
+
+
+def price_inr(plan: str, months: int) -> int:
+    p = PLANS[plan]["price_inr"]
+    return p * YEAR_PRICE_MONTHS if months == YEAR_MONTHS else p * months
+
+
+def ai_credit_inr(ws: Workspace) -> float:
+    """Premium-AI credit (₹ of estimated provider cost) this workspace may use per rolling 30 days."""
+    p = active_plan(ws)
+    return float(get_settings().free_plan_ai_credit_inr if p == "free" else PLANS[p]["ai_credit_inr"])
+
+
+def ai_spent_inr(db, workspace_id) -> float:
+    """Estimated premium-AI spend of a workspace over the last 30 days, in rupees."""
+    from sqlalchemy import func, select
+    from .models import Generation
+    since = datetime.now(timezone.utc) - CREDIT_WINDOW
+    usd = db.scalar(select(func.coalesce(func.sum(Generation.est_cost_usd), 0.0)).where(
+        Generation.workspace_id == workspace_id, Generation.created_at >= since, Generation.est_cost_usd.isnot(None),
+        Generation.status != "canceled")) or 0.0
+    return round(float(usd) * get_settings().usd_inr, 2)
+
 
 
 def active_plan(ws: Workspace) -> str:
@@ -17,11 +52,8 @@ def active_plan(ws: Workspace) -> str:
     return "free"
 
 
-def paid_runs_limit(ws: Workspace) -> int:
-    s = get_settings()
-    p = active_plan(ws)
-    lim = s.free_plan_paid_runs if p == "free" else PLANS[p]["paid_runs"]
-    return min(lim, s.ai_daily_paid_runs)
+def is_priority(ws: Workspace) -> bool:
+    return active_plan(ws) == "pro"
 
 
 def is_platform_admin(user: User) -> bool:

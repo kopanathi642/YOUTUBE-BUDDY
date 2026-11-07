@@ -3,9 +3,9 @@ import { Crown, Check, QrCode, Clock, XCircle, CheckCircle2 } from "lucide-react
 import { api } from "../api";
 import { useAuth, useToast } from "../App";
 
-type Plan = { id: string; name: string; price_inr: number; paid_runs: number | null; blurb: string };
+type Plan = { id: string; name: string; price_inr: number; ai_credit_inr: number | null; year_price_inr: number; blurb: string };
 type Pay = { id: string; method?: string; plan: string; months: number; amount_inr: number; utr: string; status: "pending" | "approved" | "rejected"; note: string | null; created_at: string };
-export type Billing = { plans: Plan[]; plan: string; plan_expires_at: string | null; paid_runs_per_day: number;
+export type Billing = { plans: Plan[]; plan: string; plan_expires_at: string | null; ai_credit_inr: number; ai_spent_inr: number;
   upi: { upi_id: string | null; payee_name: string | null; qr_url: string | null; configured: boolean; paypal: { link: string | null; qr_url: string | null; configured: boolean } }; payments: Pay[]; is_platform_admin: boolean };
 
 /** Plans & payment by UPI: scan the QR, pay, paste the 12-digit UTR; the plan switches on after the admin checks it. */
@@ -19,7 +19,10 @@ export default function BillingCard() {
   useEffect(load, [load]);
   if (!b) return <section className="card" style={{ padding: 18 }} id="billing"><b>Plan &amp; billing</b><div className="spinner" style={{ marginTop: 10 }} /></section>;
   const chosen = b.plans.find((p) => p.id === pick);
-  const upiLink = chosen && b.upi.upi_id ? `upi://pay?${new URLSearchParams({ pa: b.upi.upi_id, pn: b.upi.payee_name ?? "", am: String(chosen.price_inr * months), cu: "INR", tn: `${chosen.name} plan` })}` : null;
+  // Same rule as the server (billing.price_inr): 12 months cost 10.
+  const amount = (p: Plan, m: number) => (m === 12 ? p.year_price_inr : p.price_inr * m);
+  const upiLink = chosen && b.upi.upi_id ? `upi://pay?${new URLSearchParams({ pa: b.upi.upi_id, pn: b.upi.payee_name ?? "", am: String(amount(chosen, months)), cu: "INR", tn: `${chosen.name} plan` })}` : null;
+  const used = b.ai_credit_inr > 0 ? Math.min(1, b.ai_spent_inr / b.ai_credit_inr) : 0;
 
   async function submit(e: FormEvent) {
     e.preventDefault(); setBusy(true);
@@ -35,11 +38,16 @@ export default function BillingCard() {
       <div className="row" style={{ marginBottom: 8 }}><Crown size={15} color="#fbbf24" /><b className="grow">Plan &amp; billing</b>
         <span className={`badge ${b.plan === "free" ? "" : "ok"}`}>{b.plans.find((p) => p.id === b.plan)?.name}</span></div>
       {b.plan_expires_at && <div className="dim" style={{ fontSize: 12 }}>Active until {new Date(b.plan_expires_at).toLocaleDateString()}</div>}
-      <div className="dim" style={{ fontSize: 12, marginBottom: 10 }}>Premium AI generations today: up to {b.paid_runs_per_day} per day for this workspace.</div>
+      {b.ai_credit_inr > 0 ? <div style={{ fontSize: 12, margin: "6px 0 12px" }}>
+          <div className="row"><span className="grow">Premium AI credit (last 30 days)</span><b>₹{Math.round(b.ai_spent_inr)} of ₹{Math.round(b.ai_credit_inr)} used</b></div>
+          <div className="progress" style={{ marginTop: 6 }} role="progressbar" aria-valuenow={Math.round(used * 100)} aria-valuemin={0} aria-valuemax={100} aria-label="Premium AI credit used">
+            <i style={{ width: `${Math.round(used * 100)}%`, background: used > 0.9 ? "var(--red)" : undefined }} /></div></div>
+        : <div className="dim" style={{ fontSize: 12, marginBottom: 10 }}>Free AI tools are unlimited. Premium hosted models (video, image and voice generation) come with Creator and Pro.</div>}
       <div className="bill-plans">
         {b.plans.map((p) => <button key={p.id} className={`bill-plan ${pick === p.id ? "on" : ""} ${b.plan === p.id ? "cur" : ""}`} disabled={p.id === "free" || !canPay}
           onClick={() => setPick(p.id)} aria-pressed={pick === p.id}>
           <b>{p.name}</b><span className="bill-price">{p.price_inr ? <>₹{p.price_inr}<small>/month</small></> : "Free"}</span>
+          {p.price_inr > 0 && <span className="dim" style={{ fontSize: 11.5 }}>or ₹{p.year_price_inr}/year — 2 months free</span>}
           <span className="dim">{p.blurb}</span>{b.plan === p.id && <span className="badge ok"><Check size={10} />current</span>}</button>)}
       </div>
       {!canPay && <div className="dim" style={{ fontSize: 12, marginTop: 8 }}>Only the workspace owner or an admin can upgrade.</div>}
@@ -50,12 +58,12 @@ export default function BillingCard() {
         <form className="bill-pay" onSubmit={submit}>{(() => { const pp = method === "paypal" || !b.upi.configured; return <>
           <div className="bill-qr">{(pp ? b.upi.paypal.qr_url : b.upi.qr_url) ? <img src={(pp ? b.upi.paypal.qr_url : b.upi.qr_url)!} alt={pp ? "PayPal QR code to pay" : "UPI QR code to pay"} /> : <QrCode size={64} />}</div>
           <div className="grid" style={{ gap: 8 }}>
-            {pp ? <><div style={{ fontSize: 13 }}>1. Pay the equivalent of <b>₹{chosen.price_inr * months}</b> with PayPal{b.upi.payee_name ? <> to <b>{b.upi.payee_name}</b></> : null}.</div>
+            {pp ? <><div style={{ fontSize: 13 }}>1. Pay the equivalent of <b>₹{amount(chosen, months)}</b> with PayPal{b.upi.payee_name ? <> to <b>{b.upi.payee_name}</b></> : null}.</div>
               {b.upi.paypal.link && <a className="btn sm" href={b.upi.paypal.link} target="_blank" rel="noreferrer noopener">Open PayPal</a>}</> : <>
-            <div style={{ fontSize: 13 }}>1. Pay <b>₹{chosen.price_inr * months}</b> by any UPI app (PhonePe, GPay, Paytm, BHIM){b.upi.payee_name ? <> to <b>{b.upi.payee_name}</b></> : null}.</div>
+            <div style={{ fontSize: 13 }}>1. Pay <b>₹{amount(chosen, months)}</b> by any UPI app (PhonePe, GPay, Paytm, BHIM){b.upi.payee_name ? <> to <b>{b.upi.payee_name}</b></> : null}.</div>
             {b.upi.upi_id && <div className="mono" style={{ fontSize: 12 }}>UPI ID: {b.upi.upi_id}</div>}
             {upiLink && <a className="btn sm" href={upiLink}>Open UPI app (on phone)</a>}</>}
-            <label style={{ fontSize: 12 }}>Months<select className="select" value={months} onChange={(e) => setMonths(+e.target.value)}>{[1, 3, 6, 12].map((m) => <option key={m} value={m}>{m} month{m > 1 ? "s" : ""} — ₹{chosen.price_inr * m}</option>)}</select></label>
+            <label style={{ fontSize: 12 }}>Months<select className="select" value={months} onChange={(e) => setMonths(+e.target.value)}>{[1, 3, 6, 12].map((m) => <option key={m} value={m}>{m} month{m > 1 ? "s" : ""} — ₹{amount(chosen, m)}{m === 12 ? " (2 months free)" : ""}</option>)}</select></label>
             <label style={{ fontSize: 12 }}>2. {pp ? "Paste the 17-character PayPal transaction ID (from the receipt)" : "Paste the 12-digit UPI transaction ID (UTR / UPI Ref No.)"}
               <input className="input" value={utr} onChange={(e) => setUtr(e.target.value)} inputMode={pp ? "text" : "numeric"} placeholder={pp ? "e.g. 8AB12345CD678901E" : "e.g. 412345678901"} maxLength={pp ? 20 : 16} required /></label>
             <button className="btn primary" disabled={busy || utr.replace(/\s/g, "").length !== (pp ? 17 : 12)}>{busy ? <span className="spinner" /> : null}Submit for verification</button>

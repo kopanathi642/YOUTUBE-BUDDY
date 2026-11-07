@@ -321,3 +321,26 @@
 @media (max-width: 480px) {
   .lp-nav-right .lp-btn.sm { display: none; }   /* the hero's own "Start for free" button sits right below */
 }
+
+/* Pricing */
+.lp-toggle { display: inline-flex; padding: 4px; border-radius: 999px; background: var(--lp-panel); border: 1px solid var(--lp-line-2); flex: none; }
+.lp-toggle button { border: 0; background: none; color: var(--lp-text-2); font: inherit; font-size: 13px; padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+.lp-toggle button.on { background: var(--lp-lime); color: var(--lp-ink); font-weight: 600; }
+.lp-toggle em { font-style: normal; font-size: 11px; margin-left: 4px; opacity: .8; }
+.lp-plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: stretch; }
+.lp-plan { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 26px 22px; border-radius: 16px; background: var(--lp-panel); border: 1px solid var(--lp-line); }
+.lp-plan.hl { border-color: rgba(195, 245, 60, .45); background: linear-gradient(180deg, rgba(195, 245, 60, .07), var(--lp-panel) 45%);
+  box-shadow: 0 0 50px -20px rgba(195, 245, 60, .45); }
+.lp-plan.skel { min-height: 360px; }
+.lp-plan-tag { position: absolute; top: -11px; left: 22px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--lp-lime); color: var(--lp-ink); }
+.lp-plan h3 { font-size: 18px; font-weight: 600; }
+.lp-price b { font-family: var(--lp-head); font-size: 40px; font-weight: 700; letter-spacing: -.02em; }
+.lp-price span { color: var(--lp-text-3); font-size: 14px; margin-left: 4px; }
+.lp-credit { margin: 0; font-size: 13px; color: var(--lp-lime); }
+.lp-credit.dim { color: var(--lp-text-2); }
+.lp-plan ul { list-style: none; margin: 4px 0 8px; padding: 0; display: grid; gap: 9px; flex: 1; }
+.lp-plan li { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; color: var(--lp-text-2); }
+.lp-plan li svg { color: var(--lp-lime); flex: none; margin-top: 2px; }
+.lp-plan .lp-btn { justify-content: center; }
+.lp-price-note { max-width: 760px; margin-top: 18px; }
+@media (max-width: 980px) { .lp-plans { grid-template-columns: 1fr; max-width: 460px; margin: 0 auto; } }
