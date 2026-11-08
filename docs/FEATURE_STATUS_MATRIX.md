@@ -13,7 +13,8 @@ Evidence: `backend/tests/test_editor_flow.py` (pytest, real Postgres + S3 protoc
 | Auth | Login/sign-up rate limit | PARTIAL | `test_login_rate_limited`; in-process only — move to Redis when API runs >1 instance |
 | Auth | Email verification, password reset | BLOCKED | Needs an email provider (e.g. Resend/SES) |
 | Auth | Google sign-in via Firebase (project `ytbuddy-3`), server-side ID-token signature verification, account linking by verified email | WORKING (code) / BLOCKED (live) | `test_google_auth.py` (14 tests incl. 9 forged-token attacks). Live popup needs the Firebase console steps in DEPLOYMENT.md (enable Google provider, authorize domain) |
-| Auth | YouTube OAuth scopes | NOT_IMPLEMENTED | deliberately deferred: restricted scope needs Google verification; request only when a YouTube feature exists |
+| Auth | YouTube OAuth (`youtube.upload` + `youtube.readonly`, sensitive scopes), encrypted refresh token, CSRF state cookie | WORKING (code) / BLOCKED (live) | `test_youtube.py`, `test_channel_insights.py` (fake Google). Live: OAuth client + Google verification, see docs/GO_LIVE_GOOGLE.md |
+| YouTube | Connect channel button + My channel page: channel stats, recent uploads, best day/time/length/format, title words, rule-based next-video view range (p25–p75 of the last 15 mature videos of the same format), tips, follow-up ideas | WORKING (code) / BLOCKED (live: needs OAuth keys) | `test_channel_insights.py` (pure analysis + endpoint against fake Google); browser run against a fake Google server (desktop + phone). Estimates are statistics from the channel's own history, labelled as such; < 5 mature videos → no estimate |
 | Auth | MFA | NOT_IMPLEMENTED | Phase 1b |
 | Workspaces | Personal workspace on sign-up, team workspaces, roles (owner/admin/editor/viewer) | WORKING | `test_viewer_cannot_edit` |
 | Workspaces | Add existing user as member, remove member, create team workspace | WORKING | UI in Super Universe → Team |

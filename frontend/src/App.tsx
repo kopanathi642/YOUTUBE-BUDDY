@@ -19,6 +19,7 @@ const AiTool = lazy(() => import("./pages/AiTool"));
 const Super = lazy(() => import("./pages/Super"));
 const SuperLocked = lazy(() => import("./pages/Super").then((m) => ({ default: m.SuperLocked })));
 const Library = lazy(() => import("./pages/Library"));
+const Channel = lazy(() => import("./pages/Channel"));
 const Settings = lazy(() => import("./pages/Settings"));
 
 const Loading = () => <div className="auth-wrap"><div className="spinner" aria-label="Loading" /></div>;
@@ -124,6 +125,7 @@ export default function App() {
           <Route path="/ai-generator/tool/:id" element={<Private bare><AiTool /></Private>} />
           <Route path="/super" element={<Private bare>{universeById("super").locked ? <SuperLocked /> : <Super />}</Private>} />
           <Route path="/library" element={<Private bare><Library /></Private>} />
+          <Route path="/channel" element={<Private bare><Channel /></Private>} />
           <Route path="/settings" element={<Private bare><Settings /></Private>} />
           <Route path="/privacy" element={<Legal kind="privacy" />} />
           <Route path="/terms" element={<Legal kind="terms" />} />

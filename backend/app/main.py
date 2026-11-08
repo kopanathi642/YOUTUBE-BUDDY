@@ -1,3 +1,4 @@
+import os
 import logging
 import time
 import uuid
@@ -91,6 +92,14 @@ def content_security_policy(s) -> str:
         google = (" https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com"
                   " https://apis.google.com"), auth
     g_connect, g_auth = google if google else ("", "")
+    # third-party images the UI shows directly, allowed only when that service is configured
+    ext_img = ""
+    if os.environ.get("PEXELS_API_KEY"):
+        ext_img += " https://images.pexels.com"
+    if os.environ.get("PIXABAY_API_KEY"):
+        ext_img += " https://cdn.pixabay.com https://i.vimeocdn.com"
+    if s.google_oauth_client_id:   # channel page: video thumbnails and channel avatars
+        ext_img += " https://i.ytimg.com https://yt3.ggpht.com"
     return "; ".join([
         "default-src 'self'",
         "base-uri 'self'",
@@ -99,7 +108,7 @@ def content_security_policy(s) -> str:
         "form-action 'self'",
         f"script-src 'self'{' https://apis.google.com https://www.gstatic.com' if g_auth else ''}",
         "style-src 'self' 'unsafe-inline'",   # React inline style attributes
-        f"img-src 'self' data: blob:{storage}{' https://lh3.googleusercontent.com' if g_auth else ''}",
+        f"img-src 'self' data: blob:{storage}{' https://lh3.googleusercontent.com' if g_auth else ''}{ext_img}",
         f"media-src 'self' data: blob:{storage}",
         "font-src 'self' data:",
         f"connect-src 'self'{storage}{g_connect}",

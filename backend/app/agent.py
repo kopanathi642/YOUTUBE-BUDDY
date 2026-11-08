@@ -100,7 +100,10 @@ def _sources() -> list[str]:
 
 
 def fetch(url: str) -> list[dict]:
-    with httpx.stream("GET", url, headers={"User-Agent": UA}, timeout=20, follow_redirects=True) as r:
+    from .config import get_settings
+    site = get_settings().public_base_url.rstrip("/")
+    ua = UA.replace("contact via site", f"+{site}") if site.startswith("https://") else UA   # feeds (Reddit) ask bots to identify themselves
+    with httpx.stream("GET", url, headers={"User-Agent": ua}, timeout=20, follow_redirects=True) as r:
         if r.status_code >= 400:
             raise RuntimeError(f"HTTP {r.status_code}")
         body = b""

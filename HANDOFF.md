@@ -1,6 +1,6 @@
 # HANDOFF — YouTube Buddy X (working name)
 
-Last updated: 2026-11-07 (object removal; cleanup, security, SEO, 3D landing). Read this first when you pick the project up in Claude Code.
+Last updated: 2026-11-08 (developer account, Connect channel + My channel insights, go-live guide for youtubuddyhelp.com). Read this first when you pick the project up in Claude Code.
 
 ## 1. Location
 - **GitHub:** https://github.com/kopanathi642/YOUTUBE-BUDDY, branch **`main`** (the repo is still **public**; the founder should make it private).
@@ -191,6 +191,24 @@ The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts`
 - AI tool runs accept an `Idempotency-Key` header, which the frontend sends on every click. Without one, an identical run from the same person that is still queued in the last 15 s is reused. A double click never pays twice.
 - Dub prepare, translate and render are keyed per dub and revision.
 
+**Developer account (2026-11-08):** emails in `DEVELOPER_EMAILS` (set in `render.yaml` to the developer's address, also in `ADMIN_EMAILS`) get the Pro plan on every sign-in (`billing.apply_developer_benefits`, expiry 2100). In production this applies only to a Google-verified email, so typing the address into the password sign-up gets nothing. Developer payouts come later.
+
+**Connect channel + My channel (2026-11-08):**
+- A red YouTube button next to the profile name in every top bar (`components/ChannelButton.tsx`, rendered by `UserMenu`). It reads "Connect channel", or the channel name once connected, and opens `/channel` (`pages/Channel.tsx`).
+- It is hidden until the YouTube OAuth keys are set; platform admins see it earlier, together with the set-up steps.
+- `GET /youtube/insights` (`app/channel_insights.py`) reads the user's channel, last 50 uploads and video stats with their own OAuth token: about 3 quota units, cached 10 min, a forced refresh at most once a minute.
+- Every number comes from the channel's own history, and the page says so:
+  - next-video views range = p25–p75 of the last 15 videos of the same format that are at least 3 days old, plus the trend;
+  - best weekday and 3-hour time slot (in the viewer's time zone), video length, Shorts vs long;
+  - title words that go with above/below-usual views, top videos, and "follow-up" ideas;
+  - tips need at least 3 videos per group;
+  - fewer than 5 mature videos → no estimate, with a clear message.
+- OAuth now returns to `/channel` when started there.
+- Tested: `test_channel_insights.py`, plus a browser run of connect → insights against a fake Google server on desktop and phone, with no console errors and no horizontal scroll.
+- Also fixed: the CSP blocked Pexels/Pixabay thumbnails and would block YouTube thumbnails. Their image hosts are now allowed only when the matching key is set. The Creator Scout's User-Agent carries the site URL.
+
+**Go-live guide:** `docs/GO_LIVE_GOOGLE.md` covers domain and email, Search Console, Firebase Google sign-in, the OAuth consent screen and verification, the YouTube API audit, Pexels/Pixabay and Creator Scout, plus a smoke test. Real feeds and stock APIs could not be called from the build sandbox: its network policy blocks them and the request to allow them was rejected. They are covered by fake-server tests only.
+
 ## 4. Incomplete / unverified / known issues
 - **Hidden until keys are set** (`docs/HIDDEN_FEATURES.md`):
   - Lip sync (tool 033) and the AI Generator's text-described object removal (tool 024) need `FAL_KEY`. The editor's basic marked-area object removal is always on.
@@ -199,7 +217,9 @@ The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts`
   - 71 of 120 AI tools: 44 need fal.ai, the rest need an LLM key or `YOUTUBE_API_KEY`.
 - **Not built:** speaker diarization (107), scheduled workflows (117), motion tracking, masks, HSL qualifiers, nested sequences, roll/slip/slide, 4K/ProRes/HDR export, email (verification, reset, invites), MFA, malware scanning, metrics/alerts.
 - **Unverified live:**
-  - Google sign-in popup: needs Firebase console steps in `docs/DEPLOYMENT.md`.
+  - Google sign-in popup: needs the Firebase console steps in `docs/GO_LIVE_GOOGLE.md` §1.
+  - Connect channel / My channel with a real Google account (needs the OAuth client; in Testing mode Google expires connections after 7 days).
+  - **Brand risk:** Google OAuth verification and YouTube branding rules may reject "YouTube"/"youtubuddy"-like names; rename (`BRAND_NAME`, domain) before requesting verification.
   - Real YouTube upload; Google audit pending, so uploads stay private until approved.
   - Agent reading real feeds; Reddit may rate-limit cloud IPs.
   - Real Pexels/Pixabay calls.
@@ -218,7 +238,7 @@ The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts`
   - Object removal: SAM 2 + LaMa (Apache-2.0), not ProPainter (non-commercial).
 
 ## 5. Next priorities
-1. **Launch prep** (founder): rename, deploy on Render, set the env vars below, upload the QR codes, make the repo private, onboard the first 20 creators. See `docs/` and the project doc LAUNCH_PLAYBOOK.
+1. **Launch prep** (founder): rename, deploy on Render, follow `docs/GO_LIVE_GOOGLE.md` (Firebase, OAuth client and verification, YouTube audit, Pexels/Pixabay keys), set the env vars below, upload the QR codes, make the repo private, onboard the first 20 creators. See `docs/` and the project doc LAUNCH_PLAYBOOK.
 2. **Object removal, next level:** the basic marked-area version is live (see section 3). Upgrade path: SAM 2 (click to mask, tracks the object across frames) + LaMa (realistic fill) per frame, short clips, on the existing worker. Plug in as a second engine behind the same `remove_object` derive op and dialog. Needs huggingface.co access to download weights (blocked in the build sandbox).
 3. **Lip sync on CPU:** MuseTalk with a 10 s limit and queue. A rented GPU later.
 3a. **Dubbing quality next steps** (measured gaps, `docs/DUBBING_EVAL.md`):
@@ -264,7 +284,7 @@ AI_RUNS_PER_10MIN=1000 (on the server) + node e2e/ai_tools_audit.mjs
 - **Storage (S3/R2):** `S3_ENDPOINT_URL`, `S3_PUBLIC_ENDPOINT_URL`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET`
 - **Google sign-in (Firebase):** `FIREBASE_PROJECT_ID` (project `ytbuddy-3`), `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_APP_ID`
 - **Limits / budget:** `AI_MONTHLY_BUDGET_USD`, `AI_DAILY_BUDGET_USD`, `AI_DAILY_PAID_RUNS`, `PAID_RUN_FLOOR_USD`, `USD_INR`, `AI_RUNS_PER_10MIN`, `UPLOADS_PER_10MIN`, `FREE_PLAN_AI_CREDIT_INR`, `FREE_PLAN_WATERMARK`
-- **Billing / admin:** `ADMIN_EMAILS`
+- **Billing / admin:** `ADMIN_EMAILS`, `DEVELOPER_EMAILS`
 - **YouTube publishing:** `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY` (same value on web and worker)
 - **AI providers (optional):** `FAL_KEY`, `FAL_QUEUE_URL`, `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`, `LLM_MODEL`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`, `OPENAI_TEXT_MODEL`, `YOUTUBE_API_KEY`, `YOUTUBE_API_URL`
 - **Stock:** `PEXELS_API_KEY`, `PIXABAY_API_KEY`

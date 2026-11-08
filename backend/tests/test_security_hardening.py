@@ -32,6 +32,11 @@ def test_csp_allows_storage_and_google_only_when_configured(monkeypatch):
         get_settings.cache_clear()
         csp = content_security_policy(get_settings())
         assert "frame-src 'none'" in csp and "googleapis" not in csp
+        assert "pexels" not in csp and "pixabay" not in csp and "ytimg" not in csp
+        monkeypatch.setenv("PEXELS_API_KEY", "k"); monkeypatch.setenv("PIXABAY_API_KEY", "k"); monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_ID", "c")
+        get_settings.cache_clear()
+        img = [d for d in content_security_policy(get_settings()).split("; ") if d.startswith("img-src")][0]
+        assert all(h in img for h in ("https://images.pexels.com", "https://cdn.pixabay.com", "https://i.ytimg.com", "https://yt3.ggpht.com"))
     finally:
         get_settings.cache_clear()
 

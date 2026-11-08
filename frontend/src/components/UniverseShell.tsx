@@ -1,6 +1,6 @@
 import { CSSProperties, ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { ArrowLeft, Film, Orbit, Atom, Library, Lock } from "lucide-react";
+import { ArrowLeft, Film, Orbit, Atom, Library, Lock, Youtube } from "lucide-react";
 import GlobalBar from "./GlobalBar";
 import { Universe, UNIVERSES } from "../universes";
 
@@ -23,6 +23,7 @@ export default function UniverseShell({ u, nav, children }: { u: Universe | null
             {nav.map((n) => <NavLink key={n.to} to={n.to} end className={({ isActive }) => `side-link ${isActive ? "active" : ""}`}><n.icon size={16} />{n.label}</NavLink>)}</>}
           <div className="side-h">Shared</div>
           <NavLink to="/library" className={({ isActive }) => `side-link ${isActive ? "active" : ""}`}><Library size={16} />Asset library</NavLink>
+          <NavLink to="/channel" className={({ isActive }) => `side-link ${isActive ? "active" : ""}`}><Youtube size={16} />My channel</NavLink>
         </aside>
         <main className="ushell-main">{children}</main>
       </div>

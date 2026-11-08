@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import jobs, youtube
+from .. import channel_insights, jobs, youtube
 from ..config import get_settings
 from ..db import get_db
 from ..deps import load_project, ser_job
@@ -17,6 +17,7 @@ from ..security import audit, current_user
 
 router = APIRouter(tags=["youtube"])
 STATE_COOKIE = "yt_oauth_state"
+BACK_COOKIE = "yt_oauth_back"   # which page to return to after Google: settings or channel (fixed list, not a URL)
 
 
 @router.get("/youtube/status")
@@ -27,12 +28,13 @@ def status(user: User = Depends(current_user), db: Session = Depends(get_db)):
 
 
 @router.get("/youtube/connect")
-def connect(user: User = Depends(current_user)):
+def connect(back: str = "settings", user: User = Depends(current_user)):
     if youtube.missing():
         raise HTTPException(409, "YouTube publishing isn't set up on this server yet: add " + ", ".join(youtube.missing()))
     state = secrets.token_urlsafe(24)
     from fastapi.responses import JSONResponse
     r = JSONResponse({"url": youtube.auth_url(state)})
+    r.set_cookie(BACK_COOKIE, "channel" if back == "channel" else "settings", max_age=600, httponly=True, samesite="lax", path="/api/v1/youtube")
     s = get_settings()
     r.set_cookie(STATE_COOKIE, f"{state}.{user.id}", max_age=600, httponly=True, secure=s.cookie_secure, samesite="lax",
                  path="/api/v1/youtube")
@@ -43,8 +45,10 @@ def connect(user: User = Depends(current_user)):
 def callback(request: Request, code: str | None = None, state: str | None = None, error: str | None = None,
              user: User = Depends(current_user), db: Session = Depends(get_db)):
     def back(result: str):
-        r = RedirectResponse(f"/settings?youtube={result}", status_code=303)
+        page = "channel" if request.cookies.get(BACK_COOKIE) == "channel" else "settings"
+        r = RedirectResponse(f"/{page}?youtube={result}", status_code=303)
         r.delete_cookie(STATE_COOKIE, path="/api/v1/youtube")
+        r.delete_cookie(BACK_COOKIE, path="/api/v1/youtube")
         return r
     expected = request.cookies.get(STATE_COOKIE, "")
     if not state or not secrets.compare_digest(expected, f"{state}.{user.id}"):
@@ -63,6 +67,7 @@ def callback(request: Request, code: str | None = None, state: str | None = None
         c = YouTubeConnection(user_id=user.id, refresh_token_enc="")
         db.add(c)
     c.channel_id, c.channel_title, c.refresh_token_enc = ch["id"], ch["title"][:200], youtube.encrypt(tok["refresh_token"])
+    channel_insights.forget(str(user.id))
     audit(db, request, "youtube.connect", user=user, channel=ch["id"])
     db.commit()
     return back("connected")
@@ -77,8 +82,23 @@ def disconnect(request: Request, user: User = Depends(current_user), db: Session
         except youtube.YouTubeError:
             pass
         db.delete(c)
+        channel_insights.forget(str(user.id))
         audit(db, request, "youtube.disconnect", user=user)
         db.commit()
+
+
+@router.get("/youtube/insights")
+def insights(tz: str = "Asia/Kolkata", refresh: bool = False, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """What works on the user's own channel and an estimate for the next video (rule-based, from their recent uploads)."""
+    c = db.scalar(select(YouTubeConnection).where(YouTubeConnection.user_id == user.id))
+    if not c:
+        raise HTTPException(409, "Connect your YouTube channel first")
+    if len(tz) > 64:
+        tz = "Asia/Kolkata"
+    try:
+        return channel_insights.insights(str(user.id), youtube.decrypt(c.refresh_token_enc), tz, refresh)
+    except youtube.YouTubeError as e:
+        raise HTTPException(502, str(e))
 
 
 class PublishIn(BaseModel):

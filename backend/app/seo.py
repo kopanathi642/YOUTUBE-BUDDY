@@ -25,7 +25,7 @@ SITEMAP = ["/", "/signup", "/privacy", "/terms"]
 # Every path the web app knows. Anything else is a real 404 (no "soft 404" pages in Google's index).
 _APP_ROUTES = re.compile(
     r"^/(|signin|signup|privacy|terms|universes|editor|editor/projects|ai-generator|ai-generator/explore|"
-    r"ai-generator/studio/[^/]+|ai-generator/tool/[^/]+|super|library|settings|home|projects|edit/[^/]+|ai-creation(/.*)?)/?$")
+    r"ai-generator/studio/[^/]+|ai-generator/tool/[^/]+|super|library|channel|settings|home|projects|edit/[^/]+|ai-creation(/.*)?)/?$")
 
 
 def known(path: str) -> bool:
@@ -105,7 +105,7 @@ def robots_txt(base: str) -> str:
         "User-agent: *",
         "Allow: /$", "Allow: /signup", "Allow: /signin", "Allow: /privacy", "Allow: /terms", "Allow: /assets/", "Allow: /og.png",
         "Disallow: /api/", "Disallow: /edit/", "Disallow: /editor", "Disallow: /universes", "Disallow: /ai-generator",
-        "Disallow: /super", "Disallow: /library", "Disallow: /settings",
+        "Disallow: /super", "Disallow: /library", "Disallow: /channel", "Disallow: /settings",
         "", f"Sitemap: {_abs(base, '/sitemap.xml')}", "",
     ])
 

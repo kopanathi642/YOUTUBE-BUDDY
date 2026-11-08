@@ -6,7 +6,8 @@ import {
 import { api } from "../api";
 import { useAuth, useBrand } from "../App";
 import { FeedbackModal } from "./GrowthCards";
-import { MessageSquareHeart, Gift } from "lucide-react";
+import ChannelButton from "./ChannelButton";
+import { MessageSquareHeart, Gift, Youtube } from "lucide-react";
 
 export function Brand({ small, sub = "EDITOR UNIVERSE" }: { small?: boolean; sub?: string }) {
   const brand = useBrand();
@@ -45,7 +46,8 @@ export function UserMenu() {
   }, []);
   if (!me) return null;
   const initials = me.user.display_name.split(/\s+/).map((s) => s[0]).join("").slice(0, 2).toUpperCase();
-  return (
+  return (<>
+    <ChannelButton />
     <div ref={ref} style={{ position: "relative" }}>
       <button className="btn ghost" onClick={() => setOpen(!open)} aria-haspopup="menu" aria-expanded={open}>
         {me.user.avatar_url ? <img className="avatar" src={me.user.avatar_url} alt="" referrerPolicy="no-referrer" /> : <span className="avatar">{initials}</span>}<span className="hide-m" style={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis" }}>{workspace?.name}</span><ChevronDown size={14} />
@@ -61,6 +63,7 @@ export function UserMenu() {
           ))}
           <hr style={{ border: 0, borderTop: "1px solid var(--line)", margin: "6px 0" }} />
           <button role="menuitem" className="menu-item" onClick={() => { setFb(true); setOpen(false); }}><MessageSquareHeart size={15} /> Send feedback</button>
+          <button role="menuitem" className="menu-item" onClick={() => { setOpen(false); nav("/channel"); }}><Youtube size={15} /> My channel</button>
           <button role="menuitem" className="menu-item" onClick={() => { setOpen(false); nav("/settings#invite"); }}><Gift size={15} /> Invite &amp; earn</button>
           <button role="menuitem" className="menu-item" onClick={async () => { await api("/auth/logout", { method: "POST" }); setMe(null); nav("/"); }}>
             <LogOut size={15} /> Sign out
@@ -69,7 +72,7 @@ export function UserMenu() {
       )}
       {fb && <FeedbackModal onClose={() => setFb(false)} />}
     </div>
-  );
+  </>);
 }
 
 export default function Shell({ children }: { children: ReactNode }) {
