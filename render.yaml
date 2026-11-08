@@ -33,7 +33,7 @@ services:
       - key: COOKIE_SECURE
         value: "true"
       - key: CORS_ORIGINS             # the public app URL (custom domain on Render)
-        value: https://youtubuddyhelp.com
+        value: https://youtubebuddy.com
       # Google sign-in via Firebase project "ytbuddy-3". Web config values are public identifiers, not secrets.
       - key: FIREBASE_PROJECT_ID
         value: ytbuddy-3
@@ -41,8 +41,8 @@ services:
         value: ytbuddy-3.firebaseapp.com
       - key: FIREBASE_API_KEY
         value: AIzaSyBDvbm-e_74r8nxeTVTLB9ON7tEoy0Th_M
-      - key: FIREBASE_APP_ID          # copy from Firebase console → Project settings → Your apps (optional)
-        sync: false
+      - key: FIREBASE_APP_ID          # Firebase console → Project settings → Your apps → "YOUTUBE BUDDY" web app
+        value: "1:303749195157:web:feec44ec9f4796b5bfc29c"
       - key: OPENAI_API_KEY           # optional: use OpenAI for captions/translation instead of the free models
         sync: false
       - key: FAL_KEY                  # turns on hosted video/image/music/lip-sync/3D models (fal.ai, pay per use)
@@ -59,8 +59,8 @@ services:
         value: "200"
       - key: FREE_PLAN_AI_CREDIT_INR  # premium-AI credit per 30 days on Free (₹); 0 = free tools only. Paid plans: PLANS in billing.py
         value: "0"
-      - key: CONTACT_EMAIL             # shown on /privacy and /terms, e.g. help@youtubuddyhelp.com (the address you created at your domain)
-        sync: false
+      - key: CONTACT_EMAIL             # shown on /privacy and /terms; same as the Firebase / Google support email
+        value: youtubebuddyhelp@gmail.com
       - key: ADMIN_EMAILS              # founder Google account(s): set QR + approve UPI payments (must sign in with Google)
         value: kumarbhargav642@gmail.com
       - key: DEVELOPER_EMAILS          # developer accounts: Pro plan free on every Google-verified sign-in (until payments are added)
@@ -73,8 +73,8 @@ services:
         sync: false
       - key: GOOGLE_OAUTH_CLIENT_SECRET
         sync: false
-      - key: PUBLIC_BASE_URL           # canonical URLs, sitemap, YouTube OAuth redirect (https://youtubuddyhelp.com/api/v1/youtube/callback)
-        value: https://youtubuddyhelp.com
+      - key: PUBLIC_BASE_URL           # canonical URLs, sitemap, YouTube OAuth redirect (https://youtubebuddy.com/api/v1/youtube/callback)
+        value: https://youtubebuddy.com
       - key: TOKEN_ENCRYPTION_KEY
         sync: false                    # a Fernet key; must be the same on web + worker (see .env.example)
       - key: SCRATCH_DIR

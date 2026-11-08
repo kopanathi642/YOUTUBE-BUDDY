@@ -1,4 +1,4 @@
-# Go live on youtubuddyhelp.com — Google sign-in, YouTube, stock, Creator Scout
+# Go live on youtubebuddy.com — Google sign-in, YouTube, stock, Creator Scout
 
 Everything below is **configuration only**: the code is finished and tested against fake Google/Pexels/Pixabay servers
 (`backend/tests/test_google_auth.py`, `test_youtube.py`, `test_channel_insights.py`, `test_stock.py`, `test_agent.py`).
@@ -9,30 +9,42 @@ Each feature stays hidden until its keys are present, then appears on its own.
 > that use "YouTube", "YT", "Tube" or look-alikes in a way that suggests YouTube made or endorses the app. Google's OAuth
 > verification team checks this. "YouTube Buddy" and possibly "youtubuddy" are at risk of rejection. Pick the final
 > `BRAND_NAME` (and ideally the domain) **before** you request verification; changing it afterwards means verifying again.
-> Everything below works the same with any domain: replace `youtubuddyhelp.com` with the final one.
+> Everything below works the same with any domain: replace `youtubebuddy.com` with the final one.
 
-## 0. Domain and email (once)
+## 0. Domain (BigRock) and support email (once)
 
-1. Render → service → **Settings → Custom domains** → add `youtubuddyhelp.com` and `www.youtubuddyhelp.com`; add the DNS
-   records Render shows at your registrar. Wait for the certificate.
-2. Email at the domain (free): Cloudflare Email Routing or Zoho Mail free. Create `help@youtubuddyhelp.com`; it is used as
-   Google's "user support email" and as `CONTACT_EMAIL` on /privacy and /terms.
-3. **Google Search Console** → add the *Domain* property `youtubuddyhelp.com` → verify with the DNS TXT record. Google
-   OAuth requires a verified domain. This is also how your site gets into Google Search; the sitemap is at `/sitemap.xml`.
+Domain: **youtubebuddy.com**, registered at BigRock (DNS is managed in BigRock → Manage DNS). Support email:
+**youtubebuddyhelp@gmail.com** (already the Firebase support email; also `CONTACT_EMAIL` on /privacy and /terms).
 
-Render environment (already in `render.yaml`): `PUBLIC_BASE_URL=https://youtubuddyhelp.com`, `CORS_ORIGINS=https://youtubuddyhelp.com`,
-`ADMIN_EMAILS` and `DEVELOPER_EMAILS` set to the developer's Google address. Set `CONTACT_EMAIL=help@youtubuddyhelp.com`.
+1. Deploy on Render first (Blueprint from `render.yaml`). Then Render → web service → **Settings → Custom domains** →
+   add `youtubebuddy.com` and `www.youtubebuddy.com`. Render then shows the exact DNS records to create.
+2. BigRock → Manage DNS for youtubebuddy.com:
+   - **A record** (host `@`/blank): *edit the existing one* to the IP address Render shows for the root domain
+     (at the time of writing Render documents `216.24.57.1`, but use what the dashboard shows). Keep only one A record for `@`.
+   - **CNAME** host `www` → `<your-service>.onrender.com` (exactly as Render shows).
+   - Don't delete the existing **MX** and **TXT** records: they handle email/verification. Don't change **NS**.
+   - Click "Verify" in Render; when DNS has spread (minutes to a few hours), Render issues the HTTPS certificate on its own.
+3. **Google Search Console** → add the *Domain* property `youtubebuddy.com` → Google gives you a TXT value → BigRock →
+   **+Add TXT Record**, host `@`, paste the value → Verify. Google OAuth needs a verified domain, and Search Console is also how
+   your site gets into Google Search (the sitemap is at `/sitemap.xml`).
+4. Optional, later: an address at the domain (e.g. `help@youtubebuddy.com`) through Zoho Mail free or BigRock email
+   forwarding. If you do this, add the MX records your email provider gives you, and do it before step 2 of §2.
+
+Render environment (already in `render.yaml`): `PUBLIC_BASE_URL=https://youtubebuddy.com`, `CORS_ORIGINS=https://youtubebuddy.com`,
+`ADMIN_EMAILS` and `DEVELOPER_EMAILS` set to the developer's Google address. Set `CONTACT_EMAIL=youtubebuddyhelp@gmail.com`.
 
 ## 1. Google sign-in (Firebase Authentication)
 
-1. <https://console.firebase.google.com> → **Add project** (Google Analytics is optional).
+1. Firebase project: **done** — `ytbuddy-3` ("YOUTUBE BUDDY"). The app does not use Google Analytics (`measurementId` is not needed).
 2. **Build → Authentication → Get started → Sign-in method → Google → Enable**. Public-facing name = your `BRAND_NAME`;
-   support email = `help@youtubuddyhelp.com` (if Firebase only lets you pick a Google account, add the help address as a
+   support email = `youtubebuddyhelp@gmail.com` (if Firebase only lets you pick a Google account, add the help address as a
    Google group or project owner first). Save.
-3. **Authentication → Settings → Authorized domains → Add domain**: `youtubuddyhelp.com` and `www.youtubuddyhelp.com`.
+3. **Authentication → Settings → Authorized domains → Add domain**: `youtubebuddy.com` and `www.youtubebuddy.com`.
    `localhost` is already there for development.
-4. **Project settings (⚙) → General → Your apps → Web (</>)** → register the app (no Hosting needed). Copy the values from
-   the config snippet into Render:
+   **Project settings → General → Public settings → Public-facing name**: change `project-303749195157` to your brand
+   name. Google shows this name in the sign-in window ("Continue to …").
+4. **Project settings (⚙) → General → Your apps → Web (</>)**. Done already: the "YOUTUBE BUDDY" web app of project
+   `ytbuddy-3`. Its values are already in `render.yaml`:
 
    | Render variable | From the Firebase snippet |
    |---|---|
@@ -52,14 +64,14 @@ The Firebase project *is* a Google Cloud project, so use the same project.
 
 1. <https://console.cloud.google.com> → select the Firebase project → **APIs & Services → Library → YouTube Data API v3 → Enable**.
 2. **OAuth consent screen** (Google Auth Platform → Branding / Audience / Data access):
-   - User type **External**. App name = `BRAND_NAME`. User support email and developer contact = `help@youtubuddyhelp.com`.
-   - App home page `https://youtubuddyhelp.com`, privacy policy `https://youtubuddyhelp.com/privacy`,
-     terms `https://youtubuddyhelp.com/terms`. Authorized domain `youtubuddyhelp.com`.
+   - User type **External**. App name = `BRAND_NAME`. User support email and developer contact = `youtubebuddyhelp@gmail.com`.
+   - App home page `https://youtubebuddy.com`, privacy policy `https://youtubebuddy.com/privacy`,
+     terms `https://youtubebuddy.com/terms`. Authorized domain `youtubebuddy.com`.
    - **Data access → Add scopes**: `.../auth/youtube.upload` and `.../auth/youtube.readonly`. Both are *sensitive* scopes:
      Google verification is needed (no paid security assessment; that is only for *restricted* scopes).
 3. **Credentials → Create credentials → OAuth client ID → Web application**:
-   - Authorized JavaScript origin: `https://youtubuddyhelp.com`
-   - Authorized redirect URI: `https://youtubuddyhelp.com/api/v1/youtube/callback` (Settings → YouTube shows the exact URI the server uses)
+   - Authorized JavaScript origin: `https://youtubebuddy.com`
+   - Authorized redirect URI: `https://youtubebuddy.com/api/v1/youtube/callback` (Settings → YouTube shows the exact URI the server uses)
 4. Render: `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, and `TOKEN_ENCRYPTION_KEY` (a long random value; generate
    one with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` on your own computer).
    Do not lose or change it later: stored channel connections can't be read without it, and users would have to reconnect.
@@ -100,7 +112,7 @@ r/NewTubers, r/youtubers, r/PartneredYoutube, r/VideoEditing (top of the week), 
 News for "YouTube creators India". With `ANTHROPIC_API_KEY` set it writes a deeper analysis; otherwise it runs a free keyword mode.
 
 - To change sources, set `AGENT_SOURCES` to a comma-separated list of `https://` RSS/Atom URLs.
-- The Scout identifies itself as `CreatorScoutBot/1.0 (+https://youtubuddyhelp.com)`. Reddit sometimes blocks cloud-server
+- The Scout identifies itself as `CreatorScoutBot/1.0 (+https://youtubebuddy.com)`. Reddit sometimes blocks cloud-server
   IPs (Render included). A blocked feed shows up as a per-source error in the run report, and the other feeds still work.
   If Reddit keeps refusing, take it out of `AGENT_SOURCES`, or apply for Reddit Data API access for commercial use.
 - Feed content is untrusted data: it is shown as evidence links, and nothing in a feed can trigger an action.

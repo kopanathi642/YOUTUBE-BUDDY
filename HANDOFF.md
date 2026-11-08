@@ -1,6 +1,6 @@
 # HANDOFF — YouTube Buddy X (working name)
 
-Last updated: 2026-11-08 (developer account, Connect channel + My channel insights, go-live guide for youtubuddyhelp.com). Read this first when you pick the project up in Claude Code.
+Last updated: 2026-11-08 (developer account, Connect channel + My channel insights, go-live guide for youtubebuddy.com). Read this first when you pick the project up in Claude Code.
 
 ## 1. Location
 - **GitHub:** https://github.com/kopanathi642/YOUTUBE-BUDDY, branch **`main`** (the repo is still **public**; the founder should make it private).
@@ -206,6 +206,8 @@ The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts`
 - OAuth now returns to `/channel` when started there.
 - Tested: `test_channel_insights.py`, plus a browser run of connect → insights against a fake Google server on desktop and phone, with no console errors and no horizontal scroll.
 - Also fixed: the CSP blocked Pexels/Pixabay thumbnails and would block YouTube thumbnails. Their image hosts are now allowed only when the matching key is set. The Creator Scout's User-Agent carries the site URL.
+
+**Firebase status (checked 2026-11-08 via the public Identity Toolkit API):** project `ytbuddy-3`, Google provider **enabled**; authorized domains are only localhost, ytbuddy-3.firebaseapp.com and ytbuddy-3.web.app. **youtubebuddy.com and www still need adding.** The public-facing name is still `project-303749195157`. All four FIREBASE_* values are in `render.yaml`, and the local app shows "Continue with Google" with them. The domain is **youtubebuddy.com** (BigRock DNS); the support email is youtubebuddyhelp@gmail.com.
 
 **Go-live guide:** `docs/GO_LIVE_GOOGLE.md` covers domain and email, Search Console, Firebase Google sign-in, the OAuth consent screen and verification, the YouTube API audit, Pexels/Pixabay and Creator Scout, plus a smoke test. Real feeds and stock APIs could not be called from the build sandbox: its network policy blocks them and the request to allow them was rejected. They are covered by fake-server tests only.
 
