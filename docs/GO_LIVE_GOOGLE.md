@@ -1,5 +1,7 @@
 # Go live on youtubebuddy.com — Google sign-in, YouTube, stock, Creator Scout
 
+**No budget? Host for ₹0 on your own PC:** `deploy/home/README.md` (Docker Desktop + free Cloudflare Tunnel). With that option, the "Render environment" steps below become lines in `deploy/home/.env` instead.
+
 Everything below is **configuration only**: the code is finished and tested against fake Google/Pexels/Pixabay servers
 (`backend/tests/test_google_auth.py`, `test_youtube.py`, `test_channel_insights.py`, `test_stock.py`, `test_agent.py`).
 Put every key into **Render → your service → Environment** (API and worker). Never paste keys into chat, issues or git.

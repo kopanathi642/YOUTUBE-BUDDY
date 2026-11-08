@@ -1,0 +1,12 @@
+# Which public address goes to which part of the app. The tunnel's secret files (cert.pem, <id>.json) are created here
+# by "cloudflared tunnel login/create" and are git-ignored.
+credentials-file: /root/.cloudflared/tunnel.json
+ingress:
+  - hostname: youtubebuddy.com          # uploaded/exported files (signed links) — same site, so no CORS needed
+    path: ^/youtubebuddy-media/
+    service: http://storage:9000
+  - hostname: youtubebuddy.com
+    service: http://web:8000
+  - hostname: www.youtubebuddy.com
+    service: http://web:8000
+  - service: http_status:404

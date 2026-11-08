@@ -7,3 +7,7 @@ backend/.env
 backend/tests/fixtures/
 .pytest_cache/
 *.tsbuildinfo
+
+# home server secrets
+deploy/home/cloudflared/*.pem
+deploy/home/cloudflared/*.json

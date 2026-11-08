@@ -178,3 +178,19 @@ def test_worker_takes_no_job_until_models_verified(monkeypatch):
     assert ok == [1]
     monkeypatch.setenv("MODELS_REQUIRED", "1"); assert worker.models_required()
     monkeypatch.setenv("MODELS_REQUIRED", "0"); assert not worker.models_required()
+
+
+def test_www_redirects_to_canonical_host_in_production(monkeypatch):
+    from fastapi.testclient import TestClient
+    from app.main import create_app
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://youtubebuddy.com")
+    get_settings.cache_clear()
+    try:
+        c = TestClient(create_app(), base_url="https://www.youtubebuddy.com")
+        r = c.get("/signin?ref=abc", follow_redirects=False)
+        assert r.status_code == 301 and r.headers["location"] == "https://youtubebuddy.com/signin?ref=abc"
+        c2 = TestClient(create_app(), base_url="https://youtubebuddy.com")
+        assert c2.get("/api/v1/health").status_code in (200, 503)            # the canonical host is served normally
+    finally:
+        get_settings.cache_clear()

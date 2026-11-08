@@ -5,7 +5,7 @@ import uuid
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import text
 
 from . import storage
@@ -30,8 +30,15 @@ def create_app() -> FastAPI:
                        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
                        allow_headers=["content-type", "x-requested-with", "idempotency-key"])
 
+    canonical = s.public_base_url.rstrip("/")
+    www_host = "www." + canonical.split("://", 1)[-1]
+
     @app.middleware("http")
     async def request_context(request: Request, call_next):
+        # one address for users and Google: www.<domain> → <domain> (keeps uploads/cookies on one origin too)
+        if prod and canonical.startswith("https://") and request.headers.get("host", "").lower() == www_host:
+            q = f"?{request.url.query}" if request.url.query else ""
+            return RedirectResponse(canonical + request.url.path + q, status_code=301)
         rid = request.headers.get("x-request-id") or uuid.uuid4().hex
         t0 = time.perf_counter()
         response = await call_next(request)

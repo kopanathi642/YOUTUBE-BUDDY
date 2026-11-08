@@ -1,0 +1,84 @@
+# ₹0 production stack on your own PC (Windows/Mac/Linux with Docker Desktop), published on youtubebuddy.com
+# through a free Cloudflare Tunnel: no open router ports, no public IP, HTTPS by Cloudflare.
+# Step-by-step: deploy/home/README.md.   Daily use (in this folder):  docker compose up -d --build   /   docker compose down
+name: youtubebuddy
+
+x-app-env: &appenv
+  ENV: production
+  COOKIE_SECURE: "true"
+  PUBLIC_BASE_URL: https://youtubebuddy.com
+  CORS_ORIGINS: https://youtubebuddy.com,https://www.youtubebuddy.com
+  DATABASE_URL: postgresql+psycopg://creator:${POSTGRES_PASSWORD}@db:5432/creator
+  S3_ENDPOINT_URL: http://storage:9000                 # inside Docker
+  S3_PUBLIC_ENDPOINT_URL: https://youtubebuddy.com    # browsers reach files at youtubebuddy.com/youtubebuddy-media/... (tunnel → storage)
+  S3_REGION: us-east-1
+  S3_BUCKET: youtubebuddy-media
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+  SCRATCH_DIR: /tmp/creator-worker
+  # Google sign-in (Firebase project ytbuddy-3; public web config, not secrets)
+  FIREBASE_PROJECT_ID: ytbuddy-3
+  FIREBASE_AUTH_DOMAIN: ytbuddy-3.firebaseapp.com
+  FIREBASE_API_KEY: AIzaSyBDvbm-e_74r8nxeTVTLB9ON7tEoy0Th_M
+  FIREBASE_APP_ID: "1:303749195157:web:feec44ec9f4796b5bfc29c"
+  CONTACT_EMAIL: youtubebuddyhelp@gmail.com
+  ADMIN_EMAILS: kumarbhargav642@gmail.com
+  DEVELOPER_EMAILS: kumarbhargav642@gmail.com
+  # no paid AI by default: free/open models only
+  AI_MONTHLY_BUDGET_USD: "0"
+  AI_DAILY_BUDGET_USD: "0"
+  FREE_PLAN_AI_CREDIT_INR: "0"
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment: { POSTGRES_USER: creator, POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}", POSTGRES_DB: creator }
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U creator"], interval: 5s, retries: 20 }
+
+  storage:   # S3-compatible file storage (RustFS, Apache-2.0); your uploads and exports stay on this PC
+    image: rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2
+    restart: unless-stopped
+    environment: { RUSTFS_ACCESS_KEY: "${S3_ACCESS_KEY_ID}", RUSTFS_SECRET_KEY: "${S3_SECRET_ACCESS_KEY}", RUSTFS_CONSOLE_ENABLE: "false" }
+    # refuse to start with the built-in default password if .env is missing
+    entrypoint: ["sh", "-c", "test -n \"$$RUSTFS_SECRET_KEY\" || { echo 'No .env: run  docker compose run --rm setup  first'; exit 1; }; exec /entrypoint.sh rustfs"]
+    volumes: [media:/data]
+
+  web:
+    build: { context: ../.., dockerfile: Dockerfile }
+    image: youtubebuddy-app
+    restart: unless-stopped
+    env_file: [{ path: .env, required: false }]   # secrets + optional keys (Pexels, Pixabay, Google OAuth, ...)
+    environment: *appenv
+    command: >-
+      sh -c "alembic upgrade head &&
+      python -c 'from app import storage; storage.ensure_bucket([\"https://youtubebuddy.com\", \"https://www.youtubebuddy.com\"])' &&
+      exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"
+    ports: ["127.0.0.1:8000:8000"]        # only this PC; the world comes in through the tunnel
+    depends_on: { db: { condition: service_healthy }, storage: { condition: service_started } }
+
+  worker:
+    image: youtubebuddy-app
+    restart: unless-stopped
+    env_file: [{ path: .env, required: false }]
+    environment: *appenv
+    command: python -m app.worker --queues media,render
+    volumes: [models:/var/models]          # ~10 GB of free AI models, downloaded and checked on first start
+    depends_on: [web]
+
+  tunnel:   # Cloudflare Tunnel: youtubebuddy.com and www → this PC
+    image: cloudflare/cloudflared:2025.4.2
+    restart: unless-stopped
+    user: root                             # so it can read/write the mounted folder on every OS
+    command: tunnel --config /root/.cloudflared/config.yml run youtubebuddy
+    volumes: ["./cloudflared:/root/.cloudflared"]   # config.yml (in git) + cert.pem and tunnel.json (secret, git-ignored)
+    depends_on: [web]
+
+  setup:    # one-time: writes .env with strong random passwords (never overwrites an existing one)
+    profiles: [setup]
+    image: python:3.13-alpine
+    volumes: [".:/work"]
+    command: python /work/make_env.py /work/.env
+
+volumes: { pgdata: {}, media: {}, models: {} }

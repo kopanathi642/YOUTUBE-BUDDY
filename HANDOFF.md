@@ -211,6 +211,16 @@ The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts`
 
 **Go-live guide:** `docs/GO_LIVE_GOOGLE.md` covers domain and email, Search Console, Firebase Google sign-in, the OAuth consent screen and verification, the YouTube API audit, Pexels/Pixabay and Creator Scout, plus a smoke test. Real feeds and stock APIs could not be called from the build sandbox: its network policy blocks them and the request to allow them was rejected. They are covered by fake-server tests only.
 
+**₹0 hosting (2026-11-08, founder has no budget for Render's ~$42/month):** `deploy/home/` runs the full production stack on the founder's own PC (Docker Desktop) and publishes it at https://youtubebuddy.com through a free, locally managed **Cloudflare Tunnel** (no card, no open ports). Step-by-step for Windows: `deploy/home/README.md`.
+- Services: Postgres 16, **RustFS 1.0.4** (Apache-2.0, S3-compatible, pinned by digest), web, worker (models volume), cloudflared.
+- MinIO no longer publishes free Docker images, so the dev `docker-compose.yml` uses RustFS now too. RustFS passed every storage call the app makes (multipart upload, list/complete, signed range GET). SeaweedFS 3.97 failed the upload.
+- Files are served on the same site at `youtubebuddy.com/youtubebuddy-media/...` (a tunnel path rule sends that path to storage), so no CORS is needed.
+- New: `www.` gets a 301 redirect to `PUBLIC_BASE_URL` in production (`main.py`, tested).
+- `make_env.py` writes random secrets into `deploy/home/.env` (git-ignored, never overwritten). Storage refuses to start without it.
+- Tested in the sandbox with a simulated tunnel: health, Google sign-in config, CSP, HSTS, secure cookie, upload → worker → ready → signed playback (206), www redirect. **Not tested:** the real `cloudflared tunnel login/create`, which needs the founder's Cloudflare account.
+- Limits: the site is down when the PC is off; Cloudflare's free plan isn't meant for heavy video streaming. For scale, move to R2 + paid hosting (`render.yaml`).
+- Next step for the founder: move the youtubebuddy.com nameservers from BigRock to Cloudflare (README §2). That also fixes the current NXDOMAIN.
+
 ## 4. Incomplete / unverified / known issues
 - **Hidden until keys are set** (`docs/HIDDEN_FEATURES.md`):
   - Lip sync (tool 033) and the AI Generator's text-described object removal (tool 024) need `FAL_KEY`. The editor's basic marked-area object removal is always on.
@@ -240,7 +250,7 @@ The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts`
   - Object removal: SAM 2 + LaMa (Apache-2.0), not ProPainter (non-commercial).
 
 ## 5. Next priorities
-1. **Launch prep** (founder): rename, deploy on Render, follow `docs/GO_LIVE_GOOGLE.md` (Firebase, OAuth client and verification, YouTube audit, Pexels/Pixabay keys), set the env vars below, upload the QR codes, make the repo private, onboard the first 20 creators. See `docs/` and the project doc LAUNCH_PLAYBOOK.
+1. **Launch prep** (founder): rename, run `deploy/home` (₹0) or deploy on Render, follow `docs/GO_LIVE_GOOGLE.md` (Firebase, OAuth client and verification, YouTube audit, Pexels/Pixabay keys), set the env vars below, upload the QR codes, make the repo private, onboard the first 20 creators. See `docs/` and the project doc LAUNCH_PLAYBOOK.
 2. **Object removal, next level:** the basic marked-area version is live (see section 3). Upgrade path: SAM 2 (click to mask, tracks the object across frames) + LaMa (realistic fill) per frame, short clips, on the existing worker. Plug in as a second engine behind the same `remove_object` derive op and dialog. Needs huggingface.co access to download weights (blocked in the build sandbox).
 3. **Lip sync on CPU:** MuseTalk with a 10 s limit and queue. A rented GPU later.
 3a. **Dubbing quality next steps** (measured gaps, `docs/DUBBING_EVAL.md`):
