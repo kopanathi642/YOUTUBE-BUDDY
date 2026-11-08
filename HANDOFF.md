@@ -219,6 +219,7 @@ The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts`
 - `make_env.py` writes random secrets into `deploy/home/.env` (git-ignored, never overwritten). Storage refuses to start without it.
 - Tested in the sandbox with a simulated tunnel: health, Google sign-in config, CSP, HSTS, secure cookie, upload → worker → ready → signed playback (206), www redirect. **Not tested:** the real `cloudflared tunnel login/create`, which needs the founder's Cloudflare account.
 - Limits: the site is down when the PC is off; Cloudflare's free plan isn't meant for heavy video streaming. For scale, move to R2 + paid hosting (`render.yaml`).
+- **Azure for Students** ($100/yr, no card): `deploy/azure/README.md` + `deploy/azure/setup.sh` (installs Docker and 4 GB swap, clones the repo, creates .env, sets `MT_MAX_LOADED=1`). It runs the same `deploy/home` stack on a B2s VM (2 vCPU, 4 GiB) in Central India, about 3 months of credit. The script is syntax-checked and its .env step tested; the full script hasn't run on a real VM yet.
 - Next step for the founder: move the youtubebuddy.com nameservers from BigRock to Cloudflare (README §2). That also fixes the current NXDOMAIN.
 
 ## 4. Incomplete / unverified / known issues
