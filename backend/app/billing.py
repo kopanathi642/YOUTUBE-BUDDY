@@ -64,6 +64,30 @@ def is_platform_admin(user: User) -> bool:
     return user.email_verified or s.env in ("development", "test")
 
 
+# ------------------------------------------------------------------ developer accounts
+DEVELOPER_UNTIL = datetime(2100, 1, 1, tzinfo=timezone.utc)
+
+
+def is_developer(user: User) -> bool:
+    s = get_settings()
+    if user.email.lower() not in s.developer_email_set:
+        return False
+    return user.email_verified or s.env in ("development", "test")   # production: only a Google-verified sign-in counts
+
+
+def apply_developer_benefits(db, user: User) -> bool:
+    """Developer accounts (DEVELOPER_EMAILS) get Pro free on the workspaces they own until payments are added for them."""
+    if not is_developer(user):
+        return False
+    from sqlalchemy import select
+    from .models import Role, WorkspaceMember
+    owned = db.scalars(select(Workspace).join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id).where(
+        WorkspaceMember.user_id == user.id, WorkspaceMember.role == Role.owner, Workspace.deleted_at.is_(None))).all()
+    for ws in owned:
+        ws.plan, ws.plan_expires_at = "pro", DEVELOPER_UNTIL
+    return bool(owned)
+
+
 # ------------------------------------------------------------------ referrals
 REFERRAL_DAYS = 7      # Creator days the inviter earns when a friend finishes their first export
 REFERRAL_MAX = 12      # rewarded invites per user (about 3 months free)

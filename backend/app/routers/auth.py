@@ -47,7 +47,7 @@ def _set_cookie(resp: Response, token: str):
                     samesite=s.cookie_samesite, max_age=s.session_ttl_hours * 3600, path="/")
 
 
-from ..billing import active_plan, find_referrer, is_platform_admin, referral_code  # noqa: E402
+from ..billing import active_plan, apply_developer_benefits, find_referrer, is_platform_admin, referral_code  # noqa: E402
 
 
 def me_payload(db: Session, user: User) -> dict:
@@ -118,6 +118,7 @@ def google_sign_in(body: GoogleIn, request: Request, response: Response, db: Ses
     pic = claims.get("picture")
     if isinstance(pic, str) and pic.startswith("https://") and len(pic) <= 500:
         user.avatar_url = pic
+    apply_developer_benefits(db, user)
     token = create_session(db, user, request.headers.get("user-agent"))
     audit(db, request, "auth.signup" if created else "auth.login", user=user, method="google")
     db.commit()
@@ -133,6 +134,7 @@ def signup(body: SignupIn, request: Request, response: Response, db: Session = D
     inviter = find_referrer(db, body.ref)
     user, ws = _create_user(db, email=body.email, display_name=body.display_name.strip(), password_hash=hash_password(body.password),
                             referred_by=inviter and inviter.id)
+    apply_developer_benefits(db, user)
     token = create_session(db, user, request.headers.get("user-agent"))
     audit(db, request, "auth.signup", user=user, workspace_id=ws.id)
     db.commit()
@@ -150,6 +152,7 @@ def login(body: LoginIn, request: Request, response: Response, db: Session = Dep
         audit(db, request, "auth.login_failed", email_domain=email.split("@")[-1])
         db.commit()
         raise HTTPException(401, "Email or password is incorrect")
+    apply_developer_benefits(db, user)
     token = create_session(db, user, request.headers.get("user-agent"))
     audit(db, request, "auth.login", user=user)
     db.commit()

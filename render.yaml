@@ -32,8 +32,8 @@ services:
         sync: false
       - key: COOKIE_SECURE
         value: "true"
-      - key: CORS_ORIGINS             # your public app URL, e.g. https://creator-universe-web.onrender.com
-        sync: false
+      - key: CORS_ORIGINS             # the public app URL (custom domain on Render)
+        value: https://youtubuddyhelp.com
       # Google sign-in via Firebase project "ytbuddy-3". Web config values are public identifiers, not secrets.
       - key: FIREBASE_PROJECT_ID
         value: ytbuddy-3
@@ -59,10 +59,12 @@ services:
         value: "200"
       - key: FREE_PLAN_AI_CREDIT_INR  # premium-AI credit per 30 days on Free (₹); 0 = free tools only. Paid plans: PLANS in billing.py
         value: "0"
-      - key: CONTACT_EMAIL             # shown on /privacy and /terms
+      - key: CONTACT_EMAIL             # shown on /privacy and /terms, e.g. help@youtubuddyhelp.com (the address you created at your domain)
         sync: false
-      - key: ADMIN_EMAILS              # founder Google account(s): set QR + approve UPI payments
-        sync: false
+      - key: ADMIN_EMAILS              # founder Google account(s): set QR + approve UPI payments (must sign in with Google)
+        value: kumarbhargav642@gmail.com
+      - key: DEVELOPER_EMAILS          # developer accounts: Pro plan free on every Google-verified sign-in (until payments are added)
+        value: kumarbhargav642@gmail.com
       - key: PEXELS_API_KEY            # free stock library
         sync: false
       - key: PIXABAY_API_KEY
@@ -71,8 +73,8 @@ services:
         sync: false
       - key: GOOGLE_OAUTH_CLIENT_SECRET
         sync: false
-      - key: PUBLIC_BASE_URL
-        sync: false
+      - key: PUBLIC_BASE_URL           # canonical URLs, sitemap, YouTube OAuth redirect (https://youtubuddyhelp.com/api/v1/youtube/callback)
+        value: https://youtubuddyhelp.com
       - key: TOKEN_ENCRYPTION_KEY
         sync: false                    # a Fernet key; must be the same on web + worker (see .env.example)
       - key: SCRATCH_DIR

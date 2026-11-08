@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     uploads_per_10min: int = 120         # per-user upload rate limit
     # Billing (UPI QR + manual approval). Platform admins approve payments; list their emails, comma-separated.
     admin_emails: str = ""
+    developer_emails: str = ""          # DEVELOPER_EMAILS: these accounts get the Pro plan free on every sign-in (verified email in production)
     free_plan_ai_credit_inr: float = 0.0  # premium-AI credit per 30 days on the Free plan (₹); 0 = free tools only, upgrade for premium
     free_plan_watermark: bool = True     # small "Made with <brand>" badge on Free-plan exports (growth loop; paid plans remove it)
     # YouTube publishing: a free Google Cloud OAuth client (YouTube Data API v3). Tokens are encrypted at rest.
@@ -73,6 +74,10 @@ class Settings(BaseSettings):
             if v.startswith(prefix):
                 return "postgresql+psycopg://" + v[len(prefix):]
         return v
+
+    @property
+    def developer_email_set(self) -> set[str]:
+        return {e.strip().lower() for e in self.developer_emails.split(",") if e.strip()}
 
     @property
     def admin_email_set(self) -> set[str]:

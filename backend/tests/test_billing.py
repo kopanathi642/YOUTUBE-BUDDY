@@ -143,3 +143,21 @@ def test_paypal_option(make_client):
     tid = uuid.uuid4().hex[:17].upper()
     r = u.post("/api/v1/billing/payments", json={"workspace_id": ws, "plan": "pro", "method": "paypal", "utr": tid})
     assert r.status_code == 201 and r.json()["method"] == "paypal", r.text
+
+
+def test_developer_account_gets_pro_free_only_when_verified(make_client, monkeypatch):
+    from app.models import User
+    monkeypatch.setattr(get_settings(), "developer_emails", "dev@example.com")
+    c = make_client()
+    r = c.post("/api/v1/auth/signup", json={"email": "dev@example.com", "password": "correct horse battery", "display_name": "Dev"})
+    assert r.status_code == 201
+    ws = r.json()["workspaces"][0]["id"]
+    b = c.get("/api/v1/billing", params={"workspace_id": ws}).json()
+    assert b["plan"] == "pro" and b["plan_expires_at"].startswith("2100") and b["ai_credit_inr"] == 300   # test env: no verification needed
+    other = make_client(); ows = signup(other)["workspaces"][0]["id"]
+    assert other.get("/api/v1/billing", params={"workspace_id": ows}).json()["plan"] == "free"           # nobody else
+    # production: an unverified (password) account with the developer email gets nothing
+    monkeypatch.setattr(get_settings(), "env", "production")
+    from app.billing import is_developer
+    assert not is_developer(User(email="dev@example.com", email_verified=False))
+    assert is_developer(User(email="dev@example.com", email_verified=True))
