@@ -56,6 +56,11 @@ Render environment (already in `render.yaml`): `PUBLIC_BASE_URL=https://youtubeb
 5. Redeploy. "Continue with Google" appears on /signin and /signup. The backend verifies every Google ID token against
    Google's public keys and the project id. Developer benefits (Pro free) apply only to a **Google-verified** email.
 
+**Lock the browser key** (Google Cloud → APIs & Services → Credentials → Browser key → Website restrictions):
+`youtubebuddy.com/*`, `www.youtubebuddy.com/*`, `localhost/*` **and `ytbuddy-3.firebaseapp.com/*`**. The last one is
+required: the Google sign-in popup runs on Firebase's auth domain with this key, and without it sign-in fails with
+"requests from referer … are blocked". (Add `<service>.onrender.com/*` too if you test on Render's address.)
+
 Test: sign in with the developer Google account → Settings shows the Pro plan and the Payments admin card.
 
 ## 2. YouTube connection: "Connect channel", channel insights, publishing
