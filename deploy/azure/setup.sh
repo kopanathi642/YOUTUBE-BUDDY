@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-command server setup for an Ubuntu 24.04 VM (Azure for Students or any cloud VM).
+# One-command server setup for Ubuntu 24.04 (Azure VM, any cloud VM, or a home laptop).
 #   curl -fsSL https://raw.githubusercontent.com/kopanathi642/YOUTUBE-BUDDY/main/deploy/azure/setup.sh | bash
 # Safe to run again: it skips whatever is already done. It never prints or uploads your secrets.
 set -euo pipefail
