@@ -14,6 +14,7 @@ import HistoryPanel from "./HistoryPanel";
 import { LOOKS, svgFilterBody, withLook, sanitizeGrade } from "../grade";
 import { buildPlan, applyCuts, silenceCuts, applySceneSplits, sceneSplits, loudnessGain } from "../smart";
 import MediaBin, { BinTab } from "./MediaBin";
+import FocusMusic from "./FocusMusic";
 import { Workspace, LayoutMenu, WorkspaceBar, useLayout, PanelDef, PanelId } from "./Workspace";
 import { Bot, Mic2, Palette as PaletteI, BarChart3, Network, Zap, SlidersHorizontal, Rocket as RocketI, Film as FilmI, Lightbulb } from "lucide-react";
 import { loadCatalogue } from "../ai/core";
@@ -413,6 +414,7 @@ export default function Editor() {
         </div>
         <button className="btn icon ghost" onClick={() => setShowHistory(true)} title="Version history" aria-label="Version history"><HistoryIcon size={17} /></button>
         <WorkspaceBar layout={layout} setLayout={setLayout} />
+        <FocusMusic assets={assets} editorPlaying={playing} />
         <LayoutMenu layout={layout} setLayout={setLayout} />
         <button className="btn sm primary" onClick={() => action("export")} title="Export video"><RocketI size={15} />Export</button>
         <SaveBlock state={readOnly ? "readonly" : save} version={version} />
