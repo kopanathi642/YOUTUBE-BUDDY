@@ -174,7 +174,7 @@ await step("Scopes render pixels (not blank)", async () => {
 await step("Fusion node: ColorCorrect bypass toggle", async () => {
   await dock("Color");
   await page.click(".color-panel-anchor .mini-tabs button:has-text('Looks')"); await page.click(".look:has-text('Warm')");
-  await page.click(".node:has-text('ColorCorrect1')"); await page.click(".node:has-text('ColorCorrect1')");
+  await dock("Nodes"); await page.click(".node:has-text('ColorCorrect1')"); await page.click(".node:has-text('ColorCorrect1')");
 });
 await step("Media bin Effects tab applies a look", async () => {
   await page.click(".ed-bin [role=tab]:has-text('Effects')"); await page.click(".ed-bin .look:has-text('B&W')"); await page.click(".ed-bin [role=tab]:has-text('Media')");
@@ -239,7 +239,7 @@ await step("Sequence menu: new sequence, switch back", async () => {
   await page.waitForFunction(() => document.querySelector(".pill b")?.textContent?.includes("Main sequence"));
 });
 await step("Shorts Maker creates 9:16 sequence", async () => {
-  await page.click(".qa:has-text('Shorts Maker')"); await page.waitForFunction(() => document.querySelector(".pill b")?.textContent?.includes("9:16"), null, { timeout: 20000 });
+  await dock("Quick Actions"); await page.click(".qa:has-text('Shorts Maker')"); await page.waitForFunction(() => document.querySelector(".pill b")?.textContent?.includes("9:16"), null, { timeout: 20000 });
 });
 
 await step("Titles: add title, edit text (Hindi), style, size, colour; renders in preview", async () => {
@@ -311,7 +311,7 @@ await step("Stabilize selected clip → stabilized copy swapped in", async () =>
   await page.waitForSelector('.clip[aria-label*="(stabilized)"]', { timeout: 300000 });
 });
 await step("Background removal on selected clip → transparent copy swapped in", async () => {
-  await page.click('[data-track="v1"] .clip >> nth=1'); await page.click(".qa:has-text('Background Remove')");
+  await page.click('[data-track="v1"] .clip >> nth=1'); await dock("Quick Actions"); await page.click(".qa:has-text('Background Remove')");
   await page.waitForSelector('.clip[aria-label*="(no background)"]', { timeout: 600000 });
 });
 await step("Remove Object: mark an area on the clip's frame → cleaned copy swapped in", async () => {
@@ -428,7 +428,7 @@ await step("Upgrade Plan → UPI QR, UTR submitted, founder approves in admin, p
   if (yt) throw new Error("YouTube card shown to a user before it is set up");
 });
 await step("Growth: feedback sent, invite link shown, privacy & terms pages", async () => {
-  await page.click("button[aria-haspopup=menu]"); await page.click(".menu-item:has-text('Send feedback')");
+  await page.click(".ed-top button[aria-haspopup=menu]:has(.avatar)"); await page.click(".menu-item:has-text('Send feedback')");
   await page.fill("textarea[aria-label=Feedback]", "Audit: please add more fonts"); await page.click("button[aria-label='4 stars']");
   await page.click(".modal button:has-text('Send')"); await page.waitForSelector(".modal", { state: "detached" });
   const url = page.url();
