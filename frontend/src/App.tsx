@@ -21,6 +21,7 @@ const SuperLocked = lazy(() => import("./pages/Super").then((m) => ({ default: m
 const Library = lazy(() => import("./pages/Library"));
 const Channel = lazy(() => import("./pages/Channel"));
 const Growth = lazy(() => import("./pages/Growth"));
+const ShortsStudio = lazy(() => import("./shorts/ShortsStudio"));
 const Settings = lazy(() => import("./pages/Settings"));
 
 const Loading = () => <div className="auth-wrap"><div className="spinner" aria-label="Loading" /></div>;
@@ -29,7 +30,7 @@ const Loading = () => <div className="auth-wrap"><div className="spinner" aria-l
 const TITLES: [RegExp, string][] = [
   [/^\/$/, "Video editor & AI studio for creators"], [/^\/signin/, "Sign in"], [/^\/signup/, "Create your free account"],
   [/^\/privacy/, "Privacy"], [/^\/terms/, "Terms"], [/^\/universes/, "Universes"], [/^\/editor\/projects/, "Projects"],
-  [/^\/editor/, "Editor"], [/^\/edit\//, "Editing"], [/^\/ai-generator/, "AI Generator"], [/^\/super/, "Super Universe"],
+  [/^\/editor/, "Editor"], [/^\/edit\//, "Editing"], [/^\/shorts\//, "Shorts Creative Studio"], [/^\/ai-generator/, "AI Generator"], [/^\/super/, "Super Universe"],
   [/^\/library/, "Library"], [/^\/growth/, "Growth"], [/^\/channel/, "My channel"], [/^\/settings/, "Settings"],
 ];
 function RouteTitle() {
@@ -135,6 +136,7 @@ export default function App() {
           <Route path="/ai-creation/*" element={<LegacyAi />} />
           <Route path="/projects" element={<LegacyProjects />} />
           <Route path="/edit/:projectId" element={<Private bare><Editor /></Private>} />
+          <Route path="/shorts/:projectId" element={<Private bare><ShortsStudio /></Private>} />
           <Route path="*" element={<div className="auth-wrap"><div className="card auth-card"><h2>Page not found</h2><a className="btn" href="/universes">Go to universes</a></div></div>} />
         </Routes>
         </Suspense>

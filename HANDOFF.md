@@ -227,6 +227,14 @@ The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts`
 Ten pages, `routers/growth_studio.py`, `growth_engine.py`, `growth_produce.py`, `growth_cycle.py`, migration 0009. Full detail: `docs/GROWTH.md`.
 Tests: `tests/test_growth_studio.py` (4) and `e2e/growth.mjs` (11/11).
 
+### Shorts Creative Studio (`/shorts/:projectId`, Nov 2026)
+Multi-layer Shorts and Reels compositions: 6 layout styles plus the Shorts player preview, 6 ratios plus custom, 21 templates
+in 15 categories, layers, text, effects, keyframes, AI layout suggestions, batch export and ZIP.
+- Code: `frontend/src/compose.ts` and `frontend/src/shorts/*`.
+- Backend: `ClipFx` and the new title styles in `timeline.py` and `titles.py`, `routers/compose.py`, migration 0010.
+- Full detail: `docs/SHORTS_STUDIO.md`.
+- Tests: preview and export pixels match (1.7/255 mean absolute difference); 36 FFmpeg renders cover every style on every ratio.
+
 ## 4. Incomplete / unverified / known issues
 - **Hidden until keys are set** (`docs/HIDDEN_FEATURES.md`):
   - Lip sync (tool 033) and the AI Generator's text-described object removal (tool 024) need `FAL_KEY`. The editor's basic marked-area object removal is always on.

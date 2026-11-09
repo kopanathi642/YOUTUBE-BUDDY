@@ -369,3 +369,15 @@ class GrowthSettings(Base, Timestamped):
     modules: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     publish_authorized: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     weights: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+
+
+class CompositionTemplate(Base, Timestamped):
+    """A Shorts-studio layout saved by a creator: layers with their settings, media replaced by numbered slots."""
+    __tablename__ = "composition_templates"
+    id: Mapped[uuid.UUID] = uuid_pk()
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), index=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    category: Mapped[str] = mapped_column(String(60), nullable=False)
+    data: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    favorite: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")

@@ -6,6 +6,7 @@ import { titleFont } from "../fonts";
 import { tfAt } from "../keyframes";
 import { TState, transitionLinks, transitionState } from "../transitions";
 import { isNeutral, svgFilterBody } from "../grade";
+import { ratioOf } from "../compose";
 
 export type Sampler = (w: number) => HTMLCanvasElement | null;
 
@@ -14,6 +15,18 @@ function fadeFactor(c: Clip, frame: number): number {
   if (c.fade_in && frame - c.start < c.fade_in) f = Math.min(f, (frame - c.start) / c.fade_in);
   if (c.fade_out && end(c) - frame <= c.fade_out) f = Math.min(f, (end(c) - frame) / c.fade_out);
   return Math.max(0, Math.min(1, f));
+}
+
+/** CSS for the composition look; same geometry as the FFmpeg compiler (sizes scale with keyframed clips). */
+export function fxStyle(c: Clip, k: number, scaleNow: number): { wrap: React.CSSProperties; filter: string } {
+  const fx = c.fx;
+  if (!fx) return { wrap: {}, filter: "" };
+  const s = (c.keyframes && (c.keyframes.x?.length || c.keyframes.y?.length || c.keyframes.scale?.length || c.keyframes.rotation?.length) ? scaleNow : 1) * k;
+  const shadows: string[] = [];
+  if (fx.shadow) shadows.push(`0 ${0.3 * fx.shadow * s}px ${2 * fx.shadow * s}px ${(fx.border ?? 0) * s}px rgba(0,0,0,${fx.shadow_opacity ?? 0.6})`);
+  if (fx.border) shadows.push(`0 0 0 ${fx.border * s}px ${fx.border_color ?? "#ffffff"}`);
+  return { wrap: { borderRadius: fx.radius ? fx.radius * s : undefined, boxShadow: shadows.length ? shadows.reverse().join(", ") : undefined },
+    filter: fx.blur ? `blur(${fx.blur * s}px)` : "" };
 }
 
 type Layer = { clip: Clip; trackHidden: boolean; trackMuted: boolean; kind: "video" | "audio"; asset: Asset; z: number; ts?: TState };
@@ -140,7 +153,12 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
           ctx.font = `700 ${fs}px ${titleFont(ti.text)}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
           const lines = ti.text.split("\n"), lh = fs * 1.2, tw = Math.max(...lines.map((l) => ctx.measureText(l).width)), th = lh * lines.length, pad = fs * 0.25;
           if (ti.bg_color) { ctx.fillStyle = ti.bg_color; ctx.globalAlpha *= ti.bg_opacity; ctx.fillRect(-tw / 2 - pad, -th / 2 - pad, tw + 2 * pad, th + 2 * pad); ctx.globalAlpha = tf.opacity * fadeFactor(L.clip, L.clip.start + lf(L)); }
-          ctx.fillStyle = ti.color; lines.forEach((l, i) => ctx.fillText(l, 0, -th / 2 + lh * (i + 0.5)));
+          const al = ti.align ?? "center", lx = al === "left" ? -tw / 2 : al === "right" ? tw / 2 : 0;
+          ctx.textAlign = al;
+          if (ti.shadow) { ctx.shadowColor = `rgba(0,0,0,${ti.shadow})`; ctx.shadowBlur = 0.12 * fs; ctx.shadowOffsetY = 0.06 * fs; }
+          if (ti.stroke) { ctx.lineWidth = 2 * ti.stroke * tf.scale * k; ctx.strokeStyle = ti.stroke_color ?? "#000"; ctx.lineJoin = "round";
+            lines.forEach((l, i) => ctx.strokeText(l, lx, -th / 2 + lh * (i + 0.5))); ctx.shadowColor = "transparent"; }
+          ctx.fillStyle = ti.color; lines.forEach((l, i) => ctx.fillText(l, lx, -th / 2 + lh * (i + 0.5)));
           ctx.restore(); continue;
         }
         if (!el) continue;
@@ -148,9 +166,13 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
         const g = geom(L, k);
         ctx.save();
         ctx.globalAlpha = tfAt(L.clip, lf(L)).opacity * fadeFactor(L.clip, L.clip.start + lf(L)) * (L.ts?.opacity ?? 1);
-        if (!isNeutral(L.clip.color)) ctx.filter = `url(#g-${L.clip.id})`;
+        const fxs = fxStyle(L.clip, k, tfAt(L.clip, lf(L)).scale);
+        const filt = [isNeutral(L.clip.color) ? "" : `url(#g-${L.clip.id})`, fxs.filter].filter(Boolean).join(" ");
+        if (filt) ctx.filter = filt;
         ctx.translate(g.cx, g.cy); ctx.rotate((tfAt(L.clip, lf(L)).rotation * Math.PI) / 180);
-        ctx.beginPath(); ctx.rect(-g.w / 2, -g.h / 2, g.w, g.h); ctx.clip();
+        if (L.clip.fx?.flip_h) ctx.scale(-1, 1);
+        const rr = typeof fxs.wrap.borderRadius === "number" ? fxs.wrap.borderRadius : 0;
+        ctx.beginPath(); if (rr && ctx.roundRect) ctx.roundRect(-g.w / 2, -g.h / 2, g.w, g.h, rr); else ctx.rect(-g.w / 2, -g.h / 2, g.w, g.h); ctx.clip();
         ctx.drawImage(el as CanvasImageSource, -g.w / 2 + g.offX, -g.h / 2 + g.offY, g.fullW, g.fullH);
         ctx.restore();
       }
@@ -205,11 +227,16 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
                 const ti = L.clip.title, fs = ti.font_size * tf.scale * k;
                 return wrapT(<div key={L.clip.id} className="title-layer" style={{ left: (tl.width / 2 + tf.x) * k, top: (tl.height / 2 + tf.y) * k, zIndex: L.z, opacity,
                   transform: `translate(-50%, -50%) rotate(${tf.rotation}deg)`, fontFamily: titleFont(ti.text), fontSize: fs, color: ti.color, padding: fs * 0.25,
+                  textAlign: ti.align ?? "center",
+                  WebkitTextStroke: ti.stroke ? `${2 * ti.stroke * tf.scale * k}px ${ti.stroke_color ?? "#000000"}` : undefined, paintOrder: ti.stroke ? "stroke fill" : undefined,
+                  textShadow: ti.shadow ? `0 ${0.06 * fs}px ${0.12 * fs}px rgba(0,0,0,${ti.shadow})` : undefined,
                   background: ti.bg_color ? `${ti.bg_color}${Math.round(ti.bg_opacity * 255).toString(16).padStart(2, "0")}` : "transparent" }}>{ti.text}</div>);
               }
               const g = geom(L, k);
-              const wrap: React.CSSProperties = { width: g.w, height: g.h, left: g.cx - g.w / 2, top: g.cy - g.h / 2, zIndex: L.z, transform: `rotate(${tf.rotation}deg)`, opacity,
-                filter: isNeutral(L.clip.color) ? undefined : `url(#g-${L.clip.id})` };
+              const fxs = fxStyle(L.clip, k, tf.scale);
+              const filt = [isNeutral(L.clip.color) ? "" : `url(#g-${L.clip.id})`, fxs.filter].filter(Boolean).join(" ");
+              const wrap: React.CSSProperties = { width: g.w, height: g.h, left: g.cx - g.w / 2, top: g.cy - g.h / 2, zIndex: L.z,
+                transform: `rotate(${tf.rotation}deg)${L.clip.fx?.flip_h ? " scaleX(-1)" : ""}`, opacity, filter: filt || undefined, ...fxs.wrap };
               const inner: React.CSSProperties = { position: "absolute", width: g.fullW, height: g.fullH, left: g.offX, top: g.offY };
               const ref = (el: any) => { if (el) els.current.set(L.clip.id, el); else els.current.delete(L.clip.id); };
               return wrapT(<div key={L.clip.id} className="layer clipwrap" style={wrap}>{a.kind === "image"
@@ -251,7 +278,7 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
         <button className="btn icon ghost" aria-label="Go to end" onClick={() => { setPlaying(false); setPlayhead(total); }}><SkipForward size={16} /></button>
         <div className="grow" />
         <button className={`btn icon ghost ${loop ? "toggled" : ""}`} aria-pressed={loop} aria-label="Loop playback" onClick={() => setLoop(!loop)}><Repeat size={15} /></button>
-        <span className="pill static">{tl.width > tl.height ? "16:9" : tl.width === tl.height ? "1:1" : tl.width * 16 === tl.height * 9 ? "9:16" : "4:5"}</span>
+        <span className="pill static">{ratioOf(tl.width, tl.height) === "custom" ? `${tl.width}×${tl.height}` : ratioOf(tl.width, tl.height)}</span>
         <span className="mono tc" style={{ textAlign: "right" }}>{framesToTimecode(total, fps)}</span>
       </div>
     </section>

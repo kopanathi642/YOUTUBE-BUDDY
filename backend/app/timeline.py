@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import os
 import re
+import json
+import math
 import uuid
 from typing import Literal
 
@@ -112,6 +114,10 @@ class Title(BaseModel):
     color: str = Field("#ffffff", pattern=HEX)
     bg_color: str | None = Field(None, pattern=HEX)
     bg_opacity: float = Field(0.7, ge=0, le=1)
+    align: Literal["left", "center", "right"] = "center"   # line alignment inside the text block
+    stroke: int = Field(0, ge=0, le=24)                    # outline width, sequence px (outside the letters)
+    stroke_color: str = Field("#000000", pattern=HEX)
+    shadow: float = Field(0, ge=0, le=1)                   # soft drop shadow opacity
 
 
 KF_LIMITS = {"x": (-10000, 10000), "y": (-10000, 10000), "scale": (0.05, 10), "rotation": (-360, 360), "opacity": (0, 1)}
@@ -223,14 +229,45 @@ class Transition(BaseModel):
 
 
 class Crop(BaseModel):
+    """Fractions of the source cut from each side. At least 4% of the width and height always stays."""
     model_config = ConfigDict(extra="forbid")
-    left: float = Field(0, ge=0, le=0.45)
-    right: float = Field(0, ge=0, le=0.45)
-    top: float = Field(0, ge=0, le=0.45)
-    bottom: float = Field(0, ge=0, le=0.45)
+    left: float = Field(0, ge=0, le=0.96)
+    right: float = Field(0, ge=0, le=0.96)
+    top: float = Field(0, ge=0, le=0.96)
+    bottom: float = Field(0, ge=0, le=0.96)
+
+    @model_validator(mode="after")
+    def _keep(self):
+        if self.left + self.right > 0.96 or self.top + self.bottom > 0.96:
+            raise ValueError("crop would remove the whole picture")
+        return self
 
     def is_identity(self) -> bool:
         return not (self.left or self.right or self.top or self.bottom)
+
+
+class ClipFx(BaseModel):
+    """Per-clip look used by compositions (Shorts studio): blur, rounded corners, border, drop shadow, mirror.
+    Sizes are sequence pixels at the clip's static size (for keyframed clips: at scale 1, then scaled with the clip)."""
+    model_config = ConfigDict(extra="forbid")
+    blur: float = Field(0, ge=0, le=200)          # Gaussian sigma
+    radius: float = Field(0, ge=0, le=2000)       # rounded corners
+    border: float = Field(0, ge=0, le=200)        # outside the picture
+    border_color: str = Field("#ffffff", pattern=HEX)
+    shadow: float = Field(0, ge=0, le=200)        # softness (Gaussian sigma); 0 = none
+    shadow_opacity: float = Field(0.6, ge=0, le=1)
+    flip_h: bool = False
+
+    def shaped(self) -> bool:
+        return bool(self.radius or self.border or self.shadow)
+
+    def is_identity(self) -> bool:
+        return not (self.blur or self.shaped() or self.flip_h)
+
+    def margin(self) -> int:
+        """Transparent space around the picture for the border and shadow (even, so sizes stay even)."""
+        m = self.border + (3.3 * self.shadow if self.shadow else 0) + 2
+        return int(math.ceil(m / 2) * 2)
 
 
 class Clip(BaseModel):
@@ -251,6 +288,7 @@ class Clip(BaseModel):
     keyframes: Keyframes | None = None  # animated transform (overrides the static value of each animated property)
     transition_in: Transition | None = None  # blend from the previous touching clip on the same track
     denoise: bool = False  # FFmpeg FFT noise reduction on this clip's audio (applied in export)
+    fx: ClipFx | None = None
 
     @property
     def length(self) -> int:
@@ -302,9 +340,12 @@ class Timeline(BaseModel):
     height: int = Field(ge=144, le=3840)
     tracks: list[Track] = Field(max_length=24)
     notes: str = Field("", max_length=10000)
+    composition: dict | None = None   # Shorts studio layout this timeline was built from (layers, normalized positions)
 
     @model_validator(mode="after")
     def _check(self):
+        if self.composition is not None and len(json.dumps(self.composition)) > 300_000:
+            raise ValueError("composition is too large")
         if self.fps not in ALLOWED_FPS:
             raise ValueError(f"fps must be one of {ALLOWED_FPS}")
         if self.width % 2 or self.height % 2:
@@ -353,6 +394,8 @@ class AssetInfo(BaseModel):
     has_audio: bool
     has_video: bool
     duration_s: float | None = None
+    width: int | None = None
+    height: int | None = None
 
 
 def _f(x: float) -> str:
@@ -394,6 +437,38 @@ def _opacity_filters(clip: "Clip", fps: int, workdir: str, tag: str) -> list[str
                 last = v
     first = round(kf_value(kf.opacity, 0, tf.opacity), 4)
     return [f"sendcmd=f={_ff_path(path)}", f"colorchannelmixer@op{tag}=aa={first}"]
+
+
+def _shape_pngs(fx: "ClipFx", w: int, h: int, workdir: str, tag: str) -> tuple[str, str | None, str | None, int]:
+    """Still images for a shaped clip: alpha mask (w x h, rounded corners), shadow (below) and border (above),
+    both (w+2m) x (h+2m) with the picture at (m, m). Same geometry as the browser preview (CSS border-radius,
+    box-shadow 0 0.3s 2s, outside border)."""
+    from PIL import Image, ImageDraw, ImageFilter
+    m = fx.margin()
+    r = min(fx.radius, w / 2, h / 2)
+    mask = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, w - 1, h - 1), radius=r, fill=255)
+    pm = os.path.join(workdir, f"{tag}-mask.png")
+    mask.save(pm)
+    under = over = None
+    W2, H2 = w + 2 * m, h + 2 * m
+    if fx.shadow:
+        sh = Image.new("RGBA", (W2, H2), (0, 0, 0, 0))
+        oy = round(0.3 * fx.shadow)
+        b = fx.border
+        ImageDraw.Draw(sh).rounded_rectangle((m - b, m - b + oy, m + w - 1 + b, m + h - 1 + b + oy), radius=r + b if r else 0,
+                                             fill=(0, 0, 0, round(255 * fx.shadow_opacity)))
+        sh = sh.filter(ImageFilter.GaussianBlur(fx.shadow))
+        under = os.path.join(workdir, f"{tag}-under.png")
+        sh.save(under)
+    if fx.border:
+        ring = Image.new("RGBA", (W2, H2), (0, 0, 0, 0))
+        b = round(fx.border)
+        col = tuple(int(fx.border_color[i:i + 2], 16) for i in (1, 3, 5)) + (255,)
+        ImageDraw.Draw(ring).rounded_rectangle((m - b, m - b, m + w - 1 + b, m + h - 1 + b), radius=(r + b) if r else 0, outline=col, width=b)
+        over = os.path.join(workdir, f"{tag}-over.png")
+        ring.save(over)
+    return pm, under, over, m
 
 
 def _lab(clip_id: str) -> str:
@@ -531,21 +606,72 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
                 anim = clip.keyframes is not None and clip.keyframes.geometric()
                 if anim:
                     bw, bh = W, H  # fit the canvas at scale 1; the per-frame transform does the rest
+                fx = clip.fx if clip.fx and not clip.fx.is_identity() else None
+                cw = ch = None
+                if fx and a.width and a.height:   # exact picture size (needed to cut rounded corners and draw borders)
+                    cr = clip.crop
+                    aw = a.width * ((1 - cr.left - cr.right) if cr else 1)
+                    ah = a.height * ((1 - cr.top - cr.bottom) if cr else 1)
+                    fit = min(bw / aw, bh / ah)
+                    cw, ch = max(2, int(round(aw * fit / 2)) * 2), max(2, int(round(ah * fit / 2)) * 2)
                 chain = []
                 if clip.speed != 1 and a.kind != "image":
                     chain.append(f"setpts=(PTS-STARTPTS)/{_f(clip.speed)}")
-                elif clip.keyframes:
+                elif clip.keyframes or fx:
                     chain.append("setpts=PTS-STARTPTS")
                 chain.append(f"fps={fps}")
                 if clip.crop and not clip.crop.is_identity():
                     c = clip.crop
                     chain.append(f"crop=iw*{_f(1 - c.left - c.right)}:ih*{_f(1 - c.top - c.bottom)}:iw*{_f(c.left)}:ih*{_f(c.top)}")
-                chain += [f"scale={bw}:{bh}:force_original_aspect_ratio=decrease:force_divisible_by=2", "setsar=1"]
+                if fx and fx.flip_h:
+                    chain.append("hflip")
+                if cw:
+                    chain += [f"scale={cw}:{ch}", "setsar=1"]
+                else:
+                    chain += [f"scale={bw}:{bh}:force_original_aspect_ratio=decrease:force_divisible_by=2", "setsar=1"]
                 if clip.color and not clip.color.is_identity():
                     chain += grade_filters(clip.color, workdir, assets, tag=f"c{idx}")
+                if fx and fx.blur:
+                    chain.append(f"gblur=sigma={_f(fx.blur)}")
                 chain.append("format=yuva420p")
+                lw = lh = None
+                if fx and fx.shaped() and cw:
+                    # rounded corners (alpha mask), then shadow below and border above, as still images of the exact size
+                    mask, under, over, m = _shape_pngs(fx, cw, ch, workdir, f"s{idx}")
+                    lab0 = f"sh{idx}"
+                    graph.append(f"[{idx}:v]{','.join(chain)}[{lab0}a]")
+                    for png in (mask, under, over):
+                        if png:
+                            args.extend(["-loop", "1", "-framerate", str(fps), "-t", _f(dur), "-i", png])
+                            n_inputs += 1
+                    k = n_inputs - (1 + (under is not None) + (over is not None))
+                    graph.append(f"[{k}:v]format=gray,setsar=1[{lab0}m]")
+                    graph.append(f"[{lab0}a][{lab0}m]alphamerge,format=yuva420p[{lab0}b]")
+                    cur = f"{lab0}b"
+                    if under:
+                        k += 1
+                        graph.append(f"[{k}:v]format=yuva420p,setsar=1[{lab0}u]")
+                        graph.append(f"[{lab0}u][{cur}]overlay={m}:{m}:format=auto,format=yuva420p[{lab0}c]")
+                    else:
+                        graph.append(f"[{cur}]pad={cw + 2 * m}:{ch + 2 * m}:{m}:{m}:color=black@0[{lab0}c]")
+                    cur = f"{lab0}c"
+                    if over:
+                        k += 1
+                        graph.append(f"[{k}:v]format=yuva420p,setsar=1[{lab0}o]")
+                        graph.append(f"[{cur}][{lab0}o]overlay=0:0:format=auto,format=yuva420p[{lab0}d]")
+                        cur = f"{lab0}d"
+                    src_lab = f"[{cur}]"
+                    chain = []
+                    lw, lh = cw + 2 * m, ch + 2 * m
+                else:
+                    src_lab = f"[{idx}:v]"
                 if anim:
-                    chain += _perspective(clip, W, H)  # pads to the canvas + border, then transforms per frame
+                    if lw and (lw > W or lh > H):
+                        LW, LH = max(W, lw + lw % 2), max(H, lh + lh % 2)
+                        chain += _perspective(clip, LW, LH)
+                    else:
+                        LW, LH = W, H
+                        chain += _perspective(clip, W, H)  # pads to the canvas + border, then transforms per frame
                 elif tf.rotation:
                     r = f"{_f(tf.rotation)}*PI/180"
                     chain.append(f"rotate={r}:c=none:ow=rotw({r}):oh=roth({r})")
@@ -554,12 +680,17 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
                     chain.append(f"fade=t=in:st=0:d={_f(clip.fade_in / fps)}:alpha=1")
                 if clip.fade_out:
                     chain.append(f"fade=t=out:st={_f(dur - clip.fade_out / fps)}:d={_f(clip.fade_out / fps)}:alpha=1")
-                pos = f"x=-{KF_PAD}:y=-{KF_PAD}" if anim else f"x=(W-w)/2+({_f(tf.x)}):y=(H-h)/2+({_f(tf.y)})"
+                if anim:
+                    pos = f"x=-{_f((LW - W) / 2 + KF_PAD)}:y=-{_f((LH - H) / 2 + KF_PAD)}"
+                else:
+                    pos = f"x=(W-w)/2+({_f(tf.x)}):y=(H-h)/2+({_f(tf.y)})"
+                if not chain:
+                    chain = ["null"]
                 if clip.id in chain_of:
-                    to_layer(clip, f"[{idx}:v]", pos, chain)
+                    to_layer(clip, src_lab, pos, chain)
                 else:
                     chain.append(f"setpts=PTS-STARTPTS+{_f(st)}/TB")
-                    graph.append(f"[{idx}:v]{','.join(chain)}[cv{idx}]")
+                    graph.append(f"{src_lab}{','.join(chain)}[cv{idx}]")
                     nxt = f"base{idx + 1}"
                     graph.append(f"[{vlabel}][cv{idx}]overlay={pos}:eof_action=pass:enable='between(t,{_f(st)},{_f(en)})'[{nxt}]")
                     vlabel = nxt

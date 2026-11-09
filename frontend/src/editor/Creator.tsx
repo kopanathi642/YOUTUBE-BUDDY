@@ -73,7 +73,7 @@ export function HighlightsModal({ tl, assets, onClose, onPreview, onCreate }: {
           <label><span className="label">Length</span><select className="select" value={len} onChange={(e) => setLen(+e.target.value)}>{[15, 30, 45, 60].map((v) => <option key={v} value={v}>{v} s</option>)}</select></label>
           <label><span className="label">How many</span><select className="select" value={count} onChange={(e) => setCount(+e.target.value)}>{[1, 2, 3, 4, 5].map((v) => <option key={v}>{v}</option>)}</select></label>
           <label><span className="label">Format</span><select className="select" value={format} onChange={(e) => setFormat(e.target.value)}>
-            <option value="vertical">9:16 Shorts / Reels</option><option value="portrait_45">4:5 Feed</option><option value="square">1:1 Square</option><option value="">Same as edit</option></select></label>
+            <option value="vertical">9:16 Shorts / Reels</option><option value="portrait_45">4:5 Feed</option><option value="portrait_23">2:3 Tall</option><option value="square">1:1 Square</option><option value="landscape_32">3:2 Landscape</option><option value="">Same as edit</option></select></label>
         </div>
         <div className="grid" style={{ gap: 6, marginTop: 12 }}>
           {!moments && <div className="row"><span className="spinner" />Scoring…</div>}

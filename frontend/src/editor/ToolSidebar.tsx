@@ -10,6 +10,7 @@ import { useAuth } from "../App";
 type Item = { id: string; label: string; icon: any; cap?: string; soon?: boolean };
 
 const SHORTS: Item[] = [
+  { id: "studio", label: "Shorts Creative Studio (layouts, stacks, blur, text)", icon: LayoutGrid },
   { id: "short916", label: "Video to Shorts (Auto)", icon: Zap, cap: "smart_reframe" },
   { id: "clips", label: "Auto Clips & Highlights", icon: LayoutGrid, cap: "scene_detect" },
   { id: "viral", label: "Highlight Finder", icon: BarChart3, cap: "scene_detect" },

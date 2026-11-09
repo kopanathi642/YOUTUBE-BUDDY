@@ -15,12 +15,13 @@ from ..timeline import Timeline, default_timeline
 
 router = APIRouter(tags=["projects"])
 
-FORMATS = {"landscape": (1920, 1080), "vertical": (1080, 1920), "square": (1080, 1080), "landscape_720": (1280, 720)}
+FORMATS = {"landscape": (1920, 1080), "vertical": (1080, 1920), "square": (1080, 1080), "landscape_720": (1280, 720),
+           "portrait_45": (1080, 1350), "portrait_23": (1080, 1620), "landscape_32": (1620, 1080)}
 
 
 class ProjectIn(BaseModel):
     name: str = Field(min_length=1, max_length=200)
-    format: Literal["landscape", "vertical", "square", "landscape_720"] = "landscape"
+    format: Literal["landscape", "vertical", "square", "landscape_720", "portrait_45", "portrait_23", "landscape_32"] = "landscape"
     fps: Literal[24, 25, 30, 50, 60] = 30
 
 
@@ -173,7 +174,7 @@ def restore(sequence_id: uuid.UUID, body: RestoreIn, request: Request, user: Use
 
 class SequenceCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
-    format: Literal["landscape", "vertical", "square", "portrait_45"] | None = None
+    format: Literal["landscape", "vertical", "square", "portrait_45", "portrait_23", "landscape_32"] | None = None
     from_sequence_id: uuid.UUID | None = None
     reframe: bool = False  # subject-aware cover crop of the main video track into the new format
     range_from: int | None = Field(None, ge=0)  # frames: make a short from just this part of the source sequence

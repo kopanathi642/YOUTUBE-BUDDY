@@ -320,6 +320,7 @@ export default function Editor() {
       case "media": if (!layout.media) setLayout((l) => ({ ...l, media: true })); setTimeout(() => scroll(".ed-bin"), 50); break;
       case "edit": scroll(".ed-timeline"); break;
       case "magic": setPlan(buildPlan(tl, assetMap)); break;
+      case "studio": navigate(`/shorts/${projectId}`); break;
       case "short916": case "reframe": reframe("vertical", `Short 9:16 (${seq?.name ?? "edit"})`); break;
       case "reels45": reframe("portrait_45", `Reel 4:5 (${seq?.name ?? "edit"})`); break;
       case "viral": case "batch": setAiModal("highlights"); break;

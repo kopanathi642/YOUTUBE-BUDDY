@@ -152,7 +152,7 @@ def handle_render_export(ctx: Ctx, tmp: str):
         p = os.path.join(tmp, f"{a.id}{os.path.splitext(a.filename)[1].lower()}")
         storage.download(a.storage_key, p)  # final renders always use originals, never proxies
         infos[a.id] = AssetInfo(path=p, kind=a.kind, has_audio=bool(a.has_audio), has_video=bool(a.has_video),
-                                duration_s=a.duration_s)
+                                duration_s=a.duration_s, width=a.width, height=a.height)
     ow, oh = preset_dimensions(tl, exp.preset)
     out = os.path.join(tmp, "export.mp4")
     from .billing import active_plan
@@ -423,6 +423,7 @@ HANDLERS = {"media.process": handle_media_process, "media.derive": handle_media_
             "ai.transcribe": handle_ai_transcribe, "ai.translate": handle_ai_translate, "ai.tts": handle_ai_tts, "ai.dub": handle_ai_dub,
             "ai.tool": handle_ai_tool,
             "growth.produce": lambda ctx, tmp: __import__("app.growth_produce", fromlist=["produce"]).produce(ctx, tmp),
+            "export.zip": lambda ctx, tmp: __import__("app.routers.compose", fromlist=["handle_zip"]).handle_zip(ctx, tmp),
             "growth.cycle": lambda ctx, tmp: __import__("app.growth_cycle", fromlist=["handle"]).handle(ctx, tmp),
             "dub.prepare": lambda ctx, tmp: _dubbing().handle_prepare(ctx, tmp),
             "dub.translate": lambda ctx, tmp: _dubbing().handle_translate(ctx, tmp),

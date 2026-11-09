@@ -17,6 +17,8 @@ export function useHistory<T>(initial: T) {
   const undo = useCallback(() => setState((s) => s.past.length ? { past: s.past.slice(0, -1), present: s.past[s.past.length - 1], future: [s.present, ...s.future] } : s), []);
   const redo = useCallback(() => setState((s) => s.future.length ? { past: [...s.past, s.present], present: s.future[0], future: s.future.slice(1) } : s), []);
   const reset = useCallback((v: T) => { last.current = null; setState({ past: [], present: v, future: [] }); }, []);
+  /** Change the present without an undo step (e.g. a generated background got its file). */
+  const replace = useCallback((f: (v: T) => T) => setState((s) => ({ ...s, present: f(s.present) })), []);
 
-  return { value: state.present, commit, undo, redo, reset, canUndo: state.past.length > 0, canRedo: state.future.length > 0 };
+  return { value: state.present, commit, undo, redo, reset, replace, canUndo: state.past.length > 0, canRedo: state.future.length > 0 };
 }

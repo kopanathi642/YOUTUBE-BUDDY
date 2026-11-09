@@ -70,17 +70,36 @@ def render_title_png(title, transform, W: int, H: int, path: str) -> None:
     laid = [[(get(f), t, probe.textlength(t, font=get(f))) for f, t in runs(ln)] for ln in lines]
     widths = [sum(w for _, _, w in ln) for ln in laid]
     pad = max(2, round(size * 0.25)) if title.bg_color else 2
+    stroke = round(getattr(title, "stroke", 0) * transform.scale)
+    shadow = getattr(title, "shadow", 0) or 0
+    extra = stroke + (round(size * 0.22) if shadow else 0)   # room for the outline and the shadow, outside the box
     lw = round(max(widths + [1])) + 2 * pad
     lh = len(lines) * line_h + (len(lines) - 1) * gap + 2 * pad
-    layer = Image.new("RGBA", (lw, lh), (0, 0, 0, 0))
+    layer = Image.new("RGBA", (lw + 2 * extra, lh + 2 * extra), (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
     if title.bg_color:
-        d.rectangle([0, 0, lw - 1, lh - 1], fill=_hex(title.bg_color, title.bg_opacity))
-    for i, (ln, wdt) in enumerate(zip(laid, widths)):
-        x, base = (lw - wdt) / 2, pad + i * (line_h + gap) + asc
-        for font, t, w in ln:
-            d.text((x, base), t, font=font, fill=_hex(title.color), anchor="ls")
-            x += w
+        d.rectangle([extra, extra, extra + lw - 1, extra + lh - 1], fill=_hex(title.bg_color, title.bg_opacity))
+    align = getattr(title, "align", "center")
+
+    def draw(dr, dx, dy, fill, stroke_fill):
+        for i, (ln, wdt) in enumerate(zip(laid, widths)):
+            x = pad if align == "left" else (lw - pad - wdt if align == "right" else (lw - wdt) / 2)
+            x += extra + dx
+            base = extra + dy + pad + i * (line_h + gap) + asc
+            for font, t, w in ln:
+                if stroke:
+                    dr.text((x, base), t, font=font, fill=fill, anchor="ls", stroke_width=stroke, stroke_fill=stroke_fill)
+                else:
+                    dr.text((x, base), t, font=font, fill=fill, anchor="ls")
+                x += w
+    if shadow:   # same look as CSS text-shadow: 0 0.06em 0.12em rgba(0,0,0,a)
+        from PIL import ImageFilter
+        sl = Image.new("RGBA", layer.size, (0, 0, 0, 0))
+        sc = (0, 0, 0, round(255 * shadow))
+        draw(ImageDraw.Draw(sl), 0, round(size * 0.06), sc, sc)
+        layer.alpha_composite(sl.filter(ImageFilter.GaussianBlur(size * 0.06)))
+        d = ImageDraw.Draw(layer)
+    draw(d, 0, 0, _hex(title.color), _hex(getattr(title, "stroke_color", "#000000")))
     if transform.rotation:
         layer = layer.rotate(-transform.rotation, resample=Image.BICUBIC, expand=True)  # positive = clockwise, like CSS
     canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0))

@@ -81,29 +81,43 @@ def auto_grade(st: dict, strength: float = 0.6) -> dict:
             "exposure": 0.0, "contrast": 1.0, "saturation": 1.05, "temperature": 0.0, "tint": 0.0}
 
 
-def subject_center_x(path: str, duration: float) -> float | None:
-    """Average horizontal centre (0..1) of the largest detected face across sampled frames."""
+def subject_info(path: str, duration: float) -> dict:
+    """Faces over 8 sampled frames: median centre (0..1) of the largest face and the typical number of faces.
+    Used to keep people in frame when cropping (reframe, Shorts studio) and to suggest layouts."""
     try:
         import cv2
     except ImportError:
-        return None
+        return {}
     cap = cv2.VideoCapture(path)
     if not cap.isOpened():
-        return None
+        return {}
     det = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-    xs = []
+    xs, ys, counts, frames = [], [], [], 0
     for i in range(8):
         cap.set(cv2.CAP_PROP_POS_MSEC, (duration * (i + 0.5) / 8) * 1000)
         ok, frame = cap.read()
         if not ok:
             continue
+        frames += 1
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = det.detectMultiScale(gray, scaleFactor=1.15, minNeighbors=6, minSize=(gray.shape[0] // 12,) * 2)
+        counts.append(len(faces))
         if len(faces):
-            x, _, w, _ = max(faces, key=lambda f: f[2] * f[3])
+            x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
             xs.append((x + w / 2) / gray.shape[1])
+            ys.append((y + h / 2) / gray.shape[0])
     cap.release()
-    return round(statistics.median(xs), 4) if len(xs) >= 2 else None
+    if not frames:
+        return {}
+    out = {"face_count": int(statistics.median(counts)), "face_frames": sum(1 for c in counts if c), "frames_checked": frames}
+    if len(xs) >= 2:
+        out["subject_center_x"], out["subject_center_y"] = round(statistics.median(xs), 4), round(statistics.median(ys), 4)
+    return out
+
+
+def subject_center_x(path: str, duration: float) -> float | None:
+    """Average horizontal centre (0..1) of the largest detected face across sampled frames."""
+    return subject_info(path, duration).get("subject_center_x")
 
 
 def analyze(path: str, meta: dict, progress=lambda p, s: None) -> dict:
@@ -118,7 +132,9 @@ def analyze(path: str, meta: dict, progress=lambda p, s: None) -> dict:
             out["color_stats"] = st
             out["auto_grade"] = auto_grade(st)
         progress(0.6, "finding subject")
-        out["subject_center_x"] = subject_center_x(path, dur)
+        info = subject_info(path, dur)
+        out["subject_center_x"] = info.get("subject_center_x")
+        out.update({k: v for k, v in info.items() if k != "subject_center_x"})
     if meta["has_audio"] and meta["kind"] in ("video", "audio"):
         progress(0.75, "detecting silences")
         out["silences"] = detect_silences(path, dur)

@@ -14,16 +14,20 @@ export type ColorGrade = {
   exposure: number; contrast: number; saturation: number; temperature: number; tint: number;
   curves?: Curves | null; lut?: LutRef | null;
 };
-export type Title = { text: string; font_size: number; color: string; bg_color: string | null; bg_opacity: number };
+export type Title = { text: string; font_size: number; color: string; bg_color: string | null; bg_opacity: number;
+  align?: "left" | "center" | "right"; stroke?: number; stroke_color?: string; shadow?: number };
+/** Composition look (Shorts studio). Sequence pixels at the clip's static size; keyframed clips scale it with the clip. */
+export type ClipFx = { blur?: number; radius?: number; border?: number; border_color?: string; shadow?: number; shadow_opacity?: number; flip_h?: boolean };
 export type Crop = { left: number; right: number; top: number; bottom: number };
 export type Clip = {
   id: string; asset_id: string | null; start: number; in: number; out: number;
   volume: number; fade_in: number; fade_out: number; transform: Transform; keyframes?: Keyframes | null;
   transition_in?: { type: import("./transitions").TransitionType; frames: number } | null;
-  color?: ColorGrade | null; denoise?: boolean; speed?: number; crop?: Crop | null; title?: Title | null;
+  color?: ColorGrade | null; denoise?: boolean; speed?: number; crop?: Crop | null; title?: Title | null; fx?: ClipFx | null;
 };
 export type Track = { id: string; kind: "video" | "audio"; name: string; muted: boolean; hidden: boolean; locked: boolean; clips: Clip[] };
-export type Timeline = { schema_version: 1; fps: number; width: number; height: number; tracks: Track[]; notes?: string };
+export type Timeline = { schema_version: 1; fps: number; width: number; height: number; tracks: Track[]; notes?: string;
+  composition?: import("./compose").Composition | null };
 
 export const DEFAULT_TRANSFORM: Transform = { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 };
 

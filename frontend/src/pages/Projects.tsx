@@ -25,6 +25,9 @@ export function NewProjectModal({ onClose }: { onClose: () => void }) {
     { id: "landscape", label: "16:9 · 1920×1080", icon: MonitorPlay },
     { id: "vertical", label: "9:16 · 1080×1920", icon: Smartphone },
     { id: "square", label: "1:1 · 1080×1080", icon: Square },
+    { id: "portrait_45", label: "4:5 · 1080×1350", icon: Smartphone },
+    { id: "portrait_23", label: "2:3 · 1080×1620", icon: Smartphone },
+    { id: "landscape_32", label: "3:2 · 1620×1080", icon: MonitorPlay },
   ];
   return (
     <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -62,7 +65,7 @@ export function ProjectCard({ p, actions }: { p: Project; actions?: React.ReactN
       </Link>
       <div style={{ padding: "10px 12px" }}>
         <div className="row"><Link to={`/edit/${p.id}`} className="grow" style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</Link>{actions}</div>
-        <div className="dim" style={{ fontSize: 12 }}>{p.media_count ?? 0} media · edited {timeAgo(p.updated_at)}</div>
+        <div className="dim" style={{ fontSize: 12 }}>{p.media_count ?? 0} media · edited {timeAgo(p.updated_at)} · <Link to={`/shorts/${p.id}`}>Shorts studio</Link></div>
       </div>
     </div>
   );
