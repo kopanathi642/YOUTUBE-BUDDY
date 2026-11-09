@@ -30,10 +30,10 @@ export const DEFAULT_LAYOUT: Layout = {
   active: { a: "assistant", b: "inspector" },
 };
 export const PRESETS: { id: string; label: string; hint: string; apply: (l: Layout) => Layout }[] = [
-  { id: "edit", label: "Editing", hint: "Big timeline, inspector open", apply: (l) => ({ ...DEFAULT_LAYOUT, side: l.side, topH: 0.48, active: { a: "quick", b: "inspector" } }) },
+  { id: "edit", label: "Editing", hint: "Monitor, timeline and inspector", apply: (l) => ({ ...DEFAULT_LAYOUT, side: l.side }) },
   { id: "color", label: "Color", hint: "Big monitor, grading + scopes", apply: (l) => ({ ...DEFAULT_LAYOUT, side: false, media: false, topH: 0.6, dockAW: 420,
     docks: { a: ["color", "nodes", "assistant", "voice", "quick"], b: ["scopes", "inspector", "export", "story", "suggest"] }, active: { a: "color", b: "scopes" } }) },
-  { id: "ai", label: "AI & Voice", hint: "Assistant, dubbing, quick actions", apply: (l) => ({ ...DEFAULT_LAYOUT, side: l.side, active: { a: "voice", b: "suggest" } }) },
+  { id: "ai", label: "AI & Voice", hint: "Dubbing, captions and AI suggestions", apply: (l) => ({ ...DEFAULT_LAYOUT, side: l.side, active: { a: "voice", b: "suggest" } }) },
   { id: "deliver", label: "Export", hint: "Export settings and queue", apply: (l) => ({ ...DEFAULT_LAYOUT, side: l.side, active: { a: "assistant", b: "export" } }) },
 ];
 
@@ -51,7 +51,7 @@ function load(): Layout {
     }
   } catch { /* storage blocked or bad JSON: use the default */ }
   // first visit on a laptop screen: start with the slim tools sidebar so the monitor and timeline get the room
-  return typeof window !== "undefined" && window.innerWidth < 1440 ? { ...DEFAULT_LAYOUT, side: false, mediaW: 260, dockAW: 320, dockBW: 340 } : DEFAULT_LAYOUT;
+  return typeof window !== "undefined" && window.innerWidth < 1440 ? { ...DEFAULT_LAYOUT, mediaW: 270, dockAW: 330, dockBW: 340 } : DEFAULT_LAYOUT;
 }
 
 export function useLayout() {
@@ -133,6 +133,17 @@ function Dock({ id, layout, setLayout, panels, side }: { id: DockId; layout: Lay
   );
 }
 
+/** Premiere-style workspace switcher: one click re-arranges every pane for the job at hand. */
+export function WorkspaceBar({ layout, setLayout }: { layout: Layout; setLayout: (f: (l: Layout) => Layout) => void }) {
+  const cur = PRESETS.find((p) => { const x = p.apply(layout); return x.active.a === layout.active.a && x.active.b === layout.active.b && x.media === layout.media; })?.id;
+  return (
+    <div className="ws-bar" role="tablist" aria-label="Workspaces">
+      {PRESETS.map((p) => <button key={p.id} role="tab" aria-selected={cur === p.id} className={cur === p.id ? "on" : ""} title={p.hint}
+        onClick={() => setLayout(p.apply)}>{p.label}</button>)}
+    </div>
+  );
+}
+
 export function LayoutMenu({ layout, setLayout }: { layout: Layout; setLayout: (f: (l: Layout) => Layout) => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -149,13 +160,13 @@ export function LayoutMenu({ layout, setLayout }: { layout: Layout; setLayout: (
       <span className="ws-check">{!layout.collapsed[d] && <Check size={13} />}</span>{label}</button>);
   return (
     <div className="ws-menu" ref={ref}>
-      <button className="btn sm ghost" onClick={() => setOpen(!open)} aria-haspopup="menu" aria-expanded={open} title="Workspace layout"><LayoutGrid size={15} />Workspace</button>
+      <button className="btn sm ghost" onClick={() => setOpen(!open)} aria-haspopup="menu" aria-expanded={open} title="Layout options" aria-label="Layout options"><LayoutGrid size={15} /><span className="ws-menu-label">Layout</span></button>
       {open && <div className="menu ws-menu-pop" role="menu">
         <div className="menu-label">Layouts</div>
         {PRESETS.map((p) => <button key={p.id} role="menuitem" className="menu-item" onClick={() => { setLayout(p.apply); setOpen(false); }}>
           <span className="ws-check" /><span className="grow">{p.label}<small className="dim">{p.hint}</small></span></button>)}
         <div className="menu-label">Show</div>
-        {toggle("side", "Tools sidebar")}{toggle("media", "Media bin")}{dock("a", "Top-right panels")}{dock("b", "Bottom-right panels")}
+        {toggle("media", "Media bin")}{dock("a", "Top-right panels")}{dock("b", "Bottom-right panels")}
         <button role="menuitem" className="menu-item" onClick={() => { setLayout(() => DEFAULT_LAYOUT); setOpen(false); }}><span className="ws-check"><RotateCcw size={13} /></span>Reset layout</button>
         <div className="ws-tip dim">Tip: drag the bars between panels to resize, and drag panel tabs to move them.</div>
       </div>}

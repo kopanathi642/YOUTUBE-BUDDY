@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  Image as ImageIcon, Scissors, Sparkles, Film, ChevronDown, ChevronUp, Zap, LayoutGrid, BarChart3, Layers, Smartphone, Crop, Wrench, AudioLines,
-  Languages, Mic, Type, UserRoundX, FileText, Palette, Library, Wand, ArrowLeftRight, Workflow, Shapes, Upload, Crown, Coins, Lock, Eraser,
+  Image as ImageIcon, Sparkles, Film, Zap, LayoutGrid, BarChart3, Layers, Smartphone, Crop, Wrench, AudioLines,
+  Languages, Mic, Type, UserRoundX, FileText, Palette, Library, Wand, ArrowLeftRight, Workflow, Shapes, Upload, Crown, Coins, Eraser,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Caps } from "./AiPanels";
@@ -46,43 +46,58 @@ const MORE: Item[] = [
   { id: "export", label: "Export & Share", icon: Upload },
 ];
 
+type Cat = { id: string; label: string; icon: any; items?: Item[]; action?: string; hint?: string };
+const CATS: Cat[] = [
+  { id: "media", label: "Media", icon: ImageIcon, action: "media" },
+  { id: "magic", label: "AI Magic", icon: Sparkles, action: "magic" },
+  { id: "shorts", label: "Shorts", icon: Film, items: SHORTS, hint: "Turn long videos into vertical clips" },
+  { id: "video", label: "Video", icon: Wrench, items: VIDEO_TOOLS, hint: "Clean up and fix footage" },
+  { id: "audio", label: "Audio", icon: AudioLines, items: AUDIO_TOOLS, hint: "Levels and noise" },
+  { id: "words", label: "Text & Voice", icon: Languages, items: MORE.filter((i) => ["subtitle", "voice", "tts", "lipsync", "transcribe"].includes(i.id)), hint: "Captions, translation, dubbing, voice-over" },
+  { id: "design", label: "Elements", icon: Shapes, items: MORE.filter((i) => ["elements", "motion", "design", "stock"].includes(i.id)), hint: "Titles, templates, stickers, stock" },
+  { id: "look", label: "Effects", icon: Palette, items: MORE.filter((i) => ["effects", "transitions", "color", "fusion"].includes(i.id)), hint: "Looks, transitions, grading, VFX" },
+  { id: "export", label: "Export", icon: Upload, action: "export" },
+];
+
+/** Canva-style tool rail: one icon per category; categories with several tools open a flyout panel. */
 export default function ToolSidebar({ caps, onAction, readOnly, hide }: { caps: Caps; onAction: (id: string) => void; readOnly: boolean; hide: Set<string> }) {
-  const [open, setOpen] = useState({ shorts: true, video: false, audio: false });
+  const [open, setOpen] = useState<string | null>(null);
   const plan = useAuth().workspace?.plan ?? "free";
-  const row = (it: Item, sub = false) => {
-    const c = it.cap ? caps.get(it.cap) : null;
-    if (hide.has(it.id) || it.soon || (c && !c.ready)) return null;   // only tools that work right now are shown
-    const locked = it.soon || (it.cap && !c?.ready);
-    const title = it.soon ? "Planned — not available yet" : c && !c.ready ? `Needs: ${c.needs}` : it.label;
-    return (
-      <button key={it.id} className={`tool ${sub ? "sub" : ""} ${locked ? "locked" : ""}`} title={title}
-        onClick={() => onAction(it.id)} disabled={readOnly && !["color", "fusion", "export", "effects", "transitions"].includes(it.id) && !locked}>
-        <it.icon size={sub ? 15 : 17} /><span className="ellipsis">{it.label}</span>
-        {it.soon ? <span className="badge soon">Soon</span> : locked ? <Lock size={11} className="dim" /> : null}
-      </button>
-    );
-  };
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(null); };
+    const k = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(null); };
+    document.addEventListener("mousedown", h); document.addEventListener("keydown", k);
+    return () => { document.removeEventListener("mousedown", h); document.removeEventListener("keydown", k); };
+  }, [open]);
+  const usable = (it: Item) => { const c = it.cap ? caps.get(it.cap) : null; return !(hide.has(it.id) || it.soon || (c && !c.ready)); };
+  const row = (it: Item) => usable(it) && (
+    <button key={it.id} className="tool" title={it.label} role="menuitem"
+      onClick={() => { setOpen(null); onAction(it.id); }} disabled={readOnly && !["color", "fusion", "export", "effects", "transitions"].includes(it.id)}>
+      <it.icon size={16} /><span className="ellipsis">{it.label}</span>
+    </button>);
+  const cat = CATS.find((c) => c.id === open);
   return (
-    <aside className="ed-side" aria-label="Tools">
-      <nav className="tools">
-        <button className="tool" onClick={() => onAction("media")}><ImageIcon size={17} />Media</button>
-        <button className="tool" onClick={() => onAction("edit")}><Scissors size={17} />Edit</button>
-        <button className="tool magic-tool" onClick={() => onAction("magic")} disabled={readOnly}><Sparkles size={17} />AI Magic (One-Click)</button>
-        <div className={`tool-group ${open.shorts ? "open" : ""}`}>
-          <button className="tool group-head" onClick={() => setOpen({ ...open, shorts: !open.shorts })} aria-expanded={open.shorts}>
-            <Film size={17} />Video to Shorts &amp; Clips{open.shorts ? <ChevronUp size={14} className="ml" /> : <ChevronDown size={14} className="ml" />}</button>
-          {open.shorts && SHORTS.map((i) => row(i, true))}
-        </div>
-        <button className="tool" onClick={() => setOpen({ ...open, video: !open.video })} aria-expanded={open.video}><Wrench size={17} />Video Tools{open.video ? <ChevronUp size={14} className="ml" /> : <ChevronDown size={14} className="ml" />}</button>
-        {open.video && VIDEO_TOOLS.map((i) => row(i, true))}
-        <button className="tool" onClick={() => setOpen({ ...open, audio: !open.audio })} aria-expanded={open.audio}><AudioLines size={17} />Audio Tools{open.audio ? <ChevronUp size={14} className="ml" /> : <ChevronDown size={14} className="ml" />}</button>
-        {open.audio && AUDIO_TOOLS.map((i) => row(i, true))}
-        {MORE.map((i) => row(i))}
+    <aside className="ed-side rail" aria-label="Tools" ref={ref}>
+      <nav className="rail-nav">
+        {CATS.filter((c) => !c.items || c.items.some(usable)).map((c) => (
+          <button key={c.id} className={`rail-btn ${open === c.id ? "on" : ""} ${c.id === "magic" ? "magic" : ""}`} aria-label={c.label}
+            aria-haspopup={c.items ? "menu" : undefined} aria-expanded={c.items ? open === c.id : undefined}
+            disabled={c.id === "magic" && readOnly}
+            onClick={() => (c.items ? setOpen(open === c.id ? null : c.id) : (setOpen(null), onAction(c.action!)))}>
+            <c.icon size={19} /><span>{c.label}</span>
+          </button>))}
+        <span className="grow" />
+        <Link className="rail-btn plan" to="/settings#billing" title={plan === "free" ? "Upgrade plan" : "Manage plan"}>
+          {plan === "free" ? <Crown size={18} /> : <Coins size={18} />}<span>{plan === "free" ? "Upgrade" : plan === "pro" ? "Pro" : "Creator"}</span>
+        </Link>
       </nav>
-      <div className="credits card">
-        <div className="row"><Coins size={22} color="#fbbf24" /><div><b>{plan === "free" ? "Free plan" : plan === "pro" ? "Pro plan" : "Creator plan"}</b><div className="dim" style={{ fontSize: 11.5 }}>Editor, exports &amp; free AI included</div></div></div>
-        <Link className="btn primary" style={{ width: "100%", marginTop: 8 }} to="/settings#billing"><Crown size={15} />{plan === "free" ? "Upgrade Plan" : "Manage Plan"}</Link>
-      </div>
+      {cat?.items && (
+        <div className="rail-fly" role="menu" aria-label={cat.label}>
+          <div className="rail-fly-head"><b>{cat.label}</b><span className="dim">{cat.hint}</span></div>
+          {cat.items.map(row)}
+        </div>)}
     </aside>
   );
 }

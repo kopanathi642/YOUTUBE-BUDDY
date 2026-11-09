@@ -14,8 +14,8 @@ import HistoryPanel from "./HistoryPanel";
 import { LOOKS, svgFilterBody, withLook, sanitizeGrade } from "../grade";
 import { buildPlan, applyCuts, silenceCuts, applySceneSplits, sceneSplits, loudnessGain } from "../smart";
 import MediaBin, { BinTab } from "./MediaBin";
-import { Workspace, LayoutMenu, useLayout, PanelDef, PanelId } from "./Workspace";
-import { Bot, Mic2, Palette as PaletteI, BarChart3, Network, Zap, SlidersHorizontal, Rocket as RocketI, Film as FilmI, Lightbulb, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Workspace, LayoutMenu, WorkspaceBar, useLayout, PanelDef, PanelId } from "./Workspace";
+import { Bot, Mic2, Palette as PaletteI, BarChart3, Network, Zap, SlidersHorizontal, Rocket as RocketI, Film as FilmI, Lightbulb } from "lucide-react";
 import { loadCatalogue } from "../ai/core";
 import { insertTemplate, TitleTemplate } from "../templates";
 import Viewer, { Sampler } from "./Viewer";
@@ -412,6 +412,7 @@ export default function Editor() {
           <button className="btn icon ghost" onClick={hist.redo} disabled={!hist.canRedo || readOnly} title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><Redo2 size={16} /></button>
         </div>
         <button className="btn icon ghost" onClick={() => setShowHistory(true)} title="Version history" aria-label="Version history"><HistoryIcon size={17} /></button>
+        <WorkspaceBar layout={layout} setLayout={setLayout} />
         <LayoutMenu layout={layout} setLayout={setLayout} />
         <button className="btn sm primary" onClick={() => action("export")} title="Export video"><RocketI size={15} />Export</button>
         <SaveBlock state={readOnly ? "readonly" : save} version={version} />
@@ -422,12 +423,8 @@ export default function Editor() {
           <button className="btn sm" onClick={() => resolveConflict(false)}>Load their version</button>
           <button className="btn sm" onClick={() => resolveConflict(true)}>Keep mine (overwrite)</button></div>
       )}
-      <div className={`ed2-body ${layout.side ? "" : "side-mini"}`}>
-        <div className="ed-side-wrap">
-          <button className="ws-side-toggle" onClick={() => setLayout((l) => ({ ...l, side: !l.side }))} title={layout.side ? "Collapse tools sidebar" : "Expand tools sidebar"}
-            aria-label={layout.side ? "Collapse tools sidebar" : "Expand tools sidebar"}>{layout.side ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />}</button>
-          <ToolSidebar caps={caps} onAction={action} readOnly={readOnly} hide={hide} />
-        </div>
+      <div className="ed2-body">
+        <ToolSidebar caps={caps} onAction={action} readOnly={readOnly} hide={hide} />
         <Workspace layout={layout} setLayout={setLayout}
           media={<MediaBin projectId={project.id} assets={assets} setAssets={setAssets} reload={loadMedia} readOnly={readOnly} onAdd={(a) => addAssetToTimeline(a)} fps={fps}
               uploadRef={uploadRef} onRecord={() => setRecording(true)} canLook={!!sel && sel.track.kind === "video" && !!selAsset?.has_video}

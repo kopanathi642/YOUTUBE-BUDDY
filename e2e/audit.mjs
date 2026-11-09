@@ -20,6 +20,16 @@ page.on("response", (r) => { const u = r.url(); if (u.includes("/api/v1/") && r.
 page.on("dialog", (d) => d.accept().catch(() => {}));   // confirm() prompts: always answer OK
 const w = (ms) => page.waitForTimeout(ms);
 /** Panels live in tabbed docks: bring one to the front (tab title is "<label> — drag to move"). */
+/** Tools live in the rail's flyouts: open each category until the tool shows up, then click it. */
+const tool = async (label) => {
+  for (const cat of await page.locator(".rail-btn[aria-haspopup=menu]").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")))) {
+    await page.click(`.rail-btn[aria-label="${cat}"]`);
+    const b = page.locator(".rail-fly .tool", { hasText: label }).first();
+    if (await b.count()) { await b.click(); return; }
+    await page.click(`.rail-btn[aria-label="${cat}"]`);   // close (Escape could clear the clip selection)
+  }
+  throw new Error(`tool "${label}" not found in the rail`);
+};
 const dock = async (label) => { await page.click(`.ws-tab[title^="${label} —"]`); await w(150); };
 const closeDialogs = async () => { await page.keyboard.press("Escape").catch(() => {}); await page.locator(".modal button[aria-label='Close']").first().click({ timeout: 1000 }).catch(() => {}); };
 async function step(name, fn) {
@@ -198,21 +208,30 @@ await step("Storyboard strip tabs + jump + notes save", async () => {
   await page.click(".sb-card >> nth=0");
 });
 await step("Add Scene (split at playhead) from storyboard", async () => { await scrubTo(2); await page.click(".sb-card.add"); });
-await step("Sidebar tools: every item gives working result or explicit reason", async () => {
-  const labels = (await page.locator(".ed-side .tool:not(.group-head)").allTextContents()).map((t) => t.replace(/Soon$/, "").trim());
-  for (const label of labels) {
-    if (/Video to Shorts \(Auto\)|Reels|Smart Reframe|^Video Tools|^Audio Tools|Stabilize|Remove Background|Motion Graphics/.test(label)) continue; // long-running or sequence-creating ones have their own steps
-    const b = page.locator(".ed-side .tool", { hasText: label }).first();
-    if (!(await b.count()) || (await b.isDisabled())) continue;
-    const before = await page.evaluate(() => window.__toasts);
-    const url = page.url();
-    await b.click(); await w(400);
-    if (page.url() !== url) { if (!page.url().includes("/ai-generator/tool/")) throw new Error(`"${label}" went to ${page.url()}`); await page.goBack(); await page.waitForSelector(".ed-side"); continue; }
-    if (await page.locator(".modal").count()) { await page.click(".modal .btn.ghost"); continue; }
-    const scrollOnly = /^(Media|Edit|Color Grading|VFX & Fusion|Export & Share|Effects & Filters|Transitions|Voice & Dubbing|Stock Library|Templates & Elements)$/.test(label);
-    if (!scrollOnly && (await page.evaluate(() => window.__toasts)) <= before) throw new Error(`no feedback from "${label}"`);
+await step("Tool rail: every tool in every flyout gives a working result or an explicit reason", async () => {
+  const cats = await page.locator(".rail-btn[aria-haspopup=menu]").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
+  if (cats.length < 5) throw new Error("rail categories missing: " + cats);
+  for (const cat of cats) {
+    await page.click(`.rail-btn[aria-label="${cat}"]`); await page.waitForSelector(".rail-fly");
+    const labels = (await page.locator(".rail-fly .tool").allTextContents()).map((t) => t.trim());
+    await page.click(`.rail-btn[aria-label="${cat}"]`);
+    for (const label of labels) {
+      if (/Video to Shorts \(Auto\)|Reels|Smart Reframe|Stabilize|Remove Background|Motion Graphics|Remove Object/.test(label)) continue; // long-running ones have their own steps
+      await page.click(`.rail-btn[aria-label="${cat}"]`);
+      const b = page.locator(".rail-fly .tool", { hasText: label }).first();
+      if (await b.isDisabled()) { await page.click(`.rail-btn[aria-label="${cat}"]`); continue; }
+      const before = await page.evaluate(() => window.__toasts); const url = page.url();
+      await b.click(); await w(400);
+      if (await page.locator(".rail-fly").count()) throw new Error(`flyout stayed open after "${label}"`);
+      if (page.url() !== url) { if (!page.url().includes("/ai-generator/tool/")) throw new Error(`"${label}" went to ${page.url()}`); await page.goBack(); await page.waitForSelector(".ed-side"); continue; }
+      if (await page.locator(".modal").count()) { await page.click(".modal .btn.ghost"); continue; }
+      const panelOnly = /^(Color Grading|VFX & Fusion|Effects & Filters|Transitions|Voice & Dubbing|Stock Library|Templates & Elements)$/.test(label);
+      if (!panelOnly && (await page.evaluate(() => window.__toasts)) <= before) throw new Error(`no feedback from "${label}"`);
+    }
   }
-  await page.locator(".tool:has-text('Video Tools')").click(); await page.locator(".tool:has-text('Audio Tools')").click();
+  await page.click('.rail-btn[aria-label="Media"]'); await page.click('.rail-btn[aria-label="Export"]');
+  if (!(await page.locator('.ws-tab.on[title^="Export —"]').count())) throw new Error("Export rail button did not open the Export panel");
+  await dock("Inspector");
 });
 await step("Snapshot to media bin", async () => {
   const n = await page.locator(".bin-item").count(); await page.click("button[aria-label='Snapshot current frame to media']");
@@ -244,14 +263,14 @@ await step("Shorts Maker creates 9:16 sequence", async () => {
 
 await step("Titles: add title, edit text (Hindi), style, size, colour; renders in preview", async () => {
   await page.locator(".tl-scroll").evaluate((e) => (e.scrollLeft = 0));
-  await scrubTo(1); await page.click(".ed-side .tool:has-text('Motion Graphics')"); await page.waitForSelector(".clip.title");
+  await scrubTo(1); await tool("Motion Graphics"); await page.waitForSelector(".clip.title");
   await page.fill("#title-text", "नमस्ते दोस्तों"); await page.click("#f-Size");   // blur commits text
   await page.click(".ed-insp .look-list button:has-text('Yellow pop')");
   await page.click("#f-Size"); await page.keyboard.press("Control+A"); await page.keyboard.type("90"); await page.keyboard.press("Enter");
   await page.waitForSelector(".title-layer:has-text('नमस्ते')");
 });
 await step("Templates: animated title card added at the playhead (keyframed)", async () => {
-  await page.click(".ed-side .tool:has-text('Templates & Elements')");
+  await tool("Templates & Elements");
   await page.waitForSelector(".tpl-card");
   const n = (await tl()).length;
   await scrubTo(4); await page.click(".tpl-card:has-text('Subscribe')");
@@ -295,19 +314,19 @@ await step("Version history: open, restore an earlier version", async () => {
 });
 await step("AI voice (text to speech) → voice-over added to timeline", async () => {
   const n = (await tl()).length;
-  await page.click(".ed-side .tool:has-text('Text to Speech')"); await page.fill("#tts-text", "Welcome back to the channel. Today we explore Goa.");
+  await tool("Text to Speech"); await page.fill("#tts-text", "Welcome back to the channel. Today we explore Goa.");
   await page.click(".modal button:has-text('Generate voice')");
   await page.waitForFunction((n) => document.querySelectorAll(".clip").length > n, n, { timeout: 180000 });
 });
 await step("Captions: transcription runs on the worker and reports its engine status honestly", async () => {
-  await page.click(".ed-side .tool:has-text('Subtitle & Translate')"); await page.click(".modal button:has-text('Transcribe')");
+  await tool("Subtitle & Translate"); await page.click(".modal button:has-text('Transcribe')");
   await page.waitForSelector(".modal .error-box, .modal .transcript", { timeout: 600000 });
   if (await page.locator(".modal .transcript").count()) { await page.click(".modal button:has-text('Add as captions')"); }
   else { const t = await page.locator(".modal .error-box").textContent(); if (!/huggingface|Whisper|speech model|OpenAI/i.test(t)) throw new Error("unclear error: " + t); results.push(["NOTE", "Captions engine blocked in this sandbox: " + t.slice(0, 120)]); await page.click(".modal button[aria-label='Close']"); }
 });
 await step("Stabilize selected clip → stabilized copy swapped in", async () => {
   await page.locator(".tl-scroll").evaluate((e) => (e.scrollLeft = 0));
-  await page.click('[data-track="v1"] .clip >> nth=2'); await page.click(".ed-side .tool:has-text('Stabilize')");
+  await page.click('[data-track="v1"] .clip >> nth=2'); await tool("Stabilize");
   await page.waitForSelector('.clip[aria-label*="(stabilized)"]', { timeout: 300000 });
 });
 await step("Background removal on selected clip → transparent copy swapped in", async () => {
@@ -316,7 +335,7 @@ await step("Background removal on selected clip → transparent copy swapped in"
 });
 await step("Remove Object: mark an area on the clip's frame → cleaned copy swapped in", async () => {
   await page.locator(".tl-scroll").evaluate((e) => (e.scrollLeft = 0));
-  await page.click('[data-track="v1"] .clip >> nth=0'); await page.click(".ed-side .tool:has-text('Remove Object')");
+  await page.click('[data-track="v1"] .clip >> nth=0'); await tool("Remove Object");
   await page.waitForSelector(".obj-modal"); await page.waitForFunction(() => (document.querySelector(".obj-stage video")?.readyState ?? 0) >= 2);
   const st = await page.locator(".obj-stage").boundingBox();
   const drag = async (x0, y0, x1, y1) => { await page.mouse.move(st.x + st.width * x0, st.y + st.height * y0); await page.mouse.down();
@@ -329,7 +348,7 @@ await step("Remove Object: mark an area on the clip's frame → cleaned copy swa
   await page.waitForSelector('.clip[aria-label*="(object removed)"]', { timeout: 300000 });
 });
 await step("Highlight finder → 2 shorts created", async () => {
-  await page.click(".ed-side .tool:has-text('Highlight Finder')"); await page.selectOption(".modal select >> nth=0", "15"); await page.selectOption(".modal select >> nth=1", "2");
+  await tool("Highlight Finder"); await page.selectOption(".modal select >> nth=0", "15"); await page.selectOption(".modal select >> nth=1", "2");
   await page.waitForSelector(".modal .plan-op"); await page.click(".modal button.primary");
   await page.waitForFunction(() => document.querySelector(".pill b")?.textContent?.startsWith("Short 1"), null, { timeout: 30000 });
   await page.click(".viewer-head .pill:has-text('Program')"); await page.click(".menu-item:has-text('Main sequence')");
@@ -337,7 +356,7 @@ await step("Highlight finder → 2 shorts created", async () => {
 });
 await step("Thumbnail designer → saved to media bin", async () => {
   const n = await page.locator(".bin-item").count();
-  await scrubTo(2); await page.click(".ed-side .tool:has-text('Design & Thumbnail')"); await page.waitForSelector(".thumb-canvas");
+  await scrubTo(2); await tool("Design & Thumbnail"); await page.waitForSelector(".thumb-canvas");
   await page.click(".modal button:has-text('Save to media bin')");
   await page.waitForFunction((n) => document.querySelectorAll(".bin-item").length > n, n, { timeout: 30000 });
 });
@@ -415,7 +434,7 @@ await step("Upgrade Plan → UPI QR, UTR submitted, founder approves in admin, p
   await fp.click("#payments-admin button:has-text('Save details')"); await fp.waitForTimeout(600);
   await fp.setInputFiles("#payments-admin input[aria-label='Upload UPI QR']", M + "/Subscribe_Badge.png"); await fp.waitForTimeout(1500);
   // the user upgrades from the editor sidebar
-  await page.click(".credits a:has-text('Upgrade Plan')"); await page.waitForSelector("#billing .bill-plan");
+  await page.click(".rail-btn.plan"); await page.waitForSelector("#billing .bill-plan");
   await page.click("#billing .bill-plan:has-text('Creator')"); await page.waitForSelector(".bill-qr img");
   const utr = String(Date.now()).slice(-12).padStart(12, "4");
   await page.fill("#billing input[placeholder*='412345678901']", utr); await page.click("#billing button:has-text('Submit for verification')");
