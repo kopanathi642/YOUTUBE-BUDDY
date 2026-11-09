@@ -27,6 +27,8 @@ services:
   worker:
     <<: *app
     command: python -m app.worker --queues media,render
+    # the image's healthcheck probes the web server; the worker proves it's alive by touching this file every loop
+    healthcheck: { test: ["CMD-SHELL", "test $$(( $$(date +%s) - $$(stat -c %Y /tmp/creator-worker-alive) )) -lt 900"], interval: 60s, retries: 3 }
     ports: []
     depends_on: [web]
 volumes: { pgdata: {}, media: {} }

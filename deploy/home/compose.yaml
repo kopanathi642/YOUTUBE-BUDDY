@@ -64,6 +64,8 @@ services:
     env_file: [{ path: .env, required: false }]
     environment: *appenv
     command: python -m app.worker --queues media,render
+    # the image's healthcheck probes the web server; the worker proves it's alive by touching this file every loop
+    healthcheck: { test: ["CMD-SHELL", "test $$(( $$(date +%s) - $$(stat -c %Y /tmp/creator-worker-alive) )) -lt 900"], interval: 60s, retries: 3 }
     volumes: [models:/var/models]          # ~10 GB of free AI models, downloaded and checked on first start
     depends_on: [web]
 
