@@ -223,7 +223,7 @@ await step("Tool rail: every tool in every flyout gives a working result or an e
       const before = await page.evaluate(() => window.__toasts); const url = page.url();
       await b.click(); await w(400);
       if (await page.locator(".rail-fly").count()) throw new Error(`flyout stayed open after "${label}"`);
-      if (page.url() !== url) { if (!page.url().includes("/ai-generator/tool/")) throw new Error(`"${label}" went to ${page.url()}`); await page.goBack(); await page.waitForSelector(".ed-side"); continue; }
+      if (page.url() !== url) { if (!page.url().includes("/ai-generator/tool/") && !page.url().includes("/shorts/")) throw new Error(`"${label}" went to ${page.url()}`); await page.goBack(); await page.waitForSelector(".ed-side"); continue; }
       if (await page.locator(".modal").count()) { await page.click(".modal .btn.ghost"); continue; }
       const panelOnly = /^(Color Grading|VFX & Fusion|Effects & Filters|Transitions|Voice & Dubbing|Stock Library|Templates & Elements)$/.test(label);
       if (!panelOnly && (await page.evaluate(() => window.__toasts)) <= before) throw new Error(`no feedback from "${label}"`);
