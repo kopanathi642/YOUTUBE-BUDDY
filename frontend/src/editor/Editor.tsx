@@ -14,6 +14,8 @@ import HistoryPanel from "./HistoryPanel";
 import { LOOKS, svgFilterBody, withLook, sanitizeGrade } from "../grade";
 import { buildPlan, applyCuts, silenceCuts, applySceneSplits, sceneSplits, loudnessGain } from "../smart";
 import MediaBin, { BinTab } from "./MediaBin";
+import { Workspace, LayoutMenu, useLayout, PanelDef, PanelId } from "./Workspace";
+import { Bot, Mic2, Palette as PaletteI, BarChart3, Network, Zap, SlidersHorizontal, Rocket as RocketI, Film as FilmI, Lightbulb, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { loadCatalogue } from "../ai/core";
 import { insertTemplate, TitleTemplate } from "../templates";
 import Viewer, { Sampler } from "./Viewer";
@@ -75,6 +77,9 @@ export default function Editor() {
   const [plan, setPlan] = useState<ReturnType<typeof buildPlan> | null>(null);
   const [recording, setRecording] = useState(false);
   const [exportFocus, setExportFocus] = useState(0);
+  const { layout, setLayout, focus } = useLayout();
+  const firstInsp = useRef(true);
+  useEffect(() => { if (firstInsp.current) { firstInsp.current = false; return; } focus("inspector"); }, [inspTab, focus]);   // Effects/Text/Transition requests bring the inspector forward
   const [showHistory, setShowHistory] = useState(false);
   type Pending = { type: "swap"; sourceId: string } | { type: "dub"; clipId: string; keep: boolean; target: string } | { type: "tts"; at: number } | { type: "place" };
   const [pending, setPending] = useState<Record<string, Pending>>({}); // new asset id -> what to do when it is ready
@@ -311,7 +316,7 @@ export default function Editor() {
     };
     const scroll = (sel: string) => document.querySelector(sel)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     switch (id) {
-      case "media": scroll(".ed-bin"); break;
+      case "media": if (!layout.media) setLayout((l) => ({ ...l, media: true })); setTimeout(() => scroll(".ed-bin"), 50); break;
       case "edit": scroll(".ed-timeline"); break;
       case "magic": setPlan(buildPlan(tl, assetMap)); break;
       case "short916": case "reframe": reframe("vertical", `Short 9:16 (${seq?.name ?? "edit"})`); break;
@@ -319,17 +324,17 @@ export default function Editor() {
       case "viral": case "batch": setAiModal("highlights"); break;
       case "design": setAiModal("thumbnail"); break;
       case "clips": { const s = sceneSplits(tl, assetMap); if (!s.length) { toast("No scene changes found in the clips on the timeline"); break; } edit(applySceneSplits(tl, s)); toast(`Split into clips at ${s.length} scene change${s.length > 1 ? "s" : ""} — select and delete the parts you don't need`); break; }
-      case "scenes": { const s = sceneSplits(tl, assetMap); toast(s.length ? `${s.length} scene change${s.length > 1 ? "s" : ""} found — see the Scenes tab below` : "No scene changes found in clips on the timeline"); document.querySelector<HTMLButtonElement>(".storyboard [role=tab]:nth-child(2)")?.click(); break; }
+      case "scenes": { const s = sceneSplits(tl, assetMap); toast(s.length ? `${s.length} scene change${s.length > 1 ? "s" : ""} found — see the Scenes tab below` : "No scene changes found in clips on the timeline"); focus("story"); setTimeout(() => document.querySelector<HTMLButtonElement>(".storyboard [role=tab]:nth-child(2)")?.click(), 50); break; }
       case "silence": { const c = silenceCuts(tl, assetMap); if (!c.length) { toast("No removable silences found (≥ 0.6 s below -35 dB)"); break; } edit(applyCuts(tl, c)); toast(`Removed ${c.length} silence${c.length > 1 ? "s" : ""} — Ctrl+Z to undo`); break; }
       case "autocolor": case "loudness": case "denoise": { const op = buildPlan(tl, assetMap).find((o) => o.id === (id === "autocolor" ? "color" : id === "loudness" ? "loud" : "denoise")); if (!op) { toast("Nothing to change for the clips on the timeline"); break; } edit(op.apply(tl)); toast(op.label + " — done"); break; }
-      case "color": scroll(".color-panel-anchor"); break;
-      case "fusion": scroll(".nodes-anchor"); break;
+      case "color": focus("color"); break;
+      case "fusion": focus("nodes"); break;
       case "effects": setInspTab("effects"); break;
       case "motion": case "title": addTitle(); break;
       case "templates": case "elements": openBin("templates"); break;
       case "stock": openBin("stock"); break;
       case "transitions": setInspTab("transition"); break;
-      case "export": setExportFocus((n) => n + 1); scroll(".export-dock"); break;
+      case "export": focus("export"); setExportFocus((n) => n + 1); break;
       case "bg": { const id = videoSel(); if (id) derive(id, "remove_bg", "Removing the background"); break; }
       case "stabilize": { const id = videoSel(); if (id) derive(id, "stabilize", "Stabilizing"); break; }
       case "obj": {   // basic remover on the worker; mark areas on the selected clip's own frame
@@ -340,7 +345,7 @@ export default function Editor() {
         break;
       }
       case "subtitle": setAiModal("captions"); break;
-      case "voice": scroll(".voice"); break;
+      case "voice": focus("voice"); break;
       case "tts": setAiModal("tts"); break;
       case "lipsync": toGenerator("033"); break;  // Lip Sync lives in the AI Generator (hosted lip-sync model)
       case "transcribe": setAiModal("transcript"); break;
@@ -393,11 +398,11 @@ export default function Editor() {
       <header className="ed-top">
         <Brand small />
         <nav className="topnav ed-nav" aria-label="Studios">
-          <Link to="/editor"><Home size={17} />Home</Link>
-          <Link to="/editor/projects"><FolderOpen size={17} />Project</Link>
-          <a className="active" aria-current="page"><Scissors size={17} />Edit</a>
+          <Link to="/editor" title="Home"><Home size={17} />Home</Link>
+          <Link to="/editor/projects" title="Projects"><FolderOpen size={17} />Project</Link>
+          <a className="active" aria-current="page" title="Edit"><Scissors size={17} />Edit</a>
           {NAV.map(([l, I, act]) => act
-            ? <a key={l} role="button" tabIndex={0} onClick={() => act === "loudness-nav" ? setInspTab("inspector") : action(act)}><I size={17} />{l}</a>
+            ? <a key={l} role="button" tabIndex={0} title={l} aria-label={l} onClick={() => act === "loudness-nav" ? (focus("inspector"), setInspTab("inspector")) : action(act)}><I size={17} />{l}</a>
             : <span key={l} title={l === "YouTube" ? "Planned — needs Google API verification" : "Planned — not available yet"}><I size={17} />{l}</span>)}
         </nav>
         <div className="grow" />
@@ -407,6 +412,8 @@ export default function Editor() {
           <button className="btn icon ghost" onClick={hist.redo} disabled={!hist.canRedo || readOnly} title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><Redo2 size={16} /></button>
         </div>
         <button className="btn icon ghost" onClick={() => setShowHistory(true)} title="Version history" aria-label="Version history"><HistoryIcon size={17} /></button>
+        <LayoutMenu layout={layout} setLayout={setLayout} />
+        <button className="btn sm primary" onClick={() => action("export")} title="Export video"><RocketI size={15} />Export</button>
         <SaveBlock state={readOnly ? "readonly" : save} version={version} />
         <UserMenu />
       </header>
@@ -415,11 +422,14 @@ export default function Editor() {
           <button className="btn sm" onClick={() => resolveConflict(false)}>Load their version</button>
           <button className="btn sm" onClick={() => resolveConflict(true)}>Keep mine (overwrite)</button></div>
       )}
-      <div className="ed2-body">
-        <ToolSidebar caps={caps} onAction={action} readOnly={readOnly} hide={hide} />
-        <div className="ed2-main">
-          <div className="r1">
-            <MediaBin projectId={project.id} assets={assets} setAssets={setAssets} reload={loadMedia} readOnly={readOnly} onAdd={(a) => addAssetToTimeline(a)} fps={fps}
+      <div className={`ed2-body ${layout.side ? "" : "side-mini"}`}>
+        <div className="ed-side-wrap">
+          <button className="ws-side-toggle" onClick={() => setLayout((l) => ({ ...l, side: !l.side }))} title={layout.side ? "Collapse tools sidebar" : "Expand tools sidebar"}
+            aria-label={layout.side ? "Collapse tools sidebar" : "Expand tools sidebar"}>{layout.side ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />}</button>
+          <ToolSidebar caps={caps} onAction={action} readOnly={readOnly} hide={hide} />
+        </div>
+        <Workspace layout={layout} setLayout={setLayout}
+          media={<MediaBin projectId={project.id} assets={assets} setAssets={setAssets} reload={loadMedia} readOnly={readOnly} onAdd={(a) => addAssetToTimeline(a)} fps={fps}
               uploadRef={uploadRef} onRecord={() => setRecording(true)} canLook={!!sel && sel.track.kind === "video" && !!selAsset?.has_video}
               onLook={(i) => sel && edit(updateClip(tl, sel.clip.id, { color: withLook(LOOKS[i].grade) }))}
               tabReq={binReq} hideStock={hide.has("stock")} onTemplate={(t: TitleTemplate) => {
@@ -427,38 +437,32 @@ export default function Editor() {
                 const r = insertTemplate(tl, t, playhead);
                 if (!r) { toast("No free space at the playhead for this title — move the playhead or add a track"); return; }
                 edit(r.tl); setSelected(r.id); setInspTab("text"); setPlaying(false); toast(`${t.name} added at the playhead`);
-              }} />
-            <Viewer tl={tl} assets={assetMap} playhead={playhead} setPlayhead={setPlayhead} playing={playing} setPlaying={setPlaying} total={total}
+              }} />}
+          viewer={<Viewer tl={tl} assets={assetMap} playhead={playhead} setPlayhead={setPlayhead} playing={playing} setPlaying={setPlaying} total={total}
               samplerRef={samplerRef} sequences={sequences} currentSeqId={seq.id} onSwitchSeq={switchSequence} autoAdjust={autoAdjust} analysed={analysed}
               onNewSeq={() => createSequence({ name: `Sequence ${sequences.length + 1}`, format: tl.width >= tl.height ? "landscape" : "vertical" }, "New empty sequence created")}
-              onSnapshot={snapshot} />
-            <AssistantPanel caps={caps} autoAdjust={autoAdjust} setAutoAdjust={setAutoAdjust} onMagic={() => action("magic")} readOnly={readOnly} pending={!analysed} />
-            <VoicePanel caps={caps} catalog={catalog} onStudio={() => dubSource?.asset_id && setStudioFor(dubSource.asset_id)} onLipSync={hide.has("lipsync") ? undefined : () => action("lipsync")}
-              source={dubSource ? { name: assetMap.get(dubSource.asset_id)?.filename ?? "clip" } : null} />
-          </div>
-          <div className="r2">
-            <div className="color-panel-anchor"><ColorPanel tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly} luts={assets.filter((a) => a.kind === "lut")} projectId={projectId!} onLutUploaded={loadMedia} /></div>
-            <ScopesPanel samplerRef={samplerRef} tick={playhead} />
-            <div className="nodes-anchor"><NodesPanel tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly} /></div>
-            <QuickActions caps={caps} onAction={action} readOnly={readOnly} hide={hide} />
-          </div>
-          <div className="r3">
-            <TimelinePanel tl={tl} assets={assetMap} edit={edit} playhead={playhead} setPlayhead={(f) => { setPlaying(false); setPlayhead(f); }}
+              onSnapshot={snapshot} />}
+          timeline={<TimelinePanel tl={tl} assets={assetMap} edit={edit} playhead={playhead} setPlayhead={(f) => { setPlaying(false); setPlayhead(f); }}
               selected={selected} setSelected={setSelected} snapOn={snapOn} setSnapOn={setSnapOn} readOnly={readOnly}
               onDropAsset={(id, trackId, at) => { const a = assetMap.get(id); if (a) addAssetToTimeline(a, trackId, at); }}
-              timecode="" />
-            <Inspector tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly} tab={inspTab} setTab={setInspTab}
+              timecode="" />}
+          panels={{
+            assistant: { id: "assistant", label: "AI Assistant", icon: Bot, node: <AssistantPanel caps={caps} autoAdjust={autoAdjust} setAutoAdjust={setAutoAdjust} onMagic={() => action("magic")} readOnly={readOnly} pending={!analysed} /> },
+            voice: { id: "voice", label: "Translate & Voice", icon: Mic2, node: <VoicePanel caps={caps} catalog={catalog} onStudio={() => dubSource?.asset_id && setStudioFor(dubSource.asset_id)} onLipSync={hide.has("lipsync") ? undefined : () => action("lipsync")}
+              source={dubSource ? { name: assetMap.get(dubSource.asset_id)?.filename ?? "clip" } : null} /> },
+            color: { id: "color", label: "Color", icon: PaletteI, node: <div className="color-panel-anchor"><ColorPanel tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly} luts={assets.filter((a) => a.kind === "lut")} projectId={projectId!} onLutUploaded={loadMedia} /></div> },
+            scopes: { id: "scopes", label: "Scopes", icon: BarChart3, node: <ScopesPanel samplerRef={samplerRef} tick={playhead} /> },
+            nodes: { id: "nodes", label: "Nodes", icon: Network, node: <div className="nodes-anchor"><NodesPanel tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly} /></div> },
+            quick: { id: "quick", label: "Quick Actions", icon: Zap, node: <QuickActions caps={caps} onAction={action} readOnly={readOnly} hide={hide} /> },
+            inspector: { id: "inspector", label: "Inspector", icon: SlidersHorizontal, node: <Inspector tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly} tab={inspTab} setTab={setInspTab}
               onAddTitle={addTitle} onStabilize={(id) => derive(id, "stabilize", "Stabilizing")} toast={toast}
-              playhead={playhead} setPlayhead={setPlayhead} />
-          </div>
-          <div className="r4">
-            <BottomStrip tl={tl} assets={assetMap} setPlayhead={(f) => { setPlaying(false); setPlayhead(f); }} setSelected={setSelected} readOnly={readOnly}
+              playhead={playhead} setPlayhead={setPlayhead} /> },
+            export: { id: "export", label: "Export", icon: RocketI, node: <ExportDock projectId={project.id} sequenceId={seq.id} tl={tl} flush={() => doSave(true)} dirty={tl !== savedRef.current} readOnly={readOnly} focusSignal={exportFocus} /> },
+            story: { id: "story", label: "Storyboard", icon: FilmI, node: <BottomStrip tl={tl} assets={assetMap} setPlayhead={(f) => { setPlaying(false); setPlayhead(f); }} setSelected={setSelected} readOnly={readOnly}
               setNotes={(n) => edit({ ...tl, notes: n })}
-              onAddScene={() => { const base = tl.tracks.filter((t) => t.kind === "video").slice(-1)[0]; const c = base?.clips.find((c) => playhead > c.start && playhead < end(c)); const r = c && splitAt(tl, c.id, playhead); if (r) edit(r.tl); else toast("Put the playhead inside a clip on the Video track"); }} />
-            <Recommendations tl={tl} assets={assetMap} edit={edit} readOnly={readOnly} />
-            <ExportDock projectId={project.id} sequenceId={seq.id} tl={tl} flush={() => doSave(true)} dirty={tl !== savedRef.current} readOnly={readOnly} focusSignal={exportFocus} />
-          </div>
-        </div>
+              onAddScene={() => { const base = tl.tracks.filter((t) => t.kind === "video").slice(-1)[0]; const c = base?.clips.find((c) => playhead > c.start && playhead < end(c)); const r = c && splitAt(tl, c.id, playhead); if (r) edit(r.tl); else toast("Put the playhead inside a clip on the Video track"); }} /> },
+            suggest: { id: "suggest", label: "Suggestions", icon: Lightbulb, node: <Recommendations tl={tl} assets={assetMap} edit={edit} readOnly={readOnly} /> },
+          } as Record<PanelId, PanelDef>} />
       </div>
       {plan && <PlanDialog ops={plan} onClose={() => setPlan(null)} onApply={(ids) => { let t = tl; for (const o of plan) if (ids.has(o.id)) t = o.apply(t); edit(t); setPlan(null); toast(`AI Magic applied ${ids.size} change${ids.size > 1 ? "s" : ""} — Ctrl+Z to undo`); }} />}
       {showHistory && (

@@ -19,6 +19,8 @@ page.on("console", (m) => { if (m.type() === "error" && !/fonts\.g|TUNNEL|ERR_TU
 page.on("response", (r) => { const u = r.url(); if (u.includes("/api/v1/") && r.status() >= 400 && !(r.status() === 401 && u.endsWith("/auth/me")) && !(phase.startsWith("Sign-up validation") && r.status() === 422)) problems.push(`[${phase}] HTTP ${r.status()} ${r.request().method()} ${u.replace(B, "")}`); });
 page.on("dialog", (d) => d.accept().catch(() => {}));   // confirm() prompts: always answer OK
 const w = (ms) => page.waitForTimeout(ms);
+/** Panels live in tabbed docks: bring one to the front (tab title is "<label> — drag to move"). */
+const dock = async (label) => { await page.click(`.ws-tab[title^="${label} —"]`); await w(150); };
 const closeDialogs = async () => { await page.keyboard.press("Escape").catch(() => {}); await page.locator(".modal button[aria-label='Close']").first().click({ timeout: 1000 }).catch(() => {}); };
 async function step(name, fn) {
   // A dialog left open by an earlier step would block every click in this one: name it (as a WARN on the step that left it) and close it.
@@ -151,6 +153,7 @@ await step("Monitor: play/pause, frame/second steps, loop, mute, safe area, fit/
   await page.keyboard.press("Space"); await w(400); await page.keyboard.press("Space");
 });
 await step("Colour: wheels drag, master slider, tone sliders, looks, bypass, reset", async () => {
+  await dock("Color");
   await scrubTo(3); await page.click('[data-track="v1"] .clip >> nth=0');
   const d = await page.locator(".wheel-disc").nth(2).boundingBox();
   await page.mouse.move(d.x + d.width / 2, d.y + d.height / 2); await page.mouse.down(); await page.mouse.move(d.x + d.width * 0.8, d.y + d.height * 0.3, { steps: 6 }); await page.mouse.up();
@@ -164,10 +167,12 @@ await step("Colour: wheels drag, master slider, tone sliders, looks, bypass, res
 await step("Scopes render pixels (not blank)", async () => {
   await page.click(".look:has-text('Vivid')").catch(() => {});
   await w(1200);
+  await dock("Scopes"); await w(800);
   const lit = await page.evaluate(() => { const c = document.querySelector(".scopes canvas"); const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return n; });
   if (lit < 50) throw new Error("waveform empty");
 });
 await step("Fusion node: ColorCorrect bypass toggle", async () => {
+  await dock("Color");
   await page.click(".color-panel-anchor .mini-tabs button:has-text('Looks')"); await page.click(".look:has-text('Warm')");
   await page.click(".node:has-text('ColorCorrect1')"); await page.click(".node:has-text('ColorCorrect1')");
 });
@@ -176,16 +181,18 @@ await step("Media bin Effects tab applies a look", async () => {
 });
 await step("Autosave reaches Cloud Saved", saved);
 await step("AI Magic: plan dialog, untick one, apply", async () => {
+  await dock("AI Assistant");
   await page.click("button:has-text('Apply AI Magic (Auto)')"); await page.waitForSelector(".plan-op");
   await page.locator(".plan-op input").last().uncheck(); await page.click(".modal button.primary"); await w(500);
   if (!(await toast()).includes("AI Magic applied")) throw new Error("no confirmation");
 });
 await step("AI Auto-Adjust toggle", async () => { await page.click(".ai-toggle"); await page.click(".ai-toggle"); });
-await step("Recommendations: Apply All", async () => { const b = page.locator(".recs button:has-text('Apply All')"); if (await b.count()) await b.click(); });
+await step("Recommendations: Apply All", async () => { await dock("Suggestions"); const b = page.locator(".recs button:has-text('Apply All')"); if (await b.count()) await b.click(); });
 for (const qa of ["Silence Remove", "Scene Detect", "Clips & Highlights", "Auto Edit"]) {
-  await step(`Quick action: ${qa}`, async () => { await page.click(`.qa:has-text("${qa}")`); await w(400); const t = await toast(); if (!t) throw new Error("no feedback"); if (await page.locator(".modal").count()) await page.click(".modal .btn.ghost"); });
+  await step(`Quick action: ${qa}`, async () => { await dock("Quick Actions"); await page.click(`.qa:has-text("${qa}")`); await w(400); const t = await toast(); if (!t) throw new Error("no feedback"); if (await page.locator(".modal").count()) await page.click(".modal .btn.ghost"); });
 }
 await step("Storyboard strip tabs + jump + notes save", async () => {
+  await dock("Storyboard");
   for (const t of ["Scenes", "Chapters", "Assets", "AI Suggestions", "Notes"]) await page.click(`.storyboard [role=tab]:has-text("${t}")`);
   await page.fill(".notes", "Audit note"); await page.click(".storyboard [role=tab]:has-text('Storyboard')");
   await page.click(".sb-card >> nth=0");
@@ -221,6 +228,7 @@ await step("Record from (fake) camera and add to project", async () => {
   if (await page.locator(".bin-item.failed, .bin-item.rejected").count()) throw new Error("recording rejected");
 });
 await step("Translate & Voice / Lip Sync panels: controls respond, locked buttons explain", async () => {
+  await dock("Translate & Voice");
   await page.click(".voice [role=tab]:has-text('Lip Sync')"); await page.click(".voice [role=tab]:has-text('Translate')");
   await page.waitForSelector(".voice button:has-text('Open Dubbing Studio')");
 });
@@ -346,6 +354,7 @@ await step("Dubbing studio: detect speech, transcript, two languages, dub, five 
   } else {
     await page.click('[data-track="v1"] .clip >> nth=0');
   }
+  await dock("Translate & Voice");
   await page.click(".voice button:has-text('Open Dubbing Studio')");
   await page.waitForSelector(".dub-modal .dub-setup, .dub-modal .dub-row, .dub-modal .dub-wait, .dub-modal .error-box", { timeout: 30000 });
   if (await page.locator(".dub-modal .dub-setup").count()) {
@@ -366,6 +375,7 @@ await step("Dubbing studio: detect speech, transcript, two languages, dub, five 
   await page.click(".dub-modal button[aria-label='Close']");
 });
 await step("Export: tabs, queue, render, verified download", async () => {
+  await dock("Export");
   for (const t of ["Presets", "Queue", "Export"]) await page.click(`.export-dock [role=tab]:has-text("${t}")`);
   await page.selectOption(".exp-form select >> nth=1", "draft");
   await page.click("button.export-big");
