@@ -28,6 +28,13 @@ x-app-env: &appenv
   AI_MONTHLY_BUDGET_USD: "0"
   AI_DAILY_BUDGET_USD: "0"
   FREE_PLAN_AI_CREDIT_INR: "0"
+  # free writing model on this PC (the llm service below): no key, ₹0 per run
+  LLM_BASE_URL: http://llm:8080
+  LLM_LOCAL_MODEL: ${LLM_LABEL:-Qwen3-4B (free, on this PC)}
+  LLM_LOCAL_TOOLS: ${LLM_LOCAL_TOOLS:-052,054,055,056,057,059}
+  LLM_LOCAL_LANGS: ${LLM_LOCAL_LANGS:-en}
+  LLM_MAX_TOKENS: "2500"
+  LLM_TIMEOUT: "900"
 
 services:
   db:
@@ -69,6 +76,14 @@ services:
     volumes: [models:/var/models]          # ~10 GB of free AI models, downloaded and checked on first start
     depends_on: [web]
 
+  llm:      # free writing model (Qwen3, Apache-2.0) served by llama.cpp on this PC's CPU; downloads ~2.5 GB once
+    image: ghcr.io/ggml-org/llama.cpp:server
+    restart: unless-stopped
+    environment: { LLAMA_CACHE: /models }
+    command: ["-hf", "${LLM_HF_MODEL:-Qwen/Qwen3-4B-GGUF:Q4_K_M}", "--host", "0.0.0.0", "--port", "8080",
+              "-c", "8192", "--parallel", "1", "--jinja", "--threads", "${LLM_THREADS:-4}"]
+    volumes: [llmmodels:/models]
+
   tunnel:   # Cloudflare Tunnel: youtubebuddy.com and www → this PC
     image: cloudflare/cloudflared:2025.4.2
     restart: unless-stopped
@@ -83,4 +98,4 @@ services:
     volumes: [".:/work"]
     command: python /work/make_env.py /work/.env
 
-volumes: { pgdata: {}, media: {}, models: {} }
+volumes: { pgdata: {}, media: {}, models: {}, llmmodels: {} }

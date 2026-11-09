@@ -138,7 +138,7 @@ def test_self_hosted_writing_model_is_free_and_needs_no_key(env, fake_provider, 
         r = c.post(f"/api/v1/projects/{pid}/ai/tools/052/run", json={"params": {"brief": "Street food in Hyderabad"}})
         assert r.status_code == 201, r.text
         hi = c.post(f"/api/v1/projects/{pid}/ai/tools/052/run", json={"params": {"brief": "x", "language": "hi"}})
-        assert hi.status_code == 422 and "English only" in hi.text
+        assert hi.status_code == 422 and "supports: en" in hi.text
         assert r.json()["est_cost_usd"] is None                       # self-hosted: no charge against the credit
         drain()
         g = c.get(f"/api/v1/generations/{r.json()['id']}").json()

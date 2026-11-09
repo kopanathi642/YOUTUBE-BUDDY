@@ -147,6 +147,7 @@ def llm_json(system: str, user: str, max_tokens: int = 4000) -> tuple[dict, str]
             r = httpx.post(f"{base}/v1/chat/completions", timeout=float(os.environ.get("LLM_TIMEOUT", "600")),
                            json={"model": model, "max_tokens": min(max_tokens, int(os.environ.get("LLM_MAX_TOKENS", "1500"))),
                                  "temperature": 0.4, "response_format": {"type": "json_object"},
+                                 "chat_template_kwargs": {"enable_thinking": False},   # Qwen3: answer directly, no hidden reasoning
                                  "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]})
         except httpx.HTTPError as e:
             raise ProviderError(f"The writing model server isn't answering ({type(e).__name__})") from e
@@ -178,7 +179,7 @@ def llm_json(system: str, user: str, max_tokens: int = 4000) -> tuple[dict, str]
 
 
 def parse_json(text: str) -> dict:
-    text = text.strip()
+    text = re.sub(r"<think>.*?</think>", "", text or "", flags=re.S).strip()
     m = re.search(r"```(?:json)?\s*(\{.*\})\s*```", text, re.S)
     if m:
         text = m.group(1)

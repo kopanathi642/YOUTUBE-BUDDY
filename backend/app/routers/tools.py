@@ -209,8 +209,10 @@ def run(project_id: uuid.UUID, tool_id: str, body: RunIn, request: Request, user
     from ..tools.providers import llm_local
     if t["engine"]["type"] == "llm" and llm_local() and not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY")):
         paid = False   # self-hosted writing model: no per-run bill, so it doesn't use the plan's premium credit
-        if (params.get("language") or "en") not in ("en", "auto"):
-            raise HTTPException(422, "The free writing model on this server writes English only — other languages need a Claude or OpenAI key")
+        langs = {x.strip() for x in os.environ.get("LLM_LOCAL_LANGS", "en").split(",") if x.strip()} | {"auto"}
+        if (params.get("language") or "en") not in langs:
+            raise HTTPException(422, "The free writing model on this server doesn't write this language well yet — it supports: "
+                                     + ", ".join(sorted(langs - {"auto"})) + ". Other languages need a Claude or OpenAI key")
     # Duplicate protection (a double click must never pay twice): an explicit Idempotency-Key header returns the first run;
     # without one, the same run by the same person that is still queued/running from the last 15 s is returned instead.
     idem = request.headers.get("idempotency-key")
