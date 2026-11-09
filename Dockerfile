@@ -2,7 +2,10 @@
 FROM node:22.11-slim AS web
 WORKDIR /web
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+# slow/unstable home internet: long timeouts + retries so one stalled download doesn't fail the whole build
+RUN npm config set fetch-retries 6 && npm config set fetch-retry-mintimeout 20000 \
+    && npm config set fetch-retry-maxtimeout 180000 && npm config set fetch-timeout 600000 \
+    && npm ci --no-audit --no-fund --maxsockets 4
 COPY frontend/ ./
 RUN npm run build
 
@@ -13,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg curl lib
     && useradd -m -u 10001 app
 WORKDIR /app/backend
 COPY backend/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --retries 10 --timeout 120 -r requirements.txt
 # Piper voice engine (open source) — voices themselves download on first use into MODEL_CACHE
 RUN curl -fsSL https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz | tar -xz -C /opt \
     && chmod -R a+rX /opt/piper
