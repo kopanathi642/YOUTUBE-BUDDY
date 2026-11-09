@@ -311,3 +311,61 @@ class Dub(Base, Timestamped):
     speakers: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     targets: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+
+# ------------------------------------------------------------------ YouTube Growth
+class GrowthChannel(Base, Timestamped):
+    """A YouTube channel the workspace tracks: its own channel or a public competitor (read from the channel's public feed)."""
+    __tablename__ = "growth_channels"
+    __table_args__ = (UniqueConstraint("workspace_id", "channel_id", name="uq_growth_channel"),)
+    id: Mapped[uuid.UUID] = uuid_pk()
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), index=True)
+    channel_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    role: Mapped[str] = mapped_column(String(12), nullable=False, default="competitor")   # own | competitor
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sync_error: Mapped[str | None] = mapped_column(String(300))
+
+
+class VideoSnapshot(Base):
+    """Public view counts of a video at a moment in time (from the channel feed). Repeated snapshots show growth."""
+    __tablename__ = "video_snapshots"
+    __table_args__ = (Index("ix_video_snap", "channel_row_id", "video_id", "captured_at"),)
+    id: Mapped[uuid.UUID] = uuid_pk()
+    channel_row_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("growth_channels.id", ondelete="CASCADE"), nullable=False)
+    video_id: Mapped[str] = mapped_column(String(20), nullable=False)
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    views: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    likes: Mapped[int | None] = mapped_column(BigInteger)
+    captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class ContentItem(Base, Timestamped):
+    """One planned video moving through Idea → Research → Script → Production → Review → Approved → Scheduled → Published."""
+    __tablename__ = "content_items"
+    id: Mapped[uuid.UUID] = uuid_pk()
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), index=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    fmt: Mapped[str] = mapped_column(String(10), nullable=False, default="long")          # long | short
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="idea", index=True)
+    series: Mapped[str | None] = mapped_column(String(120))
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    recommendation: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)   # score breakdown + evidence
+    blueprint: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)        # hook, sections, scenes, cta, seo
+    project_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("projects.id", ondelete="SET NULL"))
+    youtube_video_id: Mapped[str | None] = mapped_column(String(20))
+    prediction: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)       # estimate made when produced
+    outcome: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)          # measured views at 1/3/7/30 days
+    notes: Mapped[str | None] = mapped_column(Text)
+
+
+class GrowthSettings(Base, Timestamped):
+    """Per-workspace automation mode and module switches. Publishing is never automatic unless publish_authorized is on."""
+    __tablename__ = "growth_settings"
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), primary_key=True)
+    mode: Mapped[str] = mapped_column(String(12), nullable=False, default="assisted")    # assisted | semi | autonomous
+    modules: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    publish_authorized: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    weights: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)

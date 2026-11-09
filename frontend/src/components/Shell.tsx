@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import {
   Home, FolderOpen, Film, Sparkles, Smartphone, Clapperboard, Languages, Palette, AudioLines, Workflow, Type, Image,
-  Download, LogOut, ChevronDown, Wand2, Orbit, Atom, Scissors, ArrowLeft, Library as LibraryIcon, Lock } from "lucide-react";
+  Download, LogOut, ChevronDown, Wand2, Orbit, Atom, Scissors, ArrowLeft, Library as LibraryIcon, Lock, Rocket } from "lucide-react";
 import { api } from "../api";
 import { useAuth, useBrand } from "../App";
 import { FeedbackModal } from "./GrowthCards";
@@ -64,6 +64,7 @@ export function UserMenu() {
           <hr style={{ border: 0, borderTop: "1px solid var(--line)", margin: "6px 0" }} />
           <button role="menuitem" className="menu-item" onClick={() => { setFb(true); setOpen(false); }}><MessageSquareHeart size={15} /> Send feedback</button>
           <button role="menuitem" className="menu-item" onClick={() => { setOpen(false); nav("/channel"); }}><Youtube size={15} /> My channel</button>
+            <button role="menuitem" className="menu-item" onClick={() => { setOpen(false); nav("/growth"); }}><Rocket size={15} /> Growth</button>
           <button role="menuitem" className="menu-item" onClick={() => { setOpen(false); nav("/settings#invite"); }}><Gift size={15} /> Invite &amp; earn</button>
           <button role="menuitem" className="menu-item" onClick={async () => { await api("/auth/logout", { method: "POST" }); setMe(null); nav("/"); }}>
             <LogOut size={15} /> Sign out

@@ -20,6 +20,7 @@ const Super = lazy(() => import("./pages/Super"));
 const SuperLocked = lazy(() => import("./pages/Super").then((m) => ({ default: m.SuperLocked })));
 const Library = lazy(() => import("./pages/Library"));
 const Channel = lazy(() => import("./pages/Channel"));
+const Growth = lazy(() => import("./pages/Growth"));
 const Settings = lazy(() => import("./pages/Settings"));
 
 const Loading = () => <div className="auth-wrap"><div className="spinner" aria-label="Loading" /></div>;
@@ -29,7 +30,7 @@ const TITLES: [RegExp, string][] = [
   [/^\/$/, "Video editor & AI studio for creators"], [/^\/signin/, "Sign in"], [/^\/signup/, "Create your free account"],
   [/^\/privacy/, "Privacy"], [/^\/terms/, "Terms"], [/^\/universes/, "Universes"], [/^\/editor\/projects/, "Projects"],
   [/^\/editor/, "Editor"], [/^\/edit\//, "Editing"], [/^\/ai-generator/, "AI Generator"], [/^\/super/, "Super Universe"],
-  [/^\/library/, "Library"], [/^\/settings/, "Settings"],
+  [/^\/library/, "Library"], [/^\/growth/, "Growth"], [/^\/channel/, "My channel"], [/^\/settings/, "Settings"],
 ];
 function RouteTitle() {
   const { pathname } = useLocation();
@@ -126,6 +127,7 @@ export default function App() {
           <Route path="/super" element={<Private bare>{universeById("super").locked ? <SuperLocked /> : <Super />}</Private>} />
           <Route path="/library" element={<Private bare><Library /></Private>} />
           <Route path="/channel" element={<Private bare><Channel /></Private>} />
+          <Route path="/growth" element={<Private bare><Growth /></Private>} />
           <Route path="/settings" element={<Private bare><Settings /></Private>} />
           <Route path="/privacy" element={<Legal kind="privacy" />} />
           <Route path="/terms" element={<Legal kind="terms" />} />

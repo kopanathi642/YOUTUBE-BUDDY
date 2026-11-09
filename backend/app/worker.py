@@ -422,6 +422,8 @@ def _dubbing():
 HANDLERS = {"media.process": handle_media_process, "media.derive": handle_media_derive, "media.import": handle_media_import, "youtube.upload": handle_youtube_upload, "render.export": handle_render_export,
             "ai.transcribe": handle_ai_transcribe, "ai.translate": handle_ai_translate, "ai.tts": handle_ai_tts, "ai.dub": handle_ai_dub,
             "ai.tool": handle_ai_tool,
+            "growth.produce": lambda ctx, tmp: __import__("app.growth_produce", fromlist=["produce"]).produce(ctx, tmp),
+            "growth.cycle": lambda ctx, tmp: __import__("app.growth_cycle", fromlist=["handle"]).handle(ctx, tmp),
             "dub.prepare": lambda ctx, tmp: _dubbing().handle_prepare(ctx, tmp),
             "dub.translate": lambda ctx, tmp: _dubbing().handle_translate(ctx, tmp),
             "dub.render": lambda ctx, tmp: _dubbing().handle_render(ctx, tmp)}
@@ -533,6 +535,9 @@ def main():
                 from . import agent
                 with session_factory()() as adb:
                     agent.maybe_run(adb)
+                from . import growth_cycle
+                with session_factory()() as gdb:
+                    growth_cycle.maybe_run_all(gdb)
             except Exception:  # noqa: BLE001
                 log.exception("agent check failed")
         if a.once and not did:

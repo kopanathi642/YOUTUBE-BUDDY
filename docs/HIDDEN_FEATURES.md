@@ -11,6 +11,9 @@ Two items are not built yet.
 | Stock Library (sidebar + media bin tab) | `PEXELS_API_KEY` or `PIXABAY_API_KEY` | free |
 | Publish to YouTube (export queue, Settings card) | `GOOGLE_OAUTH_CLIENT_ID` + `GOOGLE_OAUTH_CLIENT_SECRET` + `TOKEN_ENCRYPTION_KEY` | free |
 | **Connect channel** button (next to the profile name in every top bar) + **My channel** page (`/channel`: insights, next-video estimate) | same three as Publish to YouTube (the founder/admin sees the button earlier, with set-up steps) | free (~3 YouTube quota units per refresh) |
+| Growth: AI script drafts + Growth coach (`/growth`) | `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` (until then: fill-in templates, and the coach explains what it needs) | paid per run |
+| Growth: Publish button / autonomous upload | same three as Publish to YouTube | free |
+| Growth: `@handle` channel links | `YOUTUBE_API_KEY` (channel IDs work without it) | free |
 | Any editor tool whose engine fails its server check | the engine is installed/reachable | — |
 
 Still visible but locked by choice: **Super Universe** (unlock in `frontend/src/universes.ts`).

@@ -223,6 +223,10 @@ The evidence for each item is tests in `backend/tests`, `frontend/src/*.test.ts`
 - **Founder's server:** an old ASUS laptop (i3-6006U, 8 GB RAM, 233 GB SSD + 1 TB HDD, Ubuntu 24.04) running 24/7. Guide: `deploy/home/LINUX_LAPTOP.md`. `deploy/home/laptop-server.sh` sets no sleep with the lid closed, Docker at boot, runs `deploy/azure/setup.sh`, and adds a daily pg_dump at 03:30 (14 days, `BACKUP_DIR`, HDD). Syntax-checked; not run on the real laptop (no access from the sandbox).
 - Next step for the founder: move the youtubebuddy.com nameservers from BigRock to Cloudflare (README §2). That also fixes the current NXDOMAIN.
 
+### Growth system (`/growth`, Nov 2026)
+Ten pages, `routers/growth_studio.py`, `growth_engine.py`, `growth_produce.py`, `growth_cycle.py`, migration 0009. Full detail: `docs/GROWTH.md`.
+Tests: `tests/test_growth_studio.py` (4) and `e2e/growth.mjs` (11/11).
+
 ## 4. Incomplete / unverified / known issues
 - **Hidden until keys are set** (`docs/HIDDEN_FEATURES.md`):
   - Lip sync (tool 033) and the AI Generator's text-described object removal (tool 024) need `FAL_KEY`. The editor's basic marked-area object removal is always on.

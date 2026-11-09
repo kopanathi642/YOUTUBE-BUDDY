@@ -14,7 +14,7 @@ from .models import Job, JobStatus
 
 QUEUES = {"media.process": "media", "media.derive": "media", "media.import": "media", "render.export": "render",
           "ai.transcribe": "media", "ai.translate": "media", "ai.tts": "media", "ai.dub": "media", "ai.tool": "media", "youtube.upload": "media",
-          "dub.prepare": "media", "dub.translate": "media", "dub.render": "media"}
+          "dub.prepare": "media", "dub.translate": "media", "dub.render": "media", "growth.produce": "media", "growth.cycle": "media"}
 
 
 def enqueue(db: Session, *, workspace_id, kind: str, payload: dict, project_id=None, created_by=None,
