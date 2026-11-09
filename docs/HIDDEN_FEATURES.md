@@ -18,6 +18,13 @@ Two items are not built yet.
 
 Still visible but locked by choice: **Super Universe** (unlock in `frontend/src/universes.ts`).
 
+## Back on the screens, free (2026-11-09)
+Now run on our own worker with no key; a fal.ai key only adds a premium model:
+026 Video Upscale (FSRCNN, up to 1080p; 4K needs fal) · 083 Outpaint (edge extension; prompt-painted fill needs fal) · 084 Image Upscale (FSRCNN 2×/4×) ·
+085 Relight (light presets) · 088 Portrait Retouch (face-only smoothing) · 107 Speaker Diarization (Whisper + WeSpeaker) ·
+071 Channel Analyzer / 073 Competitor Compare / 080 Growth Strategy (public uploads feed; @handles + subscriber counts need YOUTUBE_API_KEY) ·
+064 Ask the Video (transcript + language model; shown when an LLM or FAL_KEY is configured — with only the free local model it also needs to pass the writing eval and be listed in LLM_LOCAL_TOOLS).
+
 ## Removed from the screens (not built yet), 2026-11-07 — add back when built
 These were shown as "Soon", greyed out, or promised in text. They are gone from the UI until they really work.
 
@@ -63,7 +70,6 @@ Can't be "trained" here: the AI features use ready-made open models (Whisper, Ar
 | 021 | Video Restyle | AI Video Transformation |
 | 024 | Object Removal | AI Video Transformation |
 | 025 | Relight & Weather | AI Video Transformation |
-| 026 | Video Upscale | AI Video Transformation |
 | 031 | Photo Animate | AI Animation |
 | 032 | Character Performance | AI Animation |
 | 033 | Lip Sync | AI Animation |
@@ -76,13 +82,8 @@ Can't be "trained" here: the AI features use ready-made open models (Whisper, Ar
 | 044 | Video to Sound | AI Audio & Music |
 | 045 | Voice Changer | AI Audio & Music |
 | 046 | Stem Splitter | AI Audio & Music |
-| 064 | Ask the Video | AI Content Intelligence |
 | 069 | Content Safety Check | AI Content Intelligence |
-| 083 | Outpaint / Expand | AI Image Editing |
-| 084 | Image Upscale | AI Image Editing |
-| 085 | Relight | AI Image Editing |
 | 087 | Edit with Words | AI Image Editing |
-| 088 | Portrait Retouch | AI Image Editing |
 | 105 | Voice-Preserving Dub | AI Localization |
 | 106 | Lip-Synced Dub | AI Localization |
 
@@ -112,12 +113,9 @@ Can't be "trained" here: the AI features use ready-made open models (Whisper, Ar
 
 | # | Tool | Studio |
 |---|---|---|
-| 071 | Channel Analyzer | AI Creator Intelligence |
 | 072 | Topic Discovery | AI Creator Intelligence |
-| 073 | Competitor Compare | AI Creator Intelligence |
 | 074 | Content Opportunity Map | AI Creator Intelligence |
 | 075 | Trend Explorer | AI Creator Intelligence |
-| 080 | Growth Strategy | AI Creator Intelligence |
 
 ### Needs ANTHROPIC_API_KEY or OPENAI_API_KEY + FAL_KEY (fal.ai account — pay per generation) (2)
 
@@ -130,6 +128,5 @@ Can't be "trained" here: the AI features use ready-made open models (Whisper, Ar
 
 | # | Tool | Studio |
 |---|---|---|
-| 107 | Speaker Diarization | AI Localization |
 | 117 | Scheduled Workflows | AI Creative Automation |
 

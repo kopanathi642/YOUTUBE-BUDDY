@@ -11,7 +11,7 @@ import sys
 import time
 
 sys.path.insert(0, ".")
-from app.tools import engines, providers  # noqa: E402
+from app.tools import engines, local_more, pipelines, providers  # noqa: E402
 
 BRIEF = "A 6-minute travel vlog: trying 5 famous street foods in Hyderabad's Old City for under 500 rupees, ending at Charminar at night."
 DEVA = re.compile(r"[ऀ-ॿ]")
@@ -55,6 +55,22 @@ CASES = [
 ]
 
 
+TRANSCRIPT = "\n".join(f"[{t // 60}:{t % 60:02d}] {x}" for t, x in [
+    (0, "Hey everyone, welcome back! Today we're in Hyderabad's Old City with just 500 rupees."), (22, "First stop: Irani chai and Osmania biscuits, 30 rupees."),
+    (75, "Now the famous haleem at Pista House, this plate is 180 rupees and it's incredible."), (150, "Next, mirchi bajji from a street cart, only 40 rupees."),
+    (215, "Double ka meetha for dessert, 60 rupees, super sweet."), (280, "And finally Charminar at night, total spent 470 rupees. See you next time!")])
+SCENES = "0, 20, 73, 148, 212, 276"
+# Pipeline prompts (chapters 062, Ask the Video 064): same prompt code as the tools, with a fixed transcript
+PROMPT_CASES = [
+    ("062", "chapters", lambda: pipelines.chapters_prompt(TRANSCRIPT, SCENES),
+     lambda o: (len(o.get("chapters", [])) >= 3 and float(o["chapters"][0].get("t", 1)) == 0, f"{len(o.get('chapters', []))} chapters")),
+    ("064", "qa", lambda: local_more.qa_prompt(TRANSCRIPT, SCENES, "How much did the haleem cost?"),
+     lambda o: ("180" in json.dumps(o), "finds the 180-rupee price")),
+    ("064", "qa", lambda: local_more.qa_prompt(TRANSCRIPT, SCENES, "What colour shirt is he wearing?"),
+     lambda o: (o.get("confident") is False or "not" in str(o.get("answer", "")).lower(), "admits it isn't in the transcript")),
+]
+
+
 class RC:
     def __init__(self, p):
         self.p, self.model, self.result = p, None, {}
@@ -73,6 +89,19 @@ def main():
         rec = {"tool": tid, "task": task, "params": params}
         try:
             o = engines.run_llm(RC(params), task)
+            ok, why = check(o)
+            rec.update(status="ok", seconds=round(time.time() - t0, 1), check=ok, check_detail=why, output=o)
+        except Exception as e:  # noqa: BLE001
+            rec.update(status="error", seconds=round(time.time() - t0, 1), check=False, check_detail=f"{type(e).__name__}: {e}"[:300])
+        out["cases"].append(rec)
+        print(f"{tid} {task} {rec['status']} {rec['seconds']}s check={rec['check']} {rec['check_detail']}", file=sys.stderr, flush=True)
+    for tid, task, prompt, check in PROMPT_CASES:
+        if only and tid not in only:
+            continue
+        t0 = time.time()
+        rec = {"tool": tid, "task": task}
+        try:
+            o, _ = providers.llm_json(*prompt())
             ok, why = check(o)
             rec.update(status="ok", seconds=round(time.time() - t0, 1), check=ok, check_detail=why, output=o)
         except Exception as e:  # noqa: BLE001

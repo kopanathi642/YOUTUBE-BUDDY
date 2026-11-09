@@ -206,15 +206,18 @@ def safety_check(rc: RunCtx):
                  "note": "8 evenly spaced frames were checked; this is a screen, not a guarantee."}
 
 
+def chapters_prompt(lines: str, scenes: str) -> tuple[str, str]:
+    return ("You make YouTube chapters. First chapter must start at 0:00, at least 3 chapters, each at least 10 s apart. Reply with one JSON object.",
+            f"Transcript with timestamps:\n{lines}\nScene cuts: {scenes}\nReturn {{\"chapters\": [{{\"t\": seconds, \"title\": str}}], \"description_block\": str}}")
+
+
 def chapters(rc: RunCtx):
     from .local import _transcript
     a = rc.asset("video")
     t = _transcript(rc, a)
     lines = "\n".join(f"[{int(s['start'] // 60)}:{int(s['start'] % 60):02d}] {s['text'].strip()}" for s in t["segments"])[:30000]
     scenes = ", ".join(f"{s['start']:.0f}s" for s in (a.analysis or {}).get("scenes", [])[:80])
-    out, model = providers.llm_json(
-        "You make YouTube chapters. First chapter must start at 0:00, at least 3 chapters, each at least 10 s apart. Reply with one JSON object.",
-        f"Transcript with timestamps:\n{lines}\nScene cuts: {scenes}\nReturn {{\"chapters\": [{{\"t\": seconds, \"title\": str}}], \"description_block\": str}}")
+    out, model = providers.llm_json(*chapters_prompt(lines, scenes))
     rc.model = f"whisper + {model}"
     rc.result = {"kind": "chapters", **out, "segments": t["segments"]}
 

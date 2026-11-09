@@ -152,9 +152,10 @@ export function Result({ g, seek, onUse }: { g: Generation; seek?: (t: number) =
     case "safety": return <div className="rep"><div className={`verdict ${r.verdict.startsWith("review") ? "bad" : "ok"}`}>{r.verdict}</div>
       <div className="rep-kpis">{r.frames.map((f: any) => <Kpi key={f.t} l={mmss(f.t)} v={f.nsfw_probability != null ? `${Math.round(f.nsfw_probability * 100)}%` : "—"} />)}</div><p className="dim small">{r.note}</p></div>;
     case "transcript": return <TranscriptView segs={r.segments} seek={seek} srt={r.srt} lang={r.language} />;
+    case "speakers": return <SpeakersView r={r} seek={seek} />;
     case "subtitles": return <SubtitleTracks r={r} seek={seek} />;
     case "compare": return r.rows?.[0]?.source !== undefined ? <div className="rep"><table className="rep-t cmp-t"><thead><tr><th>Time</th><th>Original</th><th>{r.a_engine}</th><th>{r.b_engine}</th></tr></thead>
-      <tbody>{r.rows.map((x: any, i: number) => <tr key={i} onClick={() => seek?.(x.start)}><td>{mmss(x.start)}</td><td>{x.source}</td><td>{x.a}</td><td>{x.b}</td></tr>)}</tbody></table></div> : <YtRows rows={r.rows} />;
+      <tbody>{r.rows.map((x: any, i: number) => <tr key={i} onClick={() => seek?.(x.start)}><td>{mmss(x.start)}</td><td>{x.source}</td><td>{x.a}</td><td>{x.b}</td></tr>)}</tbody></table></div> : <><YtRows rows={r.rows} />{r.note && <p className="dim sm">{r.note}</p>}</>;
     case "chapters": return <div className="rep doc"><h3>Chapters</h3><ol className="chapters">{(r.chapters || []).map((c: any, i: number) => <li key={i}><button type="button" onClick={() => seek?.(c.t)}>{mmss(c.t)}</button> {c.title}</li>)}</ol>
       <pre className="pre">{(r.chapters || []).map((c: any) => `${mmss(c.t)} ${c.title}`).join("\n")}</pre><Copyable text={(r.chapters || []).map((c: any) => `${mmss(c.t)} ${c.title}`).join("\n")}>Copy for YouTube</Copyable></div>;
     case "broll": return <div className="rep"><ul className="findings">{(r.suggestions || []).map((s: any, i: number) => <li key={i}><button type="button" onClick={() => seek?.(s.start)}>{mmss(s.start)}</button>
@@ -188,8 +189,12 @@ export function Result({ g, seek, onUse }: { g: Generation; seek?: (t: number) =
       {r.improved_title && <p><b>Better title:</b> {r.improved_title} <Copyable text={r.improved_title} /></p>}</div>;
     case "calendar": return <div className="rep"><div className="cal">{(r.weeks || []).map((w: any) => <div key={w.week} className="cal-week"><b>Week {w.week}</b>
       {(w.items || []).map((x: any, i: number) => <div key={i} className="cal-item"><span className="badge">{x.day}</span><b>{x.title}</b><small>{x.format} · {x.hook}</small></div>)}</div>)}</div><DocActions g={g} /></div>;
-    case "channel": case "strategy": return <div className="rep">{r.channel && <div className="rep-kpis"><Kpi l={r.channel.title} v={`${r.channel.subscribers.toLocaleString()} subs`} />
-      <Kpi l="Avg views (recent)" v={r.stats.avg_views_recent.toLocaleString()} /><Kpi l="Shorts share" v={`${Math.round(r.stats.shorts_share * 100)}%`} /></div>}
+    case "channel": case "strategy": return <div className="rep">{r.channel && <div className="rep-kpis">
+      <Kpi l={r.channel.title} v={r.channel.subscribers != null ? `${r.channel.subscribers.toLocaleString()} subs` : `${r.stats?.videos ?? 0} recent uploads`} />
+      {r.stats?.avg_views_recent != null && <Kpi l="Avg views (recent)" v={r.stats.avg_views_recent.toLocaleString()} />}
+      {r.stats?.median_views_per_day != null && <Kpi l="Typical views / day" v={Math.round(r.stats.median_views_per_day).toLocaleString()} />}
+      {r.stats?.upload_every_days != null && <Kpi l="Uploads every" v={`${r.stats.upload_every_days} days`} />}
+      <Kpi l="Shorts share" v={`${Math.round((r.stats?.shorts_share ?? 0) * 100)}%`} /></div>}
       {r.stats?.top && <YtRows rows={r.stats.top.map((v: any) => ({ title: v.title, views: v.views }))} />}
       <p>{r.summary}</p><ul className="findings">{(r.findings || []).map((f: any, i: number) => <li key={i}><div><b>{f.finding}</b><small>Evidence: {f.evidence}</small></div></li>)}</ul>
       <ul className="findings">{(r.actions || []).map((a: any, i: number) => <li key={i} className={a.priority}><div><b>{a.action}</b><small>{a.priority} · {a.why}</small></div></li>)}</ul></div>;
@@ -198,6 +203,10 @@ export function Result({ g, seek, onUse }: { g: Generation; seek?: (t: number) =
       <li key={i}><div><b>{t.topic}</b><small>demand {t.demand} · competition {t.competition} · {t.angle}</small><small className="dim">{(t.evidence || []).slice(0, 2).join(" · ")}</small></div></li>)}</ul></div>;
     case "workflow_plan": return <div className="rep"><p>{r.summary}</p><p className="dim">Estimated model spend: ${r.est_cost_usd ?? 0}</p>
       {onUse && <button type="button" className="btn primary" onClick={() => onUse("_to_workflow", r.graph)}>Open in Workflow Builder</button>}</div>;
+    case "qa": return <div className="rep doc">{r.question && <p className="dim">Q: {r.question}</p>}<p>{r.answer}</p>
+      {r.confident === false && <p className="dim">Not sure — the transcript may not cover this.</p>}
+      {(r.evidence || []).length > 0 && <ul className="findings">{r.evidence.map((e: any, i: number) => <li key={i}><button type="button" onClick={() => seek?.(Number(e.t) || 0)}>{mmss(Number(e.t) || 0)}</button> “{e.quote}”</li>)}</ul>}
+      {r.note && <p className="dim">{r.note}</p>}</div>;
     case "workflow": case "batch": case "templates": return null;
     default: {
       if (r.grade) return <div className="rep"><b>Applied grade</b><KV o={r.grade} />{r.measured && <><b>Measured from your footage</b><KV o={r.measured} /></>}</div>;
@@ -229,7 +238,8 @@ function LoudMeter({ v }: { v: number | null }) {
 function YtRows({ rows }: { rows: any[] }) {
   const max = Math.max(1, ...rows.map((r) => r.views || r.avg_recent_views || 0));
   return <div className="yt-rows">{rows.map((r, i) => { const v = r.views ?? r.avg_recent_views ?? 0; return (
-    <div key={i} className="yt-row"><span className="yt-title">{r.title}{r.channel && <small> · {r.channel}</small>}{r.subscribers != null && <small> · {r.subscribers.toLocaleString()} subs · {r.uploads_last_15} recent</small>}</span>
+    <div key={i} className="yt-row"><span className="yt-title">{r.title}{r.channel && <small> · {r.channel}</small>}{r.subscribers != null && <small> · {r.subscribers.toLocaleString()} subs · {r.uploads_last_15} recent</small>}
+      {r.subscribers == null && r.views_per_day != null && <small> · {Math.round(r.views_per_day).toLocaleString()} views/day · every {r.upload_every_days ?? "?"} days</small>}</span>
       <span className="yt-bar"><i style={{ width: `${(v / max) * 100}%` }} /></span><b>{v.toLocaleString()}</b></div>); })}</div>;
 }
 
@@ -250,7 +260,17 @@ export function TranscriptView({ segs, seek, srt, lang, now = -1 }: { segs: any[
       {srt && <button type="button" className="btn sm" onClick={() => saveText(`transcript-${lang ?? ""}.srt`, srt)}><Download size={13} />.srt</button>}
       <Copyable text={segs.map((s) => s.text).join(" ")}>Copy text</Copyable></div>
     <div className="tr-lines">{list.map((s, i) => <button type="button" key={i} className={`tr-line ${now >= s.start && now < s.end ? "now" : ""}`} onClick={() => seek?.(s.start)}>
-      <span>{mmss(s.start)}</span><p>{s.text}</p></button>)}</div></div>;
+      <span>{mmss(s.start)}</span><p>{s.speaker && <b className="tr-spk" data-s={s.speaker}>{s.speaker_name ?? s.speaker}</b>}{s.text}</p></button>)}</div></div>;
+}
+
+function SpeakersView({ r, seek }: { r: any; seek?: (t: number) => void }) {
+  const total = r.speakers.reduce((a: number, s: any) => a + s.seconds, 0) || 1;
+  return <div className="rep">
+    <div className="spk-bars">{r.speakers.map((s: any) => <div key={s.id} className="spk-row"><b>{s.name}</b>
+      <span className="spk-bar"><i style={{ width: `${(100 * s.seconds) / total}%` }} data-s={s.id} /></span><span>{mmss(s.seconds)} · {s.lines} lines</span></div>)}</div>
+    {r.note && <p className="dim sm">{r.note}</p>}
+    <TranscriptView segs={r.segments} seek={seek} srt={r.srt} lang={r.language} />
+  </div>;
 }
 
 function SubtitleTracks({ r, seek }: { r: any; seek?: (t: number) => void }) {

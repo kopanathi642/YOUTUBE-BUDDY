@@ -91,14 +91,14 @@ def test_registry_has_exactly_120_tools_in_12_studios(env):
         if st["state"] == "needs_key":
             assert st["needs"]
         assert t["params"] is not None and t["ui"]
-    assert cat["counts"]["unbuilt"] == 2
+    assert cat["counts"]["unbuilt"] == 1
 
 
 def test_hosted_tool_without_key_is_refused_not_faked(env, monkeypatch):
     monkeypatch.delenv("FAL_KEY", raising=False)
     r = env["c"].post(f"/api/v1/projects/{env['pid']}/ai/tools/001/run", json={"params": {"prompt": "a cat"}})
     assert r.status_code == 409 and "FAL_KEY" in r.text
-    r = env["c"].post(f"/api/v1/projects/{env['pid']}/ai/tools/107/run", json={"params": {"video": env["video"]}})
+    r = env["c"].post(f"/api/v1/projects/{env['pid']}/ai/tools/117/run", json={"params": {}})
     assert r.status_code == 409
 
 

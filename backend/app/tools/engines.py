@@ -382,6 +382,12 @@ def _iso_minutes(d: str) -> float:
 
 
 def run_youtube(rc: RunCtx, task: str):
+    import os
+    from .registry import local_llm_only
+    if task in ("channel", "strategy", "compare") and (not os.environ.get("YOUTUBE_API_KEY") or (task != "compare" and local_llm_only())
+                                                       or (task != "compare" and not providers.llm_ready())):
+        from . import yt_free
+        return yt_free.run(rc, task)   # public feeds + rules: no key, nothing invented
     p = rc.p
     rc.progress(0.1, "reading public YouTube data")
     if task in ("channel", "strategy"):

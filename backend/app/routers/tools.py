@@ -66,6 +66,9 @@ def _check_params(db: Session, t: dict, params: dict, workspace_id) -> dict:
     out = {}
     specs = {p["key"]: p for p in t["params"]}
     for k, v in params.items():
+        if k == "_consent":
+            out[k] = v is True       # the "I have the right to use this face/voice" checkbox (was dropped here before)
+            continue
         if k not in specs and k not in ("tool_params",):
             continue  # ignore unknown keys
         out[k] = v
@@ -205,8 +208,14 @@ def run(project_id: uuid.UUID, tool_id: str, body: RunIn, request: Request, user
     if root:
         version = 1 + max(g.version for g in db.scalars(select(Generation).where((Generation.root_id == root) | (Generation.id == root))))
     model = body.model or (models[0]["id"] if models and t["engine"]["type"] != "local" else None)
-    paid = t["engine"]["type"] in ("fal", "llm", "youtube") or (t["engine"]["type"] == "pipeline" and t["engine"].get("needs")) or premium
+    paid = t["engine"]["type"] in ("fal", "llm", "youtube") or (t["engine"]["type"] in ("pipeline", "local") and t["engine"].get("needs")) or premium
+    if t["engine"]["type"] == "youtube" and t["engine"].get("free") and not (
+            os.environ.get("YOUTUBE_API_KEY") and (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY"))):
+        paid = False   # runs from public feeds on our worker
     from ..tools.providers import llm_local
+    hosted_llm = bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY"))
+    if t["engine"]["type"] == "local" and t["engine"].get("needs") and not premium and llm_local() and not hosted_llm:
+        paid = False   # free transcript + self-hosted language model
     if t["engine"]["type"] == "llm" and llm_local() and not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY")):
         paid = False   # self-hosted writing model: no per-run bill, so it doesn't use the plan's premium credit
         langs = {x.strip() for x in os.environ.get("LLM_LOCAL_LANGS", "en").split(",") if x.strip()} | {"auto"}

@@ -1080,3 +1080,7 @@ LOCAL = {f.__name__: f for f in [
     highlights_report, retention_report, audio_report, visual_report, thumbnail_ab, image_bg_remove, image_bg_replace, image_adjust,
     image_inpaint, image_text, shots_to_sequence, reframe_sequence, silence_sequence, shorts_sequences, punchin_sequence,
     continuity_report, tracking_report, multiformat_sequences, markers_sequence, translate_subs, burn_subtitles, dub, subtitle_sync]}
+
+
+from .local_more import HANDLERS as _MORE  # noqa: E402  (free engines added later; they import helpers from this module)
+LOCAL.update({f.__name__: f for f in _MORE})

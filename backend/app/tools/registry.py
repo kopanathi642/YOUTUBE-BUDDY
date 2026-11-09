@@ -65,7 +65,7 @@ TONE = P("tone", "chips", "Tone", default="friendly", options=["friendly", "ener
 AUDIENCE = P("audience", "text", "Audience", placeholder="Indian students preparing for exams")
 LENGTH = P("length", "chips", "Length", default="medium", options=["short", "medium", "long"])
 BRIEF = P("brief", "longtext", "Brief", placeholder="What is it about? Key points, call to action…", required=True, max=6000)
-CHANNEL = P("channel", "text", "Channel", placeholder="@handle or channel URL", required=True)
+CHANNEL = P("channel", "text", "Channel", placeholder="youtube.com/channel/UC… link or channel ID", required=True)
 REGION = P("region", "chips", "Region", default="IN", options=["IN", "US", "GB", "AE", "SG", "CA", "AU"])
 
 
@@ -140,8 +140,9 @@ def pipe(handler, needs, note, models=None, **kw):
     return {"type": "pipeline", "handler": handler, "needs": needs, "note": note, "models": models or [], **kw}
 
 
-def yt(task, note="Public YouTube Data API + language model"):
-    return {"type": "youtube", "task": task, "note": note}
+def yt(task, note="Public YouTube Data API + language model", free=False):
+    """free=True: works without keys from the channel's public uploads feed (engines.run_youtube -> yt_free)."""
+    return {"type": "youtube", "task": task, "note": note, "free": free}
 
 
 def unbuilt(reason):
@@ -268,7 +269,9 @@ T(25, "relight-weather", "Relight & Weather", "transform", "Change time of day, 
              P("time_of_day", "chips", "Time of day", default="unchanged", options=["unchanged", "dawn", "noon", "sunset", "night"])],
   "video", True, ui="splitview")
 T(26, "video-upscale", "Video Upscale", "transform", "Upscale to sharper 1080p/4K with AI detail recovery.",
-  fal(UPSCALE_V), [media(), P("target", "chips", "Target", default="1080p", options=["1080p", "4K"])], "video", True, ui="splitview")
+  {"type": "local", "handler": "video_upscale", "models": UPSCALE_V,
+   "note": "Free AI upscaler (FSRCNN) on our worker up to 1080p; 4K and detail recovery with the premium upscaler (fal.ai key)"},
+  [media(), P("target", "chips", "Target", default="1080p", options=["1080p", "4K"])], "video", True, ui="splitview")
 T(27, "stabilize", "Stabilization", "transform", "Smooth shaky handheld footage.",
   local("video_stabilize", "Runs on our worker (FFmpeg vid.stab)"), [media(), P("smoothing", "slider", "Smoothing", min=5, max=60, step=1, default=24)],
   "video", True, ui="splitview")
@@ -397,7 +400,9 @@ T(62, "transcript", "Transcript", "content", "Accurate, timestamped transcript y
 T(63, "people-detection", "Face & People Detection", "content", "Where faces appear in each shot, drawn as overlays.",
   local("face_report", "Runs on our worker (OpenCV face detector)"), [media()], "report", False, ui="analysis")
 T(64, "video-qa", "Ask the Video", "content", "Ask questions about what happens in a video.",
-  fal(VQA), [media(), P("question", "text", "Question", placeholder="What products are shown and when?", required=True)], "doc", False, ui="qa")
+  local("video_qa", "Answers from the transcript and scene cuts on our worker + language model; a fal.ai key adds a model that sees the pictures",
+        needs=["llm"], or_fal=True, models=VQA), [media(accept=("video", "audio")), P("question", "text", "Question", placeholder="What does she say about the price?", required=True)],
+  "doc", False, ui="qa")
 T(65, "highlight-finder", "Highlight Finder", "content", "Scores every moment by energy and change, then marks the best.",
   local("highlights_report"), [media(), P("count", "stepper", "Highlights", min=1, max=10, default=5),
                                P("length", "slider", "Highlight length", min=5, max=60, step=5, default=20, unit="s")], "report", False, ui="analysis")
@@ -414,11 +419,13 @@ T(70, "chapters", "Chapter Generator", "content", "YouTube chapters from scenes 
 
 # ---------------------------------------------------------------- H. AI Creator Intelligence (071-080)
 T(71, "channel-analyzer", "Channel Analyzer", "creator", "Upload cadence, best formats and top videos for any public channel.",
-  yt("channel"), [CHANNEL], "doc", False, ui="dashboard")
+  yt("channel", "Public uploads feed + rules on our worker (no key); YouTube Data API + language model add subscribers and a written summary", free=True),
+  [CHANNEL], "doc", False, ui="dashboard")
 T(72, "topic-discovery", "Topic Discovery", "creator", "Topics with demand in your niche, from what is getting views right now.",
   yt("topics"), [P("niche", "text", "Niche", placeholder="personal finance for students", required=True), REGION, LANG], "doc", False, ui="opportunity")
 T(73, "competitor-compare", "Competitor Compare", "creator", "Side-by-side comparison of up to 4 channels.",
-  yt("compare"), [P("channels", "longtext", "Channels (one per line)", required=True)], "doc", False, ui="dashboard")
+  yt("compare", "Public uploads feeds (no key); a YouTube Data API key adds subscriber counts", free=True),
+  [P("channels", "longtext", "Channels (one per line)", required=True)], "doc", False, ui="dashboard")
 T(74, "opportunity-map", "Content Opportunity Map", "creator", "Plots topics by demand vs. competition to find gaps.",
   yt("opportunity"), [P("niche", "text", "Niche", required=True), REGION], "doc", False, ui="opportunity")
 T(75, "trend-explorer", "Trend Explorer", "creator", "What's trending now by country and category.",
@@ -436,7 +443,8 @@ T(79, "content-calendar", "Content Calendar", "creator", "A month of planned upl
   llm("calendar"), [P("niche", "text", "Niche", required=True), P("per_week", "stepper", "Uploads per week", min=1, max=14, default=3), AUDIENCE, LANG],
   "doc", False, ui="calendar")
 T(80, "strategy-report", "Growth Strategy", "creator", "A prioritised growth plan from your goals and channel data.",
-  yt("strategy"), [CHANNEL, P("goal", "text", "Goal", placeholder="100k subscribers in 12 months")], "doc", False, ui="doc")
+  yt("strategy", "Public uploads feed + rules on our worker (no key); YouTube Data API + language model add a written plan", free=True),
+  [CHANNEL, P("goal", "text", "Goal", placeholder="100k subscribers in 12 months")], "doc", False, ui="doc")
 
 # ---------------------------------------------------------------- I. AI Image Editing (081-090)
 T(81, "image-bg-remove", "Background Remover", "imageedit", "Clean transparent cut-out of the subject.",
@@ -447,12 +455,17 @@ T(82, "inpaint", "Inpaint / Erase", "imageedit", "Brush over anything to erase i
   [media("image", "Image", ("image",)), P("mask", "mask", "Mask", required=True), prompt("Replace with (optional)", "a potted plant", required=False)],
   "image", True, ui="canvas")
 T(83, "outpaint", "Outpaint / Expand", "imageedit", "Extend the canvas and let the model paint the new area.",
-  fal(I2I), [media("image", "Image", ("image",)), P("expand", "aspect", "New shape", options=["16:9", "9:16", "1:1", "4:5", "21:9"], default="16:9"),
+  {"type": "local", "handler": "image_outpaint", "models": I2I,
+   "note": "Free: soft extension of the picture's own edges, on our worker. Painting new content from a description needs a fal.ai key"},
+  [media("image", "Image", ("image",)), P("expand", "aspect", "New shape", options=["16:9", "9:16", "1:1", "4:5", "21:9"], default="16:9"),
              prompt("What's beyond the edges", required=False)], "image", True, ui="canvas")
 T(84, "image-upscale", "Image Upscale", "imageedit", "4× resolution with AI detail.",
-  fal(UPSCALE_I), [media("image", "Image", ("image",)), P("scale", "chips", "Scale", default=4, options=[2, 4])], "image", True, ui="canvas")
+  {"type": "local", "handler": "image_upscale", "models": UPSCALE_I, "note": "Free AI upscaler (FSRCNN) on our worker; Real-ESRGAN with a fal.ai key"},
+  [media("image", "Image", ("image",)), P("scale", "chips", "Scale", default=4, options=[2, 4])], "image", True, ui="canvas")
 T(85, "relight-image", "Relight", "imageedit", "Change the lighting of a photo after it was taken.",
-  fal(I2I), [media("image", "Image", ("image",)), LIGHT, P("direction", "lighting_dir", "Light direction", default=45)], "image", True, ui="canvas")
+  {"type": "local", "handler": "image_relight", "models": I2I,
+   "note": "Free directional relight on our worker (light colour, direction and falloff); generative relighting with a fal.ai key"},
+  [media("image", "Image", ("image",)), LIGHT, P("direction", "lighting_dir", "Light direction", default=45)], "image", True, ui="canvas")
 T(86, "color-adjust", "Colour Adjust", "imageedit", "Exposure, contrast, saturation, warmth and sharpness.",
   local("image_adjust"), [media("image", "Image", ("image",)), P("exposure", "slider", "Exposure", min=-1, max=1, step=0.05, default=0),
                           P("contrast", "slider", "Contrast", min=-1, max=1, step=0.05, default=0), P("saturation", "slider", "Saturation", min=-1, max=1, step=0.05, default=0),
@@ -461,7 +474,9 @@ T(86, "color-adjust", "Colour Adjust", "imageedit", "Exposure, contrast, saturat
 T(87, "instruct-edit", "Edit with Words", "imageedit", "Describe the change: 'make it sunset', 'add a hat'.",
   fal(I2I), [media("image", "Image", ("image",)), prompt("Edit", "make the sky a dramatic sunset")], "image", True, ui="canvas")
 T(88, "portrait-retouch", "Portrait Retouch", "imageedit", "Gentle skin, eyes and light clean-up that keeps texture.",
-  fal(I2I), [media("image", "Portrait", ("image",)), P("amount", "slider", "Amount", min=0.1, max=1, step=0.1, default=0.4)], "image", True, ui="canvas",
+  {"type": "local", "handler": "portrait_retouch", "models": I2I,
+   "note": "Free face-only skin smoothing on our worker (keeps texture); generative retouch with a fal.ai key"},
+  [media("image", "Portrait", ("image",)), P("amount", "slider", "Amount", min=0.1, max=1, step=0.1, default=0.4)], "image", True, ui="canvas",
   consent=True)
 T(89, "image-bg-replace", "Background Replace", "imageedit", "Cut out the subject and place it on a new background.",
   local("image_bg_replace", "Runs on our worker (U²-Net)"),
@@ -517,7 +532,8 @@ T(106, "lipsync-dub", "Lip-Synced Dub", "localize", "Dub plus matching lip movem
   pipe("lipsync_dub", ["fal"], "Dub on our worker, lip sync on fal.ai", models=LIPSYNC),
   [media(), P("target", "language", "Dub into", default="hi"), VOICE], "video", True, ui="dubbing", consent=True)
 T(107, "speaker-split", "Speaker Diarization", "localize", "Who spoke when, for multi-speaker subtitles and dubbing.",
-  unbuilt("Needs a speaker-diarization model (e.g. pyannote) — not integrated yet"), [media(accept=("video", "audio"))], "report", False, ui="subtitles")
+  local("speaker_report", "Runs on our worker (Whisper + WeSpeaker voice prints, CC-BY-4.0)"), [media(accept=("video", "audio")), LANG], "report", False,
+  ui="subtitles")
 T(108, "multi-language", "Multi-Language Pack", "localize", "Subtitles in several languages at once.",
   local("translate_subs", "Runs on our worker (Argos) — or OpenAI with your key"), [media(accept=("video", "audio")),
                                                                                     P("targets", "languages", "Languages", default=["hi", "ta", "te", "bn"], min_items=2, max_items=8)],
@@ -593,10 +609,13 @@ def status(t: dict, k: dict | None = None) -> dict:
     typ = e["type"]
     if typ == "unbuilt":
         return {"state": "unbuilt", "needs": [], "detail": e["note"]}
-    need = {"fal": ["fal"], "llm": ["llm"], "youtube": ["youtube", "llm"], "local": [], "pipeline": list(e.get("needs", []))}[typ]
+    need = {"fal": ["fal"], "llm": ["llm"], "youtube": [] if e.get("free") else ["youtube", "llm"], "local": list(e.get("needs", [])),
+            "pipeline": list(e.get("needs", []))}[typ]
     missing = [n for n in need if not k[n]]
     if "llm" in need and "llm" not in missing and local_llm_only() and t["id"] not in local_llm_tools():
         missing.append("llm")   # the free local model didn't pass review for this tool: needs a hosted model
+    if missing and e.get("or_fal") and k["fal"]:
+        missing = []            # the hosted model on fal.ai can do the whole job instead
     if missing:
         return {"state": "needs_key", "needs": [NEEDS_TEXT[m] for m in dict.fromkeys(missing)], "detail": e["note"]}
     return {"state": "ready", "needs": [], "detail": e["note"]}

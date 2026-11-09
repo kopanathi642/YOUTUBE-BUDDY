@@ -529,3 +529,11 @@
 .aiw .kv > div { padding: 8px 10px; border-radius: 10px; border: 1px solid var(--edge); background: var(--glass-2); display: grid; gap: 2px; }
 .aiw .kv span { font-size: 11px; color: var(--text-3); text-transform: capitalize; } .aiw .kv b { font: 600 13px ui-monospace, monospace; word-break: break-word; }
 .aiw .rgb { display: flex; gap: 4px; } .aiw .rgb i { width: 14px; height: 14px; border-radius: 3px; }
+.aiw .tr-spk { display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 6px; font-size: 11px; background: #7b61ff33; color: #c7b8ff; }
+.aiw .tr-spk[data-s="S2"], .aiw .spk-bar i[data-s="S2"] { background: #22d3ee44; color: #a5f3fc; }
+.aiw .tr-spk[data-s="S3"], .aiw .spk-bar i[data-s="S3"] { background: #f59e0b44; color: #fde68a; }
+.aiw .tr-spk[data-s="S4"], .aiw .spk-bar i[data-s="S4"] { background: #22c55e44; color: #bbf7d0; }
+.aiw .spk-bars { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.aiw .spk-row { display: grid; grid-template-columns: 90px 1fr 120px; gap: 10px; align-items: center; font-size: 13px; }
+.aiw .spk-bar { height: 10px; border-radius: 5px; background: rgba(255,255,255,.06); overflow: hidden; }
+.aiw .spk-bar i { display: block; height: 100%; background: #7b61ff; }
