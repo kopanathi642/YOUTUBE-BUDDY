@@ -22,7 +22,7 @@ def new_project(client, ws, **kw):
 
 
 def drain():
-    while worker.process_one("test-worker", ["media", "render"]):
+    while worker.process_one("test-worker", ["ingest", "enrich", "media", "render"]):
         pass
 
 
@@ -229,7 +229,7 @@ def test_crashed_worker_job_is_reclaimed(make_client, fixtures_media):
     p = new_project(c, ws)
     a = upload(c, p["id"], fixtures_media["tone_wav"], "audio/wav")
     db = session_factory()()
-    j = jobs.claim(db, "doomed-worker", ["media"], 60)
+    j = jobs.claim(db, "doomed-worker", ["ingest"], 60)
     assert j and j.id == uuid.UUID(a["job"]["id"])
     j.lease_until = datetime.now(timezone.utc) - timedelta(seconds=1)  # simulate crash: lease lapses
     db.commit()

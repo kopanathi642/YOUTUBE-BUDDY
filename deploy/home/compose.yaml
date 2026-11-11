@@ -6,6 +6,7 @@ name: youtubebuddy
 x-app-env: &appenv
   ENV: production
   COOKIE_SECURE: "true"
+  TRUST_CLOUDFLARE_IP: "true"                          # visitors arrive through the Cloudflare Tunnel: use CF-Connecting-IP
   PUBLIC_BASE_URL: https://youtubebuddy.com
   CORS_ORIGINS: https://youtubebuddy.com,https://www.youtubebuddy.com
   DATABASE_URL: postgresql+psycopg://creator:${POSTGRES_PASSWORD}@db:5432/creator

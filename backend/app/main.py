@@ -13,6 +13,7 @@ from .config import get_settings
 from .db import get_engine
 from .routers import tools, ai, auth, billing, compose, dubbing, exports, growth, growth_studio, media, projects, stock, workspaces, youtube
 from .security import csrf_guard
+from .shield import shield
 
 log = logging.getLogger("api")
 logging.basicConfig(level=logging.INFO, format='{"t":"%(asctime)s","lvl":"%(levelname)s","msg":"%(message)s"}')
@@ -41,7 +42,7 @@ def create_app() -> FastAPI:
             return RedirectResponse(canonical + request.url.path + q, status_code=301)
         rid = request.headers.get("x-request-id") or uuid.uuid4().hex
         t0 = time.perf_counter()
-        response = await call_next(request)
+        response = shield.check(request) or await call_next(request)
         response.headers["x-request-id"] = rid
         response.headers["x-content-type-options"] = "nosniff"
         response.headers["referrer-policy"] = "strict-origin-when-cross-origin"
@@ -50,6 +51,9 @@ def create_app() -> FastAPI:
         response.headers["cross-origin-opener-policy"] = "same-origin-allow-popups"  # Google sign-in uses a popup
         if request.url.path.startswith("/api/"):
             response.headers["x-robots-tag"] = "noindex"
+        elif request.url.path.startswith("/assets/") and response.status_code == 200:
+            # build files have a content hash in their name: browsers and Cloudflare may keep them for a year
+            response.headers["cache-control"] = "public, max-age=31536000, immutable"
         if not request.url.path.startswith("/api/v1/docs"):
             response.headers["content-security-policy"] = csp
         if hsts:

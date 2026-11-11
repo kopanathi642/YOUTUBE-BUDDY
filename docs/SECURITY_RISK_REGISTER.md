@@ -22,4 +22,5 @@
 | 18 | Information exposure | API docs/OpenAPI schema disabled in production; logs record paths only, never query strings | — | Low |
 | 19 | Third-party tracking via fonts | Inter + JetBrains Mono bundled with the app (no Google Fonts request) | — | Low |
 | 20 | Vulnerable dependencies | `npm audit` reviewed: React Router 6.30.6, Firebase 13.2; remaining Firebase advisories are in Node-only Firestore/gRPC code that the browser bundle never uses | Dependabot + `pip-audit`/`npm audit` in CI | Low |
+| 22 | Floods, scanners, spoofed visitor IPs | App shield (`app/shield.py`): per-IP token-bucket limits on API and pages, scanner-probe 404s + strikes, 1-hour auto-ban, method/URL/body-size hygiene, CF-Connecting-IP behind the tunnel (X-Forwarded-For could be faked before); Cloudflare WAF checklist in `docs/SECURITY_FIREWALL.md` | Owner: switch on Cloudflare Bot Fight Mode, managed rules, auth rate-limit rule | High → mitigated (app layer) |
 | 21 | Source code exposure | Repository must be **private** on GitHub | Owner action: GitHub → Settings → Change visibility → Private | High until done |

@@ -83,11 +83,15 @@ def handle_media_process(ctx: Ctx, tmp: str):
         media.make_thumbnail(src, thumb, meta)
         storage.upload(thumb, f"{base}/thumb.jpg", "image/jpeg")
         asset.thumbnail_key = f"{base}/thumb.jpg"
-    ctx.progress(0.4, "proxy", force=True)
-    if meta["kind"] == "video":
+    # Fast path (Canva-style): if the browser can already play/show the original, use it for preview straight away and
+    # mark the file ready now; the lighter proxy, waveform and analysis follow in a background media.enrich job.
+    ctx.progress(0.45, "preview", force=True)
+    if media.browser_playable(asset.filename, meta):
+        asset.proxy_key = asset.storage_key
+    elif meta["kind"] == "video":
         ext, ctype = (".webm", "video/webm") if meta.get("has_alpha") else (".mp4", "video/mp4")
         proxy = os.path.join(tmp, "proxy" + ext)
-        media.make_proxy(src, proxy, meta)
+        media.make_proxy(src, proxy, meta, fast=True)
         storage.upload(proxy, f"{base}/proxy{ext}", ctype)
         asset.proxy_key = f"{base}/proxy{ext}"
     elif meta["kind"] == "audio":
@@ -103,25 +107,56 @@ def handle_media_process(ctx: Ctx, tmp: str):
             raise RuntimeError("image preview failed")
         storage.upload(prev, f"{base}/preview.png", "image/png")
         asset.proxy_key = f"{base}/preview.png"
-    if meta["has_audio"]:
-        ctx.progress(0.85, "waveform", force=True)
-        wf = os.path.join(tmp, "waveform.json")
-        media.make_waveform(src, wf, meta["duration_s"] or 0)
-        storage.upload(wf, f"{base}/waveform.json", "application/json")
-        asset.waveform_key = f"{base}/waveform.json"
-    if meta["kind"] in ("video", "audio"):
-        # Analyse the proxy for video (much faster, same content); originals for audio-only.
-        src_an = proxy if meta["kind"] == "video" else src
-        try:
-            keep = {k: v for k, v in (asset.analysis or {}).items() if k in ("generation", "ai_generated", "transcript", "translations", "stock")}
-            asset.analysis = {**analysis.analyze(src_an, meta, lambda p, s: ctx.progress(0.88 + 0.1 * p, s, force=True)), **keep}
-        except Cancelled:
-            raise
-        except Exception as e:  # analysis is helpful, not essential: never fail the upload over it
-            asset.analysis = {**(asset.analysis or {}), "version": 1, "error": f"{type(e).__name__}"}
     asset.status, asset.status_detail = MediaStatus.ready, None
+    if meta["kind"] in ("video", "audio"):
+        jobs.enqueue(db, workspace_id=asset.workspace_id, project_id=asset.project_id, created_by=ctx.job.created_by,
+                     kind="media.enrich", payload={"asset_id": str(asset.id)}, idempotency_key=f"media.enrich:{asset.id}:{ctx.job.id}")
     db.commit()
     return {"asset_id": str(asset.id), "duration_s": meta["duration_s"], "width": meta["width"], "height": meta["height"]}
+
+
+def handle_media_enrich(ctx: Ctx, tmp: str):
+    """Second half of ingest, after the file is already usable: a light 540p proxy when the original was used for preview
+    and is heavy, the timeline waveform, and scene/face/audio analysis. Failures here never break the file."""
+    db = ctx.db
+    asset = db.get(MediaAsset, uuid.UUID(ctx.job.payload["asset_id"]))
+    if asset is None or asset.deleted_at or asset.status != MediaStatus.ready:
+        return {"skipped": True}
+    meta = {"kind": asset.kind, "has_video": asset.has_video, "has_audio": asset.has_audio, "duration_s": asset.duration_s,
+            "width": asset.width, "height": asset.height, "fps": asset.fps, "has_alpha": False}
+    src = os.path.join(tmp, "source" + os.path.splitext(asset.filename)[1].lower())
+    ctx.progress(0.05, "downloading", force=True)
+    storage.download(asset.storage_key, src)
+    base = asset.storage_key.rsplit("/", 1)[0] + "/derived"
+    proxy = src
+    if asset.kind == "video":
+        if asset.proxy_key == asset.storage_key and (asset.height or 0) > 720:
+            ctx.progress(0.15, "proxy", force=True)
+            proxy = os.path.join(tmp, "proxy.mp4")
+            media.make_proxy(src, proxy, meta)
+            storage.upload(proxy, f"{base}/proxy.mp4", "video/mp4")
+            asset.proxy_key = f"{base}/proxy.mp4"
+            db.commit()
+        elif asset.proxy_key and asset.proxy_key != asset.storage_key:
+            proxy = os.path.join(tmp, "proxy" + os.path.splitext(asset.proxy_key)[1])
+            storage.download(asset.proxy_key, proxy)
+    if asset.has_audio:
+        ctx.progress(0.6, "waveform", force=True)
+        wf = os.path.join(tmp, "waveform.json")
+        media.make_waveform(src, wf, asset.duration_s or 0)
+        storage.upload(wf, f"{base}/waveform.json", "application/json")
+        asset.waveform_key = f"{base}/waveform.json"
+        db.commit()
+    try:
+        keep = {k: v for k, v in (asset.analysis or {}).items() if k in ("generation", "ai_generated", "transcript", "translations", "stock")}
+        asset.analysis = {**analysis.analyze(proxy if asset.kind == "video" else src, meta,
+                                             lambda p, s: ctx.progress(0.7 + 0.29 * p, s, force=True)), **keep}
+    except Cancelled:
+        raise
+    except Exception as e:  # analysis is helpful, not essential
+        asset.analysis = {**(asset.analysis or {}), "version": 1, "error": f"{type(e).__name__}"}
+    db.commit()
+    return {"asset_id": str(asset.id)}
 
 
 # ------------------------------------------------------------------ render.export
@@ -419,7 +454,7 @@ def _dubbing():
     return dubbing
 
 
-HANDLERS = {"media.process": handle_media_process, "media.derive": handle_media_derive, "media.import": handle_media_import, "youtube.upload": handle_youtube_upload, "render.export": handle_render_export,
+HANDLERS = {"media.process": handle_media_process, "media.enrich": handle_media_enrich, "media.derive": handle_media_derive, "media.import": handle_media_import, "youtube.upload": handle_youtube_upload, "render.export": handle_render_export,
             "ai.transcribe": handle_ai_transcribe, "ai.translate": handle_ai_translate, "ai.tts": handle_ai_tts, "ai.dub": handle_ai_dub,
             "ai.tool": handle_ai_tool,
             "growth.produce": lambda ctx, tmp: __import__("app.growth_produce", fromlist=["produce"]).produce(ctx, tmp),
@@ -523,6 +558,22 @@ def main():
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
     signal.signal(signal.SIGINT, lambda *_: stop.set())
     log.info(f"worker {worker_id} started queues={queues}")
+    if not a.once:
+        # Uploads get their own lane so a new file is never stuck behind a long AI job, and they don't wait for the
+        # speech/voice models check either (ingest needs none of them).
+        # The follow-up work (light proxy, waveform, analysis) has a lane of its own so it never delays a new upload.
+        def lane(name: str):
+            def loop():
+                while not stop.is_set():
+                    try:
+                        if not process_one(f"{worker_id}-{name}", [name]):
+                            stop.wait(0.4)
+                    except Exception:  # noqa: BLE001
+                        log.exception(f"{name} lane error")
+                        stop.wait(2)
+            threading.Thread(target=loop, name=name, daemon=True).start()
+        lane("ingest")
+        lane("enrich")
     if not a.once and models_required():
         wait_for_models(stop)
     agent_t = 0.0

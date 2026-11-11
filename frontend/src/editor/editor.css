@@ -637,3 +637,5 @@ body.ws-dragging iframe, body.ws-dragging video { pointer-events: none; }
 .fm-auto { display: flex; gap: 8px; align-items: flex-start; font-size: 11.5px; color: var(--text-2); padding: 4px 4px 8px; line-height: 1.35; }
 .fm-pop .menu-label { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); padding: 8px 10px 4px; }
 .fm-pop .menu-item.on { background: rgba(123,97,255,.16); color: #fff; }
+.bin-upload .up-thumb { width: 40px; height: 26px; object-fit: cover; border-radius: 5px; flex: none; background: var(--bg-3, #222); }
+.bin-upload .up-thumb.ph { display: inline-flex; align-items: center; justify-content: center; color: var(--text-2, #aaa); }

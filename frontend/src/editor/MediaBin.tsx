@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { LOOKS } from "../grade";
 import { api, Asset, fmtBytes, fmtDuration } from "../api";
 import { useToast } from "../App";
-import { uploadFile, UploadState } from "../upload";
+import { fmtEta, fmtRate, localPreview, uploadFile, UploadState } from "../upload";
 import TemplatesTab from "./Elements";
 import StockTab from "./StockTab";
 import { TitleTemplate } from "../templates";
@@ -34,8 +34,14 @@ export default function MediaBin({ projectId, assets, setAssets, reload, readOnl
       ctrls.current.set(key, ctrl);
       setUploads((u) => [...u, { key, file, loaded: 0, total: file.size, status: "starting" }]);
       const upd = (s: Partial<UploadState>) => setUploads((u) => u.map((x) => (x.key === key ? { ...x, ...s } : x)));
+      let preview: string | null = null;
+      localPreview(file).then((p) => { preview = p; if (p) upd({ preview: p }); });
       uploadFile(projectId, file, upd, ctrl.signal)
-        .then((a) => { setAssets((xs) => [a, ...xs.filter((x) => x.id !== a.id)]); setUploads((u) => u.filter((x) => x.key !== key)); })
+        .then((a) => {
+          // keep showing the local picture until the server thumbnail exists
+          setAssets((xs) => [{ ...a, thumbnail_url: a.thumbnail_url ?? (a.kind !== "audio" ? preview : null) }, ...xs.filter((x) => x.id !== a.id)]);
+          setUploads((u) => u.filter((x) => x.key !== key));
+        })
         .catch((e) => {
           if ((e as Error).name === "AbortError") { setUploads((u) => u.filter((x) => x.key !== key)); return; }
           upd({ status: "error", error: (e as Error).message });
@@ -105,12 +111,13 @@ export default function MediaBin({ projectId, assets, setAssets, reload, readOnl
         {uploads.map((u) => (
           <div key={u.key} className="bin-upload">
             <div className="row" style={{ fontSize: 12.5 }}>
+              {u.preview ? <img className="up-thumb" src={u.preview} alt="" /> : <span className="up-thumb ph">{u.file.type.startsWith("audio") ? <Music size={14} /> : <Film size={14} />}</span>}
               <span className="grow ellipsis">{u.file.name}</span>
               {u.status === "error" ? <span className="badge err">failed</span> : <span className="dim mono">{Math.round((u.loaded / u.total) * 100)}%</span>}
               <button className="btn icon ghost" style={{ width: 24, height: 24 }} aria-label="Cancel upload" onClick={() => { ctrls.current.get(u.key)?.abort(); setUploads((x) => x.filter((y) => y.key !== u.key)); }}><X size={13} /></button>
             </div>
             <div className="progress" style={{ marginTop: 6 }}><i style={{ width: `${(u.loaded / u.total) * 100}%` }} /></div>
-            <div className="dim" style={{ fontSize: 11, marginTop: 4 }}>{u.status === "error" ? u.error : u.status === "finishing" ? "Finalising…" : `Uploading · ${fmtBytes(u.loaded)} of ${fmtBytes(u.total)}`}</div>
+            <div className="dim" style={{ fontSize: 11, marginTop: 4 }}>{u.status === "error" ? u.error : u.status === "finishing" ? "Finalising…" : `Uploading · ${fmtBytes(u.loaded)} of ${fmtBytes(u.total)}${u.rate ? ` · ${fmtRate(u.rate)} · ${fmtEta(u.total - u.loaded, u.rate)}` : ""}`}</div>
           </div>
         ))}
         {assets.length === 0 && uploads.length === 0 && (

@@ -137,9 +137,32 @@ def make_thumbnail(src: str, dst: str, meta: dict) -> None:
         raise RuntimeError(f"thumbnail failed: {r.stderr[-400:]}")
 
 
-def make_proxy(src: str, dst: str, meta: dict) -> None:
+def browser_playable(filename: str, meta: dict) -> bool:
+    """True when every browser can show the original as-is, so it can be previewed before any transcoding:
+    8-bit H.264 (+AAC/MP3) in MP4, VP8/VP9 (+Opus/Vorbis) in WebM, common audio, and JPEG/PNG/WebP up to 4096 px."""
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    streams = (meta.get("probe") or {}).get("streams") or []
+    vs = next((s for s in streams if s.get("codec_type") == "video"), {}) or {}
+    if meta["kind"] == "image":
+        return ext in ("jpg", "jpeg", "png", "webp") and max(meta.get("width") or 0, meta.get("height") or 0) <= 4096
+    if meta["kind"] == "audio":
+        return (ext in ("mp3",) and meta.get("audio_codec") == "mp3") or (ext in ("m4a", "aac") and meta.get("audio_codec") == "aac")
+    if meta["kind"] != "video" or meta.get("has_alpha"):
+        return False
+    if (vs.get("color_transfer") or "") in ("smpte2084", "arib-std-b67"):   # HDR: browsers show it washed out
+        return False
+    a = meta.get("audio_codec")
+    if ext in ("mp4", "m4v"):
+        return meta.get("video_codec") == "h264" and vs.get("pix_fmt") in ("yuv420p", "yuvj420p") and a in (None, "aac", "mp3")
+    if ext == "webm":
+        return meta.get("video_codec") in ("vp8", "vp9") and (vs.get("pix_fmt") or "yuv420p") == "yuv420p" and a in (None, "opus", "vorbis")
+    return False
+
+
+def make_proxy(src: str, dst: str, meta: dict, fast: bool = False) -> None:
     """Lightweight H.264 540p proxy for smooth browser playback. Originals stay untouched.
-    Videos with transparency get a VP9-with-alpha WebM proxy instead (browsers show its transparency)."""
+    Videos with transparency get a VP9-with-alpha WebM proxy instead (browsers show its transparency).
+    fast=True (first preview during upload) trades file size for encode speed."""
     if meta.get("has_alpha"):
         cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", src, "-vf", "scale=-2:'min(540,ih)'",
                "-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p", "-b:v", "0", "-crf", "36", "-deadline", "realtime", "-cpu-used", "8",
@@ -150,7 +173,7 @@ def make_proxy(src: str, dst: str, meta: dict) -> None:
             raise RuntimeError(f"alpha proxy failed: {r.stderr[-400:]}")
         return
     cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", src,
-           "-vf", "scale=-2:'min(540,ih)'", "-c:v", "libx264", "-preset", "veryfast", "-crf", "28",
+           "-vf", "scale=-2:'min(540,ih)'", "-c:v", "libx264", "-preset", "superfast" if fast else "veryfast", "-crf", "28",
            "-g", "30", "-pix_fmt", "yuv420p", "-movflags", "+faststart"]
     cmd += ["-c:a", "aac", "-b:a", "128k", "-ac", "2"] if meta["has_audio"] else ["-an"]
     r = run(cmd + [dst], timeout=3 * 3600)

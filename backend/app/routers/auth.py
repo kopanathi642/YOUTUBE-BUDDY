@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..shield import client_ip
 from ..config import get_settings
 from ..db import get_db
 from ..models import Role, User, Workspace, WorkspaceMember
@@ -86,7 +87,7 @@ def auth_config():
 @router.post("/google")
 def google_sign_in(body: GoogleIn, request: Request, response: Response, db: Session = Depends(get_db)):
     """Exchange a verified Firebase ID token (Google provider) for our own session cookie."""
-    auth_limiter.check(f"google-ip:{request.client.host if request.client else '-'}")
+    auth_limiter.check(f"google-ip:{client_ip(request)}")
     try:
         claims = verify_id_token(body.id_token, get_settings().firebase_project_id or "")
     except InvalidToken as e:
@@ -128,7 +129,7 @@ def google_sign_in(body: GoogleIn, request: Request, response: Response, db: Ses
 
 @router.post("/signup", status_code=201)
 def signup(body: SignupIn, request: Request, response: Response, db: Session = Depends(get_db)):
-    auth_limiter.check(f"signup:{request.client.host if request.client else '-'}")
+    auth_limiter.check(f"signup:{client_ip(request)}")
     if db.scalar(select(func.count()).select_from(User).where(User.email == body.email)):
         raise HTTPException(409, "An account with this email already exists")
     inviter = find_referrer(db, body.ref)
@@ -146,7 +147,7 @@ def signup(body: SignupIn, request: Request, response: Response, db: Session = D
 def login(body: LoginIn, request: Request, response: Response, db: Session = Depends(get_db)):
     email = body.email.strip().lower()
     auth_limiter.check(f"login:{email}")
-    auth_limiter.check(f"login-ip:{request.client.host if request.client else '-'}")
+    auth_limiter.check(f"login-ip:{client_ip(request)}")
     user = db.scalar(select(User).where(User.email == email))
     if not user or not verify_password(body.password, user.password_hash) or not user.is_active:
         audit(db, request, "auth.login_failed", email_domain=email.split("@")[-1])

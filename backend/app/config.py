@@ -20,6 +20,16 @@ class Settings(BaseSettings):
     s3_bucket: str = "creator-media-dev"
     signed_url_ttl_seconds: int = 900
 
+    # Shield (app firewall, app/shield.py). Rates are per visitor IP.
+    shield_enabled: bool = True
+    trust_cloudflare_ip: bool = False        # behind a Cloudflare Tunnel: use CF-Connecting-IP (set by Cloudflare, can't be faked)
+    shield_api_rate: float = 6.0             # sustained API requests per second
+    shield_api_burst: int = 180              # short bursts (page load, upload signing)
+    shield_page_rate: float = 25.0           # pages and static files
+    shield_page_burst: int = 400
+    shield_max_body_bytes: int = 10 * 1024 * 1024   # API bodies; media goes straight to storage, never through the API
+    shield_ban_seconds: int = 3600
+
     # Firebase Authentication (Google sign-in). Web config values are public identifiers, not secrets.
     firebase_project_id: str | None = None
     firebase_api_key: str | None = None

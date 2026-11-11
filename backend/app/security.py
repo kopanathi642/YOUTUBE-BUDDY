@@ -84,7 +84,7 @@ def audit(db: Session, request: Request | None, action: str, *, user: User | Non
     db.add(AuditLog(
         workspace_id=workspace_id, user_id=user.id if user else None, action=action,
         target_type=target_type, target_id=str(target_id) if target_id else None,
-        ip=(request.client.host if request and request.client else None), meta=meta,
+        ip=(__import__('app.shield', fromlist=['client_ip']).client_ip(request) if request else None), meta=meta,
     ))
 
 

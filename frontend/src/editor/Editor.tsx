@@ -39,6 +39,36 @@ export function assetFrames(a: Asset | undefined, fps: number): number {
   return Math.max(1, Math.floor((a.duration_s ?? 0) * fps));
 }
 
+// A just-imported clip is usable at once; its waveform/analysis arrive a little later, so keep polling briefly.
+function enriching(a: Asset) {
+  return a.status === "ready" && (a.kind === "video" || a.kind === "audio") && !a.analysis
+    && Date.now() - new Date(a.created_at).getTime() < 15 * 60_000;
+}
+
+// Polling returns freshly signed URLs every time; keep the old ones (same file, not near expiry) so the player and
+// thumbnails don't reload, and keep a local preview picture until the server thumbnail exists.
+function keepUrls(prev: Asset[], next: Asset[]): Asset[] {
+  const old = new Map(prev.map((a) => [a.id, a]));
+  const path = (u: string | null | undefined) => (u ? u.split("?")[0] : u);
+  const fresh = (u: string) => {
+    const m = /X-Amz-Date=(\d{8}T\d{6}Z)/.exec(u);
+    if (!m) return false;
+    const d = m[1];
+    const t = Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8), +d.slice(9, 11), +d.slice(11, 13), +d.slice(13, 15));
+    return Date.now() - t < 10 * 60_000;
+  };
+  return next.map((n) => {
+    const o = old.get(n.id);
+    if (!o) return n;
+    const pick = (f: "proxy_url" | "thumbnail_url" | "waveform_url") => {
+      const ov = o[f], nv = n[f];
+      if (!nv && f === "thumbnail_url" && (ov?.startsWith("data:") || ov?.startsWith("blob:"))) return ov;
+      return ov && nv && path(ov) === path(nv) && fresh(ov) ? ov : nv;
+    };
+    return { ...n, proxy_url: pick("proxy_url"), thumbnail_url: pick("thumbnail_url"), waveform_url: pick("waveform_url") };
+  });
+}
+
 export default function Editor() {
   const { projectId } = useParams();
   const [search] = useSearchParams();
@@ -51,7 +81,12 @@ export default function Editor() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const hist = useHistory<Timeline | null>(null);
   const tl = hist.value;
-  const [version, setVersion] = useState(0);
+  const [version, setVersionState] = useState(0);
+  // The version the server last confirmed, readable synchronously: saves fired from an older render (autosave timer,
+  // sequence switch) must never send a stale base_version.
+  const versionRef = useRef(0);
+  const openSeqId = useRef<string | null>(null);
+  const setVersion = useCallback((v: number) => { versionRef.current = v; setVersionState(v); }, []);
   const savedRef = useRef<Timeline | null>(null);
   const latestRef = useRef<Timeline | null>(null);
   latestRef.current = tl;
@@ -99,9 +134,13 @@ export default function Editor() {
 
   // ---------- load
   const loadMedia = useCallback(async () => {
-    try { setAssets(await api<Asset[]>(`/projects/${projectId}/media`)); } catch { /* bin shows state */ }
+    try {
+      const next = await api<Asset[]>(`/projects/${projectId}/media`);
+      setAssets((prev) => keepUrls(prev, next));
+    } catch { /* bin shows state */ }
   }, [projectId]);
   const openSequence = useCallback((s: SequenceDoc) => {
+    openSeqId.current = s.id;
     setSeq(s); setVersion(s.version); savedRef.current = s.timeline; hist.reset(s.timeline);
     setPlayhead(0); setSelected(null); setSave("saved");
   }, [hist]);
@@ -117,8 +156,10 @@ export default function Editor() {
     api<Capability[]>("/ai/capabilities").then((c) => setCaps(new Map(c.map((x) => [x.id, x])))).catch(() => {});
   }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!assets.some((a) => a.status === "processing")) return;
-    const t = setInterval(loadMedia, 2500);
+    if (!assets.some((a) => a.status === "processing" || enriching(a))) return;
+    // just-uploaded files become usable within a second or two: check often for them, gently otherwise
+    const fresh = assets.some((a) => a.status === "processing" && Date.now() - new Date(a.created_at).getTime() < 120_000);
+    const t = setInterval(loadMedia, fresh ? 700 : 2500);
     return () => clearInterval(t);
   }, [assets, loadMedia]);
 
@@ -212,19 +253,26 @@ export default function Editor() {
     if (saving.current) return false;
     saving.current = true; setSave("saving");
     const snapshot = tl;
+    const unchanged = snapshot === savedRef.current;
     try {
-      const r = await api<{ version: number }>(`/sequences/${seq.id}`, { method: "PUT", body: { base_version: version, timeline: snapshot } });
+      const r = await api<{ version: number }>(`/sequences/${seq.id}`, { method: "PUT", body: { base_version: versionRef.current, timeline: snapshot } });
+      setSequences((ss) => ss.map((x) => (x.id === seq.id ? { ...x, timeline: snapshot, version: r.version } : x)));
+      if (openSeqId.current !== seq.id) return true;   // the user switched sequence while this save was in flight
       setVersion(r.version); savedRef.current = snapshot;
-      setSequences((ss) => ss.map((s) => (s.id === seq.id ? { ...s, timeline: snapshot, version: r.version } : s)));
       setSave(latestRef.current === snapshot ? "saved" : "dirty");
       return true;
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409) setSave("conflict");
+      if (openSeqId.current !== seq.id) return false;   // a stale save of a sequence that's no longer open: ignore
+      if (e instanceof ApiError && e.status === 409 && unchanged) {
+        // nothing of ours to lose (a forced save of an already-saved timeline): just catch up with the server's version
+        try { const cur = await api<SequenceDoc>(`/sequences/${seq.id}`); setVersion(cur.version); setSave("saved"); return true; }
+        catch { setSave("conflict"); }
+      } else if (e instanceof ApiError && e.status === 409) setSave("conflict");
       else if (e instanceof ApiError && e.status === 0) setSave("offline");
       else { setSave("error"); toast(`Couldn't save: ${(e as Error).message}`); }
       return false;
     } finally { saving.current = false; }
-  }, [seq, tl, version, readOnly, toast]);
+  }, [seq, tl, readOnly, toast, setVersion]);
   useEffect(() => {
     if (!tl || tl === savedRef.current || save === "conflict") return;
     setSave((s) => (s === "saving" ? s : "dirty"));
