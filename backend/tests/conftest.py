@@ -10,6 +10,7 @@ os.environ["S3_REGION"] = "us-east-1"
 os.environ["ENV"] = "test"
 os.environ.setdefault("SHIELD_API_BURST", "1000000")   # the shield itself is tested in test_shield.py
 os.environ.setdefault("SHIELD_PAGE_BURST", "1000000")
+os.environ.setdefault("SHIELD_IP_BURST", "1000000")
 os.environ["MULTIPART_PART_SIZE"] = str(5 * 1024 * 1024)
 os.environ["SCRATCH_DIR"] = "/tmp/creator-worker-test"
 os.environ.setdefault("AI_DAILY_BUDGET_USD", "1000")

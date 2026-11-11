@@ -23,8 +23,10 @@ class Settings(BaseSettings):
     # Shield (app firewall, app/shield.py). Rates are per visitor IP.
     shield_enabled: bool = True
     trust_cloudflare_ip: bool = False        # behind a Cloudflare Tunnel: use CF-Connecting-IP (set by Cloudflare, can't be faked)
-    shield_api_rate: float = 6.0             # sustained API requests per second
-    shield_api_burst: int = 180              # short bursts (page load, upload signing)
+    shield_api_rate: float = 10.0            # sustained API requests per second, per signed-in session (or per IP when signed out)
+    shield_api_burst: int = 300              # short bursts (page load, upload signing, polling)
+    shield_ip_rate: float = 60.0             # ceiling for everyone behind one IP (Indian mobile networks share IPs widely)
+    shield_ip_burst: int = 1500
     shield_page_rate: float = 25.0           # pages and static files
     shield_page_burst: int = 400
     shield_max_body_bytes: int = 10 * 1024 * 1024   # API bodies; media goes straight to storage, never through the API

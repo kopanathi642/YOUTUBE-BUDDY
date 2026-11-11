@@ -12,6 +12,8 @@ def tight(monkeypatch):
     monkeypatch.setattr(s, "shield_api_burst", 5)
     monkeypatch.setattr(s, "shield_page_rate", 1.0)
     monkeypatch.setattr(s, "shield_page_burst", 5)
+    monkeypatch.setattr(s, "shield_ip_rate", 1000.0)
+    monkeypatch.setattr(s, "shield_ip_burst", 1000)
     shield.reset()
     yield s
     shield.reset()
@@ -70,3 +72,17 @@ def test_build_assets_are_cached_for_a_year(make_client):
     r = make_client().get(f"/assets/{name}")
     assert r.status_code == 200 and "immutable" in r.headers["cache-control"]
     assert "no-cache" in make_client().get("/").headers["cache-control"]
+
+
+def test_people_sharing_one_ip_have_separate_limits(make_client, tight, monkeypatch):
+    a, b = make_client(), make_client()
+    a.cookies.set("cu_session", "session-a"); b.cookies.set("cu_session", "session-b")
+    for _ in range(5):
+        a.get("/api/v1/auth/me")
+    assert a.get("/api/v1/auth/me").status_code == 429
+    assert b.get("/api/v1/auth/me").status_code == 401          # same IP, other person: not affected
+    monkeypatch.setattr(tight, "shield_ip_burst", 3)              # but the per-IP ceiling still caps everyone together
+    monkeypatch.setattr(tight, "shield_ip_rate", 0.5)
+    shield.reset()
+    codes = [make_client().get("/api/v1/auth/me", cookies={"cu_session": f"fake-{i}"}).status_code for i in range(6)]
+    assert 429 in codes

@@ -20,7 +20,8 @@ The owner switches these on in the Cloudflare dashboard (they can't be set from 
 ## Layer 2: the app's own shield (`backend/app/shield.py`, on by default)
 - **Real visitor IP:** behind the tunnel the app uses `CF-Connecting-IP` (`TRUST_CLOUDFLARE_IP=true`). Before this, the login limits used a header a visitor could fake.
 - **Rate limits per IP:**
-  - API: 6 requests/s sustained, bursts up to 180.
+  - API: 10 requests/s sustained per signed-in session (per IP when signed out), bursts up to 300.
+  - Everyone behind one IP together: 60/s, bursts up to 1,500. People sharing an IP (Jio/Airtel mobile, college Wi-Fi) do not slow each other down.
   - Pages: 25/s, bursts up to 400.
   - Over the limit: answers 429 with `Retry-After`.
   - `/api/v1/health` is exempt, for uptime monitors.

@@ -8,6 +8,7 @@
 Everything is in memory (one API process). Limits come from settings (SHIELD_*)."""
 from __future__ import annotations
 
+import hashlib
 import re
 import threading
 import time
@@ -118,8 +119,13 @@ class Shield:
                 cl = request.headers.get("content-length")
                 if cl and cl.isdigit() and int(cl) > s.shield_max_body_bytes:
                     return JSONResponse({"detail": "Request too large"}, status_code=413)
-            wait = (self._take(ip, "api", s.shield_api_rate, s.shield_api_burst) if api
-                    else self._take(ip, "page", s.shield_page_rate, s.shield_page_burst))
+            # Each signed-in session gets its own bucket, so people sharing one IP (mobile carrier NAT, college Wi-Fi)
+            # don't slow each other down; one higher ceiling per IP still stops a flood with made-up cookies.
+            sid = request.cookies.get(s.session_cookie_name, "")
+            who = f"{ip}|{hashlib.sha256(sid.encode()).hexdigest()[:16]}" if sid else ip
+            wait = self._take(ip, "ip", s.shield_ip_rate, s.shield_ip_burst) or (
+                self._take(who, "api", s.shield_api_rate, s.shield_api_burst) if api
+                else self._take(who, "page", s.shield_page_rate, s.shield_page_burst))
             if wait:
                 self.blocked += 1
                 n = self.denials[ip] = self.denials.get(ip, 0) + 1
