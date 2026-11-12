@@ -21,7 +21,7 @@ async function timePage(name, url, ready) {
   rows.push({ what: `Page: ${name}`, ms: total, detail: `first byte ${nav.ttfb ?? "?"} ms · HTML ready ${nav.dcl ?? "?"} ms` });
 }
 
-await timePage("Landing", "/", "text=studio with AI");
+await timePage("Landing", "/", "text=Shoot once.");
 await page.goto(B + "/signup");
 await page.fill("#n", "Speed Bot"); await page.fill("#e", `speed${Date.now()}@example.com`); await page.fill("#p", "speed-password-123");
 let t0 = performance.now();

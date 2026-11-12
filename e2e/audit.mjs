@@ -54,13 +54,16 @@ const setRange = (sel, v) => page.locator(sel).evaluate((el, v) => { Object.getO
 const saved = () => page.waitForFunction(() => document.querySelector(".save-block")?.textContent?.includes("Cloud Saved"), null, { timeout: 15000 });
 
 // ---------------- public pages
-await step("Landing page loads, nav anchors work, live studio counts", async () => {
-  await page.goto(B + "/"); await page.waitForSelector("text=studio with AI");
-  for (const a of ["#workspaces", "#directory", "#status"]) await page.click(`.lp-links a[href="${a}"]`);
+await step("Landing page loads, story scrolls, nav anchors work, live tool counts, search", async () => {
+  await page.goto(B + "/"); await page.waitForSelector("text=Shoot once.");
+  for (const a of ["#story", "#tools", "#pricing"]) await page.click(`.lp-links a[href="${a}"]`);
+  // the story drives the stage from the scroll position: the last chapter must have played after scrolling past it
+  await page.evaluate(() => document.querySelector(".lp-story").scrollIntoView({ block: "end" }));
+  await page.waitForFunction(() => parseFloat(getComputedStyle(document.querySelector(".lp")).getPropertyValue("--c6")) > 0.5);
   // Editor + every studio with at least one live tool (studios with none are hidden until their service is connected)
   const live = (await (await page.request.get(B + "/api/v1/public/studios")).json()).studios.filter((s) => s.live > 0).length;
   await page.waitForFunction((n) => document.querySelectorAll(".lp-dir-row:not(.skel)").length === n, live + 1);
-  await page.click("button[aria-label='Search tools']"); await page.fill("input[aria-label='Search workspaces']", "dub");
+  await page.fill("input[aria-label='Search tools']", "dub");
   await page.waitForFunction(() => document.querySelectorAll(".lp-dir-row").length === 1);
 });
 await step("Sign-up validation shows errors", async () => {
