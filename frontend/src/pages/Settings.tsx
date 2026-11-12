@@ -20,7 +20,7 @@ export default function Settings() {
   return (
     <UniverseShell u={null}>
       <div className="page-h"><h1>Settings</h1></div>
-      <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))", gap: 16, alignItems: "start" }}>
+      <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,320px),1fr))", gap: 16, alignItems: "start" }}>
         <section className="card" style={{ padding: 18 }}>
           <b>Account</b>
           <div className="gb-kv"><span>Name</span><b>{me.user.display_name}</b></div>

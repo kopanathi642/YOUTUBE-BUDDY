@@ -7,6 +7,7 @@ Evidence: `backend/tests/test_editor_flow.py` (pytest, real Postgres + S3 protoc
 
 | Area | Feature | Status | Evidence / notes |
 |---|---|---|---|
+| Writing | Groq Free Plan provider | BLOCKED (live) | Four mocked provider/catalogue tests in test_groq.py pass. Needs GROQ_API_KEY, rebuild and live generation validation. Account must remain on Groq Free Plan. |
 | Auth | Email + password sign-up / sign-in / sign-out | WORKING | `test_auth_and_csrf`, browser E2E |
 | Auth | Argon2 password hashing, hashed session tokens, httpOnly cookie | WORKING | `security.py` |
 | Auth | CSRF defence (custom header + CORS) | WORKING | `test_auth_and_csrf` (403 without header) |

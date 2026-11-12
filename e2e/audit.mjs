@@ -75,7 +75,7 @@ const email = `audit${Date.now()}@example.com`;
 await step("Sign up", async () => {
   await page.fill("#n", "Audit Bot"); await page.fill("#e", email); await page.fill("#p", "audit-password-123");
   await page.click("button:has-text('Create account')"); await page.waitForURL("**/universes"); await page.waitForSelector(".portal");
-  await page.goto(B + "/editor"); await page.waitForSelector(".stat b");
+  await page.goto(B + "/editor"); await page.waitForSelector(".dash-stats b");
 });
 await step("Sign out and sign in again", async () => {
   await page.click(".topbar .btn.ghost:has(.avatar)"); await page.click("text=Sign out"); await page.waitForURL(B + "/");
@@ -83,9 +83,9 @@ await step("Sign out and sign in again", async () => {
   await page.click("button:has-text('Sign in')"); await page.waitForURL("**/universes");
   await page.goto(B + "/editor");
 });
-await step("Dashboard: stats, quick tiles, jobs list render", async () => {
-  await page.waitForSelector(".stat b"); await page.waitForSelector("text=Recent cloud jobs");
-  await page.click(".quick-tile:has-text('Open Project')"); await page.waitForURL("**/projects"); await page.goBack();
+await step("Dashboard: stats, projects link, activity list render", async () => {
+  await page.waitForSelector(".dash-stats b"); await page.waitForSelector("#activity-heading");
+  await page.click(".dash-section-head a:has-text('All projects')"); await page.waitForURL("**/projects"); await page.goBack();
 });
 await step("Projects page: create, search, archive, restore, rename via editor, delete", async () => {
   await page.goto(B + "/projects"); await page.click("button:has-text('New project')");
@@ -461,7 +461,7 @@ await step("Growth: feedback sent, invite link shown, privacy & terms pages", as
 });
 await step("Mobile layout renders editor + dashboard", async () => {
   const m = await browser.newContext({ viewport: { width: 390, height: 844 }, storageState: await ctx.storageState() }); const p = await m.newPage();
-  await p.goto(page.url()); await p.waitForSelector(".ed2 .ed-viewer"); await p.goto(B + "/home"); await p.waitForSelector(".stat"); await m.close();
+  await p.goto(page.url()); await p.waitForSelector(".ed2 .ed-viewer"); await p.goto(B + "/home"); await p.waitForSelector(".dash-stats"); await m.close();
 });
 
 phase = "done";

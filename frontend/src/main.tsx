@@ -12,6 +12,7 @@ import "@fontsource/jetbrains-mono/latin-500.css";
 import "./styles.css";
 import "./editor/editor.css";
 import "./gateway.css";
+import "./experience.css";
 
 captureRef();
 ReactDOM.createRoot(document.getElementById("root")!).render(<React.StrictMode><App /></React.StrictMode>);

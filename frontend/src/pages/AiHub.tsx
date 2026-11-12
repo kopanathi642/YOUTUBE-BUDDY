@@ -28,7 +28,7 @@ function ToolCard({ t }: { t: Tool }) {
 /** /ai-generator — studio hub + global tool search */
 export function AiHub() {
   const { cat } = useCatalogue();
-  const { workspace } = useAuth();
+  const { workspace, me } = useAuth();
   const [q, setQ] = useState("");
   const [recent, setRecent] = useState<Generation[]>([]);
   useEffect(() => { if (workspace) api<Generation[]>(`/workspaces/${workspace.id}/generations?limit=12`).then(setRecent).catch(() => {}); }, [workspace]);
@@ -37,25 +37,26 @@ export function AiHub() {
     <Frame>
       <div className="hub">
         <div className="hub-head">
-          <div><h1><Sparkles size={22} /> AI Generator Universe</h1>
+          <div><h1><Sparkles size={22} /> Your AI creative studio</h1>
             <p className="muted">{cat ? `${cat.studios.length} studios · ${cat.tools.length} tools ready to use` : "Loading tools…"}</p></div>
           {cat && <div className="hub-counts"><span className="st ready"><CheckCircle2 size={12} />{cat.tools.length} ready</span>
             <Link className="btn sm" to="/ai-generator/explore"><Rows3 size={13} />Tool explorer</Link></div>}
         </div>
         <div className="hub-search"><Search size={16} /><input placeholder="Search tools — e.g. thumbnail, dub, captions, slow motion" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search tools" /></div>
         {hits.length > 0 && <div className="tgrid">{hits.map((t) => <ToolCard key={t.id} t={t} />)}</div>}
-        {cat && !cat.keys.fal && <div className="keys-banner"><KeyRound size={16} /><div><b>Hosted AI models are switched off on this server.</b>
+        {cat && q.trim() && hits.length === 0 && <div className="card empty" role="status"><Search size={24} /><b>No tools match “{q}”</b><button className="btn" onClick={() => setQ("")}>Clear search</button></div>}
+        {me?.is_platform_admin && cat && !cat.keys.fal && <div className="keys-banner"><KeyRound size={16} /><div><b>Connect services to enable more tools.</b>
           <span> Video, image, music, lip-sync and 3D generation run on fal.ai (Veo 3.1, Kling 3, Seedance, MiniMax, FLUX, ElevenLabs). Add <code>FAL_KEY</code> in the host's secret settings to turn on {cat.tools.filter((t) => t.status.needs.some((n) => n.startsWith("FAL"))).length} tools.
-            {!cat.keys.llm && <> Writing and strategy tools need <code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code>.</>}{!cat.keys.youtube && <> Channel research needs <code>YOUTUBE_API_KEY</code>.</>}</span></div></div>}
-        <div className="studios">
+            {!cat.keys.llm && <> Writing and strategy tools need <code>GROQ_API_KEY</code>, <code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code>.</>}{!cat.keys.youtube && <> Channel research needs <code>YOUTUBE_API_KEY</code>.</>}</span></div></div>}
+        {!q.trim() && <div className="studios">
           {cat?.studios.map((s) => { const m = STUDIO_META[s.id]; const I = m.icon; const ts = cat.tools.filter((t) => t.studio === s.id); const r = ts.filter((t) => t.status.state === "ready").length; return (
             <Link key={s.id} to={`/ai-generator/studio/${s.id}`} className={`studio-card motif-${m.motif}`} style={{ "--s1": m.c1, "--s2": m.c2 } as CSSProperties}>
               <span className="sc-art" aria-hidden="true"><i /><i /><i /></span>
-              <span className="sc-code">{s.code}</span><I size={22} className="sc-icon" />
+              <I size={22} className="sc-icon" />
               <b>{s.name}</b><p>{s.tagline}</p>
-              <span className="sc-foot"><span className="sc-meter"><i style={{ width: `${(r / ts.length) * 100}%` }} /></span>{r}/10 ready<ArrowRight size={14} /></span>
+              <span className="sc-foot">{r} tools available<ArrowRight size={14} /></span>
             </Link>); })}
-        </div>
+        </div>}
         {recent.length > 0 && <><h3 className="hub-h">Recent generations</h3><div className="recent">{recent.map((g) => (
           <Link key={g.id} to={`/ai-generator/tool/${g.tool_id}`} className="recent-item"><Thumb a={g.outputs[0]} size={120} /><b className="ellipsis">{g.tool_name}</b><span className="dim small">v{g.version} · {g.status}</span></Link>))}</div></>}
       </div>

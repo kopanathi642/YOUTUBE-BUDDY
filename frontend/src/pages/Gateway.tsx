@@ -5,6 +5,7 @@ import { api, ExportRec, Job, Project, timeAgo } from "../api";
 import { useAuth, useToast } from "../App";
 import GlobalBar, { jobLabel } from "../components/GlobalBar";
 import { UNIVERSES, Universe } from "../universes";
+import { StoryLandscape } from "../components/CreatorStory";
 
 const reducedMotion = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -132,9 +133,11 @@ export default function Gateway() {
       <div className="gw-glow" aria-hidden />
       <GlobalBar sub="UNIVERSE GATEWAY" />
       <main className="gw-main">
-        <div className="gw-head">
-          <h1>Choose your universe{me ? `, ${me.user.display_name.split(" ")[0]}` : ""}</h1>
-          <p className="muted">Each universe is its own workspace. Your projects, media and jobs travel with you.</p>
+        <div className="gw-head gw-story-head">
+          <div className="gw-story-art"><StoryLandscape /></div>
+          <div className="gw-story-copy"><p className="gw-story-eyebrow">YOUR NEXT CHAPTER</p>
+          <h1>What will you create{me ? `, ${me.user.display_name.split(" ")[0]}` : ""}?</h1>
+          <p className="muted">Choose your universe. Give your next story a place to begin.</p></div>
         </div>
         <div className="gw-stage" style={{ transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}>
           {UNIVERSES.map((u, i) => {

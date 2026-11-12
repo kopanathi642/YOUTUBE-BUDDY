@@ -41,8 +41,10 @@ export function UserMenu() {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const h = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const escape = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
     document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
+    document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("mousedown", h); document.removeEventListener("keydown", escape); };
   }, []);
   if (!me) return null;
   const initials = me.user.display_name.split(/\s+/).map((s) => s[0]).join("").slice(0, 2).toUpperCase();
@@ -82,9 +84,9 @@ export default function Shell({ children }: { children: ReactNode }) {
       <header className="topbar">
         <Brand />
         <nav className="topnav" aria-label="Primary">
-          <NavLink to="/editor"><Home size={17} />Home</NavLink>
+          <NavLink to="/editor" end><Home size={17} />Home</NavLink>
           <NavLink to="/editor/projects"><FolderOpen size={17} />Projects</NavLink>
-          <NavLink to="/editor/projects?open=edit"><Scissors size={17} />Edit</NavLink>
+          <Link to="/editor/projects?open=edit"><Scissors size={17} />Edit</Link>
           {[["AI", Wand2], ["Color", Palette], ["Audio", AudioLines], ["Fusion", Workflow], ["Graphics", Type]].map(([l, I]: any) => (
             <Link key={l} to="/editor/projects?open=edit" title={`${l} tools are inside the editor — open a project`}><I size={17} />{l}</Link>
           ))}
@@ -100,17 +102,18 @@ export default function Shell({ children }: { children: ReactNode }) {
           <Link to="/super" className="universe"><Atom size={16} />Super Universe<Lock size={12} style={{ marginLeft: "auto", opacity: .7 }} aria-label="locked" /></Link>
         </div>
         <div className="side-h">Workspace</div>
-        <NavLink className={({ isActive }) => `side-link ${isActive ? "active" : ""}`} to="/editor"><Home size={17} />Dashboard</NavLink>
+        <NavLink className={({ isActive }) => `side-link ${isActive ? "active" : ""}`} to="/editor" end><Home size={17} />Dashboard</NavLink>
         <NavLink className={({ isActive }) => `side-link ${isActive ? "active" : ""}`} to="/editor/projects" end><FolderOpen size={17} />Projects</NavLink>
-        <NavLink className="side-link" to="/editor/projects?open=edit"><Film size={17} />Video Editing</NavLink>
-        <NavLink className="side-link" to="/editor/projects?open=export"><Download size={17} />Export & Share</NavLink>
+        <Link className="side-link" to="/editor/projects?open=edit"><Film size={17} />Video Editing</Link>
+        <Link className="side-link" to="/editor/projects?open=export"><Download size={17} />Export & Share</Link>
         <NavLink className="side-link" to="/library"><LibraryIcon size={17} />Asset library</NavLink>
-        <div className="side-h hide-m">Inside the editor</div>
+        <details className="side-tool-group hide-m"><summary>Inside the editor</summary>
         {EDITOR_TOOLS.map(({ label, icon: I }) => (
           <Link key={label} to="/editor/projects?open=edit" className="side-link hide-m" title="Open a project to use this tool">
             <I size={17} />{label}
           </Link>
         ))}
+        </details>
       </aside>
       <main className="main">{children}</main>
     </div>

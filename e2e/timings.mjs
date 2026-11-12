@@ -27,7 +27,7 @@ await page.fill("#n", "Speed Bot"); await page.fill("#e", `speed${Date.now()}@ex
 let t0 = performance.now();
 await page.click("button:has-text('Create account')"); await page.waitForURL("**/universes"); await page.waitForSelector(".portal");
 rows.push({ what: "Sign up → universes", ms: ms(t0) });
-await timePage("Editor home", "/editor", ".stat b");
+await timePage("Editor home", "/editor", ".dash-stats b");
 await timePage("AI Generator", "/ai-generator", ".aiw");
 await timePage("Growth", "/growth", "h1, h2");
 await timePage("Projects", "/projects", "button:has-text('New project')");

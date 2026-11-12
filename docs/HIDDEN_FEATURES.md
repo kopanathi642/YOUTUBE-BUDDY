@@ -4,6 +4,11 @@ Only features that work right now are shown in the app. Everything below is **bu
 or a model, and **reappears automatically** as soon as that key is added in the hosting settings (no code change).
 Two items are not built yet.
 
+Groq writing support (2026-11-11): `GROQ_API_KEY` enables the language-model tools and takes
+priority over local Qwen, Claude and OpenAI. `GROQ_MODEL` defaults to `openai/gpt-oss-20b`.
+Use a Groq Free Plan account. These runs bypass premium credits and stop on quota errors,
+with no fallback to a paid provider. Live quality and connectivity await an account key and deployment.
+
 ## Editor Universe
 | Feature | Shows again when | Cost |
 |---|---|---|

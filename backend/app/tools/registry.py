@@ -132,7 +132,7 @@ def fal(models, note=None, **kw):
     return {"type": "fal", "models": models, "note": note or "Hosted model on fal.ai — billed per use", **kw}
 
 
-def llm(task, note="Language model (Claude or OpenAI)", **kw):
+def llm(task, note="Language model (Groq, Claude, OpenAI or local)", **kw):
     return {"type": "llm", "task": task, "note": note, **kw}
 
 
@@ -586,7 +586,7 @@ LOCAL_LLM_TOOLS_DEFAULT = "052,054,055,056,057,059"
 
 
 def local_llm_only() -> bool:
-    return bool(os.environ.get("LLM_BASE_URL")) and not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY"))
+    return bool(os.environ.get("LLM_BASE_URL")) and not (os.environ.get("GROQ_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY"))
 
 
 def local_llm_tools() -> set[str]:
@@ -595,11 +595,11 @@ def local_llm_tools() -> set[str]:
 
 def keys() -> dict:
     return {"fal": bool(os.environ.get("FAL_KEY")),
-            "llm": bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_BASE_URL")),
+            "llm": bool(os.environ.get("GROQ_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_BASE_URL")),
             "youtube": bool(os.environ.get("YOUTUBE_API_KEY"))}
 
 
-NEEDS_TEXT = {"fal": "FAL_KEY (fal.ai account — pay per generation)", "llm": "ANTHROPIC_API_KEY or OPENAI_API_KEY",
+NEEDS_TEXT = {"fal": "FAL_KEY (fal.ai account — pay per generation)", "llm": "GROQ_API_KEY, ANTHROPIC_API_KEY or OPENAI_API_KEY",
               "youtube": "YOUTUBE_API_KEY (free Google Cloud key)"}
 
 

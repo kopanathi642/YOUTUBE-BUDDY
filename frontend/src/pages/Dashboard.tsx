@@ -1,16 +1,23 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, FolderOpen, HardDrive, Activity, Film, Mic, Captions, Eraser, Languages, Image } from "lucide-react";
+import { Plus, ArrowUpRight, FolderOpen, HardDrive, Activity, Film, Mic, Captions, Eraser, Languages, Image, Sparkles } from "lucide-react";
 import { api, fmtBytes, Job, Project, timeAgo } from "../api";
 import { useAuth } from "../App";
 import { NewProjectModal, ProjectCard } from "./Projects";
 import { jobLabel } from "../components/GlobalBar";
+import { useCatalogue } from "../ai/core";
 
 type Summary = { projects: number; media_count: number; storage_bytes: number; active_jobs: number };
-
+const shortcuts = [
+  { label: "AI voice", icon: Mic, to: "/ai-generator/tool/041", description: "Turn text into speech" },
+  { label: "Translate & dub", icon: Languages, to: "/ai-generator/tool/104", description: "Reach another language" },
+  { label: "Captions", icon: Captions, to: "/ai-generator/tool/101", description: "Make every word clear" },
+  { label: "Remove background", icon: Eraser, to: "/ai-generator/tool/023", description: "Focus on your subject" },
+];
 
 export default function Dashboard() {
   const { me, workspace } = useAuth();
+  const { cat } = useCatalogue();
   const [sum, setSum] = useState<Summary | null>(null);
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -30,55 +37,54 @@ export default function Dashboard() {
   }, [workspace]);
   useEffect(() => { load(); const t = setInterval(load, 5000); return () => clearInterval(t); }, [load]);
 
-  const canEdit = workspace?.role !== "viewer";
+  const canEdit = !!workspace && workspace.role !== "viewer";
+  const availableShortcuts = shortcuts.filter((shortcut) => cat?.tools.some((tool) => shortcut.to.endsWith(`/${tool.id}`)));
   return (
-    <>
-      <div className="page-h">
-        <div><h1>Welcome back, {me?.user.display_name.split(" ")[0]} 👋</h1><div className="muted">What would you like to create today?</div></div>
-        {canEdit && <button className="btn primary" onClick={() => setCreating(true)}><Plus size={16} />New project</button>}
+    <div className="dashboard">
+      <header className="dash-heading">
+        <div><p className="dash-eyebrow">Your workspace</p><h1>Welcome back, {me?.user.display_name.split(" ")[0]}.</h1><p className="muted">Pick up your next great video.</p></div>
+        <Link className="btn ghost" to="/library"><Image size={17} />Asset library</Link>
+      </header>
+      {err && <div className="error-box" role="alert">{err} <button className="btn sm" onClick={load}>Retry</button></div>}
+      <section className="dash-start" aria-label="Start creating">
+        <div className="dash-start-copy">
+          <span className="dash-feature-icon"><Film size={26} /></span>
+          <div><h2>Make something worth watching.</h2><p>Bring your clips together. Find your story. Make it yours.</p></div>
+          {canEdit && <button className="btn primary lg" onClick={() => setCreating(true)}><Plus size={18} />New project</button>}
+        </div>
+        <Link className="dash-ai-link" to="/ai-generator"><Sparkles size={24} /><span><b>Create with AI</b><small>Explore your available tools</small></span><ArrowUpRight size={20} /></Link>
+      </section>
+      <div className="dash-stats" aria-label="Workspace overview">
+        <div><FolderOpen size={18} /><span><b>{sum?.projects ?? "—"}</b><small>Projects</small></span></div>
+        <div><Film size={18} /><span><b>{sum?.media_count ?? "—"}</b><small>Media files</small></span></div>
+        <div><HardDrive size={18} /><span><b>{sum ? fmtBytes(sum.storage_bytes) : "—"}</b><small>Storage used</small></span></div>
+        <div><Activity size={18} /><span><b>{sum?.active_jobs ?? "—"}</b><small>Jobs running</small></span></div>
       </div>
-      {err && <div className="error-box" style={{ marginBottom: 16 }}>{err}</div>}
-
-      <div className="quick" style={{ marginBottom: 22 }}>
-        <button className="quick-tile" onClick={() => setCreating(true)} disabled={!canEdit}><span className="qi"><Film size={22} /></span><b>New Project</b><span className="dim" style={{ fontSize: 12 }}>Video editing</span></button>
-        <Link className="quick-tile" to="/editor/projects"><span className="qi"><FolderOpen size={22} /></span><b>Open Project</b><span className="dim" style={{ fontSize: 12 }}>Continue editing</span></Link>
-        {[["AI Voice", Mic, "/ai-generator/tool/041", "Text to speech"], ["Translate & Dub", Languages, "/ai-generator/tool/104", "AI Generator"], ["Captions", Captions, "/ai-generator/tool/101", "Speech to text"], ["Remove background", Eraser, "/ai-generator/tool/023", "AI Generator"], ["Asset library", Image, "/library", "All your media"]].map(([l, I, to, sub]: any) => (
-          <Link key={l} className="quick-tile" to={to}><span className="qi"><I size={22} /></span><b>{l}</b><span className="dim" style={{ fontSize: 12 }}>{sub}</span></Link>
-        ))}
-      </div>
-
-      <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", marginBottom: 22 }}>
-        <div className="card stat"><span className="muted row"><FolderOpen size={15} />Active projects</span><b>{sum?.projects ?? "—"}</b></div>
-        <div className="card stat"><span className="muted row"><Film size={15} />Media files</span><b>{sum?.media_count ?? "—"}</b></div>
-        <div className="card stat"><span className="muted row"><HardDrive size={15} />Cloud storage used</span><b>{sum ? fmtBytes(sum.storage_bytes) : "—"}</b></div>
-        <div className="card stat"><span className="muted row"><Activity size={15} />Jobs running</span><b>{sum?.active_jobs ?? "—"}</b></div>
-      </div>
-
-      <div className="grid" style={{ gridTemplateColumns: "minmax(0,2fr) minmax(280px,1fr)", alignItems: "start" }} id="dash-cols">
-        <section className="card" style={{ padding: 18 }}>
-          <div className="row" style={{ marginBottom: 14 }}><h3 style={{ margin: 0 }} className="grow">Recent projects</h3><Link to="/editor/projects" className="btn sm ghost">View all</Link></div>
-          {!projects && <div className="proj-grid">{[0, 1, 2].map((i) => <div key={i} className="skeleton" style={{ height: 170 }} />)}</div>}
-          {projects?.length === 0 && <div className="empty"><div>No projects yet — create one to start editing.</div></div>}
-          {projects && projects.length > 0 && <div className="proj-grid">{projects.map((p) => <ProjectCard key={p.id} p={p} />)}</div>}
+      <div className="dash-columns">
+        <section aria-labelledby="recent-projects-heading">
+          <div className="dash-section-head"><h2 id="recent-projects-heading">Continue creating</h2><Link to="/editor/projects">All projects <ArrowUpRight size={16} /></Link></div>
+          {!projects && !err && <div className="proj-grid" aria-label="Loading projects">{[0, 1].map((i) => <div key={i} className="skeleton dash-project-skeleton" />)}</div>}
+          {projects?.length === 0 && <div className="card empty dash-empty"><FolderOpen size={34} /><h3>Your next story starts here</h3><p>Create a project, then add your footage to the timeline.</p>{canEdit && <button className="btn primary" onClick={() => setCreating(true)}><Plus size={16} />Create a project</button>}</div>}
+          {!!projects?.length && <div className="proj-grid">{projects.map((p) => <ProjectCard key={p.id} p={p} />)}</div>}
         </section>
-        <section className="card" style={{ padding: 18 }}>
-          <h3 style={{ margin: "0 0 14px" }}>Recent cloud jobs</h3>
-          {jobs.length === 0 && <div className="dim" style={{ fontSize: 13 }}>Uploads and exports you start will show here with their live status.</div>}
-          <div className="grid" style={{ gap: 12 }}>
-            {jobs.map((j) => (
-              <div key={j.id}>
-                <div className="row" style={{ fontSize: 13 }}>
-                  <span className="grow">{jobLabel(j.kind)}</span>
-                  <span className={`badge ${j.status === "succeeded" ? "ok" : j.status === "failed" ? "err" : j.status === "canceled" ? "" : "info"}`}>{j.status}</span>
-                </div>
-                {(j.status === "running" || j.status === "queued") && <div className="progress" style={{ marginTop: 6 }}><i style={{ width: `${Math.round(j.progress * 100)}%` }} /></div>}
-                <div className="dim" style={{ fontSize: 11.5, marginTop: 3 }}>{j.stage ?? ""} {timeAgo(j.created_at)}</div>
-              </div>
-            ))}
-          </div>
+        <section className="dash-activity card" aria-labelledby="activity-heading">
+          <div className="dash-section-head"><h2 id="activity-heading">Activity</h2><Activity size={17} /></div>
+          {!sum && !err && <div className="skeleton dash-job-skeleton" aria-label="Loading activity" />}
+          {sum && jobs.length === 0 && <div className="dash-activity-empty"><Activity size={28} /><b>You're all caught up</b><p>Your uploads and exports will appear here.</p></div>}
+          {jobs.map((j) => (
+            <div key={j.id} className="dash-job">
+              <div className="row"><span className="grow">{jobLabel(j.kind)}</span><span className={`badge ${j.status === "succeeded" ? "ok" : j.status === "failed" ? "err" : j.status === "canceled" ? "" : "info"}`}>{j.status}</span></div>
+              {(j.status === "running" || j.status === "queued") && <div className="progress" role="progressbar" aria-label={jobLabel(j.kind)} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(j.progress * 100)}><i style={{ width: `${Math.round(j.progress * 100)}%` }} /></div>}
+              <p className="dim">{j.stage} · {timeAgo(j.created_at)}</p>
+            </div>
+          ))}
         </section>
       </div>
+      {availableShortcuts.length > 0 && <section aria-labelledby="quick-tools-heading">
+        <div className="dash-section-head"><h2 id="quick-tools-heading">Finishing touches</h2><Link to="/ai-generator">Explore tools <ArrowUpRight size={16} /></Link></div>
+        <div className="dash-tools">{availableShortcuts.map(({ label, icon: Icon, to, description }) => <Link key={to} to={to} className="dash-tool"><span><Icon size={21} /></span><div><b>{label}</b><small>{description}</small></div><ArrowUpRight size={16} /></Link>)}</div>
+      </section>}
       {creating && <NewProjectModal onClose={() => setCreating(false)} />}
-    </>
+    </div>
   );
 }

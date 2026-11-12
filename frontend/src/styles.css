@@ -10,16 +10,16 @@
 @font-face { font-family: "CU Malayalam"; src: url("/fonts/NotoSansMalayalam-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
 @font-face { font-family: "CU Arabic"; src: url("/fonts/NotoSansArabic-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
 :root {
-  --bg: #05061a;
-  --bg-2: #090b24;
-  --panel: #0d1033;
-  --panel-2: #12164a;
-  --panel-3: #181d5c;
-  --line: rgba(139, 125, 255, 0.18);
-  --line-strong: rgba(168, 120, 255, 0.45);
-  --text: #eef0ff;
-  --text-2: #b4b8e6;
-  --text-3: #8a8fc4;  /* ≥ 4.9:1 on every panel colour (WCAG AA) */
+  --bg: #0b0d13;
+  --bg-2: #10131c;
+  --panel: #151923;
+  --panel-2: #1c2130;
+  --panel-3: #272e40;
+  --line: rgba(177, 188, 216, 0.14);
+  --line-strong: rgba(167, 139, 250, 0.5);
+  --text: #f3f4fc;
+  --text-2: #b8bfd2;
+  --text-3: #98a2bb;
   --violet: #8b5cf6;
   --purple: #a855f7;
   --magenta: #d946ef;
@@ -28,9 +28,9 @@
   --green: #22c55e;
   --amber: #f59e0b;
   --red: #f43f5e;
-  --grad: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #d946ef 100%);
+  --grad: linear-gradient(125deg, #7353e5, #9565ef);
   --grad-cool: linear-gradient(135deg, #22d3ee 0%, #6366f1 60%, #a855f7 100%);
-  --glow: 0 0 0 1px rgba(168, 85, 247, 0.55), 0 0 18px rgba(168, 85, 247, 0.35);
+  --glow: 0 0 0 1px rgba(167, 139, 250, 0.3), 0 6px 22px rgba(115, 83, 229, 0.14);
   --r-sm: 6px; --r: 10px; --r-lg: 14px;
   --font: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, monospace;

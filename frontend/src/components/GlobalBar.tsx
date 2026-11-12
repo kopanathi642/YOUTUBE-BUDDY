@@ -84,8 +84,7 @@ export default function GlobalBar({ sub, right }: { sub?: string; right?: ReactN
       </Pop>
       <Pop icon={<Gauge size={17} />} label="Usage">
         <b>Credits &amp; usage</b>
-        <div className="gb-kv"><span>Plan</span><b>Early access</b></div>
-        <div className="gb-kv"><span>Cloud renders &amp; AI</span><b>Free during early access</b></div>
+        <div className="gb-kv"><span>Plan</span><b>{workspace?.plan ?? "Free"}</b></div>
         <div className="gb-kv"><span>Storage used</span><b>{sum ? fmtBytes(sum.storage_bytes) : "—"}</b></div>
         <div className="gb-kv"><span>Media files</span><b>{sum?.media_count ?? "—"}</b></div>
         <div className="gb-kv"><span>Jobs running</span><b>{sum?.active_jobs ?? "—"}</b></div>

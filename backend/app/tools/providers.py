@@ -135,12 +135,36 @@ def llm_local() -> bool:
 
 
 def llm_ready() -> bool:
-    return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY") or llm_local())
+    return bool(os.environ.get("GROQ_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY") or llm_local())
 
 
 def llm_json(system: str, user: str, max_tokens: int = 4000) -> tuple[dict, str]:
     """Ask for one JSON object. Returns (parsed, model_name)."""
-    if llm_local():
+    if os.environ.get("GROQ_API_KEY"):
+        model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
+        base = os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1").rstrip("/")
+        try:
+            r = httpx.post(f"{base}/chat/completions", timeout=180,
+                           headers={"Authorization": f"Bearer {os.environ['GROQ_API_KEY']}"},
+                           json={"model": model, "max_completion_tokens": max_tokens,
+                                 "response_format": {"type": "json_object"},
+                                 "messages": [{"role": "system", "content": system + "\nReply with one JSON object."},
+                                              {"role": "user", "content": user}]})
+        except httpx.HTTPError as e:
+            raise ProviderError("Groq is temporarily unreachable. Please try again later.") from e
+        if r.status_code in (401, 403):
+            raise ProviderError("Groq rejected access. Check GROQ_API_KEY and the account's model permissions.")
+        if r.status_code == 429:
+            raise ProviderError("Groq's usage limit has been reached. Please try again after your quota resets.")
+        if r.status_code >= 400:
+            raise ProviderError(f"Groq request failed (HTTP {r.status_code}). Check GROQ_MODEL or try again later.")
+        try:
+            text = r.json()["choices"][0]["message"]["content"]
+        except (ValueError, KeyError, IndexError, TypeError) as e:
+            raise ProviderError("Groq returned an unreadable response. Please try again.") from e
+        if not isinstance(text, str):
+            raise ProviderError("Groq returned an unreadable response. Please try again.")
+    elif llm_local():
         model = os.environ.get("LLM_LOCAL_MODEL", "local")
         base = os.environ["LLM_BASE_URL"].rstrip("/")
         try:
@@ -174,7 +198,7 @@ def llm_json(system: str, user: str, max_tokens: int = 4000) -> tuple[dict, str]
             raise ProviderError(f"Language model error {r.status_code}: {_err_text(r)}")
         text = r.json()["choices"][0]["message"]["content"]
     else:
-        raise ProviderError("This tool needs a language model key (ANTHROPIC_API_KEY or OPENAI_API_KEY) on the server")
+        raise ProviderError("This tool needs a language model key (GROQ_API_KEY, ANTHROPIC_API_KEY or OPENAI_API_KEY) on the server")
     return parse_json(text), model
 
 

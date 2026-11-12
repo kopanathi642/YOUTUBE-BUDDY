@@ -213,10 +213,16 @@ def run(project_id: uuid.UUID, tool_id: str, body: RunIn, request: Request, user
             os.environ.get("YOUTUBE_API_KEY") and (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY"))):
         paid = False   # runs from public feeds on our worker
     from ..tools.providers import llm_local
-    hosted_llm = bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY"))
+    hosted_llm = bool(os.environ.get("GROQ_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY"))
+    # GROQ_API_KEY is configured with a Groq Free Plan account. Preserve paid-media checks.
+    if os.environ.get("GROQ_API_KEY") and not premium:
+        engine = t["engine"]
+        if engine["type"] in ("llm", "youtube") or (
+                engine["type"] in ("local", "pipeline") and set(engine.get("needs", [])) <= {"llm", "youtube"}):
+            paid = False
     if t["engine"]["type"] == "local" and t["engine"].get("needs") and not premium and llm_local() and not hosted_llm:
         paid = False   # free transcript + self-hosted language model
-    if t["engine"]["type"] == "llm" and llm_local() and not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY")):
+    if t["engine"]["type"] == "llm" and llm_local() and not hosted_llm:
         paid = False   # self-hosted writing model: no per-run bill, so it doesn't use the plan's premium credit
         langs = {x.strip() for x in os.environ.get("LLM_LOCAL_LANGS", "en").split(",") if x.strip()} | {"auto"}
         if (params.get("language") or "en") not in langs:
