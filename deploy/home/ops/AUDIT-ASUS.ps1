@@ -1,6 +1,6 @@
 # YouTube Buddy X - ASUS read-only audit. Changes NOTHING: it only reads settings and writes this report.
 # Run: right-click this file -> "Run with PowerShell"  (or: powershell -ExecutionPolicy Bypass -File AUDIT-ASUS.ps1)
-# It never reads .env, passwords or keys.
+# It prints no passwords or keys. It opens deploy\home\.env only to print the single line COMPOSE_PROFILES=... (not a secret).
 $out = Join-Path $PSScriptRoot "audit-asus-report.txt"
 function S($t){ "`n===== $t =====" }
 & {

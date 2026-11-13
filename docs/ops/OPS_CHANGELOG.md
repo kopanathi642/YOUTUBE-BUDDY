@@ -6,6 +6,7 @@ Rule: nothing on the ASUS changes without a written plan, a verified backup and 
 
 | When (IST) | Machine | Type | What | Result | Rollback |
 |---|---|---|---|---|---|
+| 2026-11-13 17:05 | ASUS | read-only | Reviewed AUDIT-ASUS.ps1 line by line for you. Fixed one inaccurate comment (it said it never reads .env; it opens .env only to print the COMPOSE_PROFILES line). Laptop copy and repo copy identical, SHA-256 d9f1406fd6f97205aec42ca03c38002054b1c2308950f9ad97fd01dc947fa242. | Waiting for you to run it | Delete the folder |
 | 2026-11-13 14:00 | ASUS | read-only | Wrote `Downloads\youtubebuddy-audit\AUDIT-ASUS.ps1` (outside the repo). It only reads: disks, volumes, power/lid, Docker status/stats/volumes/log config, the value of `COMPOSE_PROFILES` (not a secret), Tailscale presence, scheduled tasks, network adapters, Windows Update hours. | Waiting for you to run it | Delete the folder |
 | 2026-11-13 13:50 | ASUS | read-only | Tried to read drives/power on screen. Computer Management (mmc.exe) can't be granted to screen control and covered the screen. | Stopped; switched to the audit script. **Computer Management may still be open on the ASUS; close it.** | None needed |
 | 2026-11-13 13:45 | ASUS | read-only | `.env`: checked only whether values are empty. LLM_BASE_URL set (15 chars), COMPOSE_PROFILES set (3 chars), GROQ_API_KEY **empty**, GROQ_MODEL set. | The writing tools depend on the ASUS `llm` container today. **Do not disable it until the HP serves them.** | n/a |
