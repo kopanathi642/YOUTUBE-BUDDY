@@ -1,0 +1,139 @@
+{
+  "model": "brain/checkpoints/planner-scratch-v0",
+  "adapter": null,
+  "test_records": 400,
+  "seconds": 150,
+  "model_metrics": {
+    "n": 400,
+    "parsed": 0.42,
+    "executable": 0.1225,
+    "duration_ok": 0.0175,
+    "lock_ok": 0.1025,
+    "quality_ok": 0.0625,
+    "pacing_ok": 0.07,
+    "transition_ok": 0.1225,
+    "grade_ok": 0.1225,
+    "music_ok": 0.1225,
+    "fully_valid": 0.01,
+    "mean_duration_err_s": 5.755,
+    "mean_shot_iou_vs_reference": 0.158
+  },
+  "naive_baseline_metrics": {
+    "n": 400,
+    "parsed": 1.0,
+    "executable": 1.0,
+    "duration_ok": 1.0,
+    "lock_ok": 0.7925,
+    "quality_ok": 0.3275,
+    "pacing_ok": 0.0075,
+    "transition_ok": 0.8775,
+    "grade_ok": 0.1375,
+    "music_ok": 0.5525,
+    "fully_valid": 0.29,
+    "mean_duration_err_s": 0.0,
+    "mean_shot_iou_vs_reference": 0.138
+  },
+  "label_ceiling": "rule planner = 1.0 on every metric by construction (labels are filtered to be valid)",
+  "samples": [
+    {
+      "id": "test-00000",
+      "brief": "Edit my Goa beach trip footage into a 30s Short. Keep it nostalgic.",
+      "output": "S A1 0.1 2.0 cut\nS A1 0.0 4.5 fadeblack\nS A1 4.0 4.5 fadeblack\nS A1 16.0 4.0 fadeblack\nS A1 26.0 4.0 fadeblack\nS A2 16.0 4.0 fadeblack\nS A2 26.0 5.0 fadeblack\nS A3 0.1 5.1 fadeblack\nG warm\n<END>",
+      "score": {
+        "parsed": true,
+        "executable": false,
+        "duration_ok": false,
+        "lock_ok": false,
+        "quality_ok": false,
+        "pacing_ok": false,
+        "transition_ok": false,
+        "grade_ok": false,
+        "music_ok": false,
+        "fully_valid": false,
+        "duration_err_s": null,
+        "shot_iou": null,
+        "error": "execute: shot 3: 16.0-4.0 outside A1 (0-46.2)"
+      }
+    },
+    {
+      "id": "test-00001",
+      "brief": "Make a cheerful 25-second square post about my Kerala backwaters.",
+      "output": "S A1 0.1 2.1 cut\nS A1 0.0 2.0 slideleft\nS A1 21.0 2.0 slideleft\nS A1 26.0 2.0 slideleft\nS A1 30.0 3.0 slideleft\nS A1 30.1 slideleft\nS A1 39.1 51.1 slideleft\nS A1 51.1 51.1 slideleft\nS A1 59.1 59.1 slideleft\nS A1 59.1 slideleft\nS A1 59.1 slideleft\nS A1 51.1 slideleft\nS A1 59.1 59.1 slideleft\nM M1 0.5\nG bright\n<END>",
+      "score": {
+        "parsed": false,
+        "executable": false,
+        "duration_ok": false,
+        "lock_ok": false,
+        "quality_ok": false,
+        "pacing_ok": false,
+        "transition_ok": false,
+        "grade_ok": false,
+        "music_ok": false,
+        "fully_valid": false,
+        "duration_err_s": null,
+        "shot_iou": null,
+        "error": "parse: unrecognised plan line: 'S A1 30.1 slideleft'"
+      }
+    },
+    {
+      "id": "test-00002",
+      "brief": "Edit my cricket match with friends footage into a 10s square post. Keep it hype.",
+      "output": "S A1 0.1 2.0 cut\nS A1 0.0 4.0 cut\nS A1 6.0 4.5 cut\nS A1 26.0 6.5 cut\nS A1 26.0 6.0 cut\nS A2 17.0 6.0 cut\nS A2 17.0 6.0 cut\nM M1 0.5\nG punchy\n<END>",
+      "score": {
+        "parsed": true,
+        "executable": false,
+        "duration_ok": false,
+        "lock_ok": false,
+        "quality_ok": false,
+        "pacing_ok": false,
+        "transition_ok": false,
+        "grade_ok": false,
+        "music_ok": false,
+        "fully_valid": false,
+        "duration_err_s": null,
+        "shot_iou": null,
+        "error": "execute: shot 2: 6.0-4.5 outside A1 (0-72.4)"
+      }
+    },
+    {
+      "id": "test-00003",
+      "brief": "Make a high-energy 15-second landscape video about my unboxing a new phone. Start with the shot from A1 at 22.1s.",
+      "output": "S A1 0.1 2.0 cut\nS A1 0.0 2.0 cut\nS A1 2.0 4.0 cut\nS A1 2.0 4.0 cut\nS A1 11.0 4.5 cut\nS A1 17.7 6.7 cut\nS A1 17.7 17.7 cut\nS A1 26.7 26.7 cut\nM M1 0.7\nG punchy\n<END>",
+      "score": {
+        "parsed": true,
+        "executable": false,
+        "duration_ok": false,
+        "lock_ok": false,
+        "quality_ok": false,
+        "pacing_ok": false,
+        "transition_ok": false,
+        "grade_ok": false,
+        "music_ok": false,
+        "fully_valid": false,
+        "duration_err_s": null,
+        "shot_iou": null,
+        "error": "execute: shot 4: 11.0-4.5 outside A1 (0-79.3)"
+      }
+    },
+    {
+      "id": "test-00004",
+      "brief": "Edit my city night drive footage into a 10s Reel. Keep it thriller-style.",
+      "output": "S A1 0.1 2.1 cut\nS A1 0.1 2.1 cut\nS A1 3.1 2.1 cut\nS A1 6.1 26.1 cut\nS A1 26.1 26.1 cut\nM M1 0.7\nG cool_dark\n<END>",
+      "score": {
+        "parsed": true,
+        "executable": false,
+        "duration_ok": false,
+        "lock_ok": false,
+        "quality_ok": false,
+        "pacing_ok": false,
+        "transition_ok": false,
+        "grade_ok": false,
+        "music_ok": false,
+        "fully_valid": false,
+        "duration_err_s": null,
+        "shot_iou": null,
+        "error": "execute: shot 2: 3.1-2.1 outside A1 (0-64.6)"
+      }
+    }
+  ]
+}

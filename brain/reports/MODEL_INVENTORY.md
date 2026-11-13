@@ -29,3 +29,15 @@ None of section B is fine-tuned. `docs/FINE_TUNING_PLAN.md` (speech) is a plan o
 ## C. Second repository `kopanathi642/youtubebuddy`
 Older separate app (Next.js + FastAPI, LangGraph). Calls Ollama, Groq, Gemini, OpenRouter, SDXL and Whisper through providers.
 **No training code, datasets, checkpoints or adapters.** Its `AI_PRODUCTION_SETUP.md` describes fine-tuning options only as text.
+
+## Update 2026-11-13 — planner-scratch-v0 (Stage B0) result
+
+| Field | Value |
+|---|---|
+| Status | **Trained, evaluated, FAILED the quality bar. Not verified. Not for app use.** |
+| Weights | `brain/checkpoints/planner-scratch-v0/model.safetensors` (2,178,432 params, sha256 in TRAINING_MANIFEST.json) |
+| Training | CPU, 5,994 synth_v0 examples, 3 epochs, 66 min; val loss 1.415 → 1.222 → 1.137 |
+| Held-out test (400 briefs) | parsed 42%, executable 12%, **fully valid 1%** (naive baseline 29%) — `EVAL_REPORT.json` |
+| Fresh-process check | hashes OK, weights finite, reload OK; inference 0/50 fully valid → `verified: false` — `VERIFICATION.json` |
+| Why it failed | A 2M-param model trained from scratch learned the plan's structure, transitions and grades, but not to write valid numbers (e.g. `S A1 16.0 4.0` = end before start). |
+| Next | (1) Change the output from free-typed seconds to choosing candidate segments by id, with the executor computing times — a far easier task; (2) LoRA on a pretrained Qwen (GPU, `brain/kaggle/`). |

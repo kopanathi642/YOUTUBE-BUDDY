@@ -1,0 +1,33 @@
+{
+  "folder": "brain/checkpoints/planner-scratch-v0",
+  "pid": 916,
+  "checked_at": "2026-11-13T07:43:08Z",
+  "checks": {
+    "file_hashes": {
+      "files": 6,
+      "problems": {}
+    },
+    "weights": {
+      "file": "model.safetensors",
+      "tensors": 52,
+      "params": 2178432,
+      "all_finite": true
+    },
+    "fresh_process_inference": {
+      "n": 50,
+      "parsed": 0.36,
+      "executable": 0.18,
+      "duration_ok": 0.02,
+      "lock_ok": 0.18,
+      "quality_ok": 0.1,
+      "pacing_ok": 0.1,
+      "transition_ok": 0.18,
+      "grade_ok": 0.18,
+      "music_ok": 0.18,
+      "fully_valid": 0.0,
+      "mean_duration_err_s": 2.856,
+      "mean_shot_iou_vs_reference": 0.219
+    }
+  },
+  "verified": false
+}
