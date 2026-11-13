@@ -8,7 +8,6 @@
 param([string]$Root = "D:\YB-Backups", [string]$Repo = "$env:USERPROFILE\YOUTUBE-BUDDY", [string]$KeyId = "YouTube Buddy Backup")
 $ErrorActionPreference = "Stop"
 $Gpg      = "C:\Program Files\Git\usr\bin\gpg.exe"
-$GpgHome  = ($Root -replace '\\', '/') + "/keys/gnupg"          # public key only; forward slashes for Git's gpg
 $Day      = Get-Date -Format "yyyy-MM-dd"
 $Dest     = Join-Path $Root "daily\$Day"
 $Log      = Join-Path $Root "logs\backup-$Day.log"
@@ -20,6 +19,14 @@ $MediaSrc = "\\wsl.localhost\docker-desktop\mnt\docker-desktop-disk\data\docker\
 $status   = [ordered]@{ day = $Day; started = (Get-Date).ToString("s"); steps = [ordered]@{} }
 $ownLock  = $false
 
+function MsysPath([string]$p) {
+  # Path for Git for Windows' gpg (an MSYS program): it understands /d/YB-Backups/..., NOT D:/YB-Backups/... (it would treat
+  # that as a folder inside the current directory). Relative paths are made absolute first.
+  if ($p -match '^([A-Za-z]):[\\/](.*)$') { return '/' + $Matches[1].ToLower() + '/' + ($Matches[2] -replace '\\', '/') }
+  if (-not [IO.Path]::IsPathRooted($p)) { return MsysPath (Join-Path (Get-Location).ProviderPath $p) }
+  return ($p -replace '\\', '/')
+}
+$GpgHome  = MsysPath (Join-Path $Root "keys\gnupg")                 # public key only
 function Step($name, [scriptblock]$body) {
   $t = Get-Date
   try { & $body; $status.steps[$name] = "ok ($([int]((Get-Date) - $t).TotalSeconds)s)" }
@@ -97,7 +104,7 @@ try {
   #    tar streams straight into gpg (cmd pipes bytes unchanged): no plaintext copy is ever written to disk.
   Step "secrets-encrypted" {
     $out = Join-Path $Dest "secrets.tar.gpg"
-    cmd /c "tar -cf - -C `"$Repo\deploy\home`" .env cloudflared | `"$Gpg`" --homedir `"$GpgHome`" --batch --yes --trust-model always --recipient `"$KeyId`" --output `"$out`" --encrypt"; Ok "encrypt secrets"
+    cmd /c "tar -cf - -C `"$Repo\deploy\home`" .env cloudflared | `"$Gpg`" --homedir `"$GpgHome`" --batch --yes --trust-model always --recipient `"$KeyId`" --output `"$(MsysPath $out)`" --encrypt"; Ok "encrypt secrets"
     if ((Get-Item $out).Length -lt 200) { throw "Encrypted secrets file is too small" }
   }
 

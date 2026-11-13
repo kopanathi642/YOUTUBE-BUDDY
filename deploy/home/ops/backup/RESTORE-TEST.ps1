@@ -17,7 +17,6 @@ $Gpg     = "C:\Program Files\Git\usr\bin\gpg.exe"
 $GpgConf = "C:\Program Files\Git\usr\bin\gpgconf.exe"
 $Src     = Join-Path $Root "daily\$Day"
 $TmpKeys = Join-Path $env:TEMP ("ybr" + [guid]::NewGuid().ToString("N").Substring(0, 8))   # short path: gpg-agent socket name limit
-$TmpHome = $TmpKeys -replace '\\', '/'
 $Rustfs  = "rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2"   # same as production
 $result  = [ordered]@{ day = $Day; tested = (Get-Date).ToString("s"); checks = [ordered]@{} }
 $created = $false
@@ -32,6 +31,14 @@ function GpgPass([string]$exe, [string]$arguments, [string]$pp) {
   $out = $p.StandardOutput.ReadToEnd(); $p.WaitForExit(); $global:LASTEXITCODE = $p.ExitCode
   return $out
 }
+function MsysPath([string]$p) {
+  # Path for Git for Windows' gpg (an MSYS program): it understands /d/YB-Backups/..., NOT D:/YB-Backups/... (it would treat
+  # that as a folder inside the current directory). Relative paths are made absolute first.
+  if ($p -match '^([A-Za-z]):[\\/](.*)$') { return '/' + $Matches[1].ToLower() + '/' + ($Matches[2] -replace '\\', '/') }
+  if (-not [IO.Path]::IsPathRooted($p)) { return MsysPath (Join-Path (Get-Location).ProviderPath $p) }
+  return ($p -replace '\\', '/')
+}
+$TmpHome = MsysPath $TmpKeys
 function Ok($what) { if ($LASTEXITCODE -ne 0) { throw "$what failed (exit code $LASTEXITCODE)" } }
 
 try {
@@ -51,8 +58,8 @@ try {
   $sec = Read-Host "Backup key passphrase" -AsSecureString
   $pp = [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec))
   New-Item -ItemType Directory -Force $TmpKeys | Out-Null
-  GpgPass $Gpg "--homedir `"$TmpHome`" --batch --pinentry-mode loopback --passphrase-fd 0 --import `"$PrivateKey`"" $pp | Out-Null; Ok "import private key (temporary key folder)"
-  $dec = "`"$Gpg`" --homedir `"$TmpHome`" --batch --pinentry-mode loopback --passphrase-fd 0 --decrypt `"$Src\secrets.tar.gpg`""
+  GpgPass $Gpg "--homedir `"$TmpHome`" --batch --pinentry-mode loopback --passphrase-fd 0 --import `"$(MsysPath $PrivateKey)`"" $pp | Out-Null; Ok "import private key (temporary key folder)"
+  $dec = "`"$Gpg`" --homedir `"$TmpHome`" --batch --pinentry-mode loopback --passphrase-fd 0 --decrypt `"$(MsysPath "$Src\secrets.tar.gpg")`""
   $list = (GpgPass "cmd.exe" "/c `"$dec | tar -tf -`"" $pp) -split "`r?`n" | Where-Object { $_ }; Ok "decrypt + list secrets (wrong passphrase stops here)"
   $envText = (GpgPass "cmd.exe" "/c `"$dec | tar -xOf - .env`"" $pp) -split "`r?`n"; Ok "read .env from the encrypted archive"
   $pp = $null
