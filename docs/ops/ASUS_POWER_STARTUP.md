@@ -34,11 +34,11 @@ powercfg /setactive SCHEME_CURRENT
 ```
 `/setacvalueindex` changes only the plugged-in values. Battery (DC) stays at sleep after 4 h, so in a power cut the laptop runs on battery and then sleeps safely. The screen still turns off as before.
 
-**Rollback** (the values recorded on 13 Nov; the lid value comes from AUDIT-ASUS-3):
+**Rollback** (the values recorded on 13 Nov):
 ```powershell
 powercfg /setacvalueindex SCHEME_CURRENT SUB_SLEEP STANDBYIDLE 10800
 powercfg /setacvalueindex SCHEME_CURRENT SUB_SLEEP HIBERNATEIDLE 10800
-powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION <value from AUDIT-ASUS-3>
+powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 1                       # 1 = sleep (recorded 13 Nov)
 powercfg /setactive SCHEME_CURRENT
 ```
 **Check after applying:** `powercfg /qh SCHEME_CURRENT SUB_SLEEP STANDBYIDLE` shows `Current AC Power Setting Index: 0x00000000`, and the site stays up overnight (sleep events stop appearing in the event log).

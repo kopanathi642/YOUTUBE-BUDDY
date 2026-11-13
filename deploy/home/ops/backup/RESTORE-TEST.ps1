@@ -22,6 +22,16 @@ $Rustfs  = "rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d2259833
 $result  = [ordered]@{ day = $Day; tested = (Get-Date).ToString("s"); checks = [ordered]@{} }
 $created = $false
 function Check($name, $ok, $detail) { $result.checks[$name] = @{ pass = [bool]$ok; detail = "$detail" }; Write-Host ("{0} {1} - {2}" -f $(if ($ok) { "PASS" } else { "FAIL" }), $name, $detail) -ForegroundColor $(if ($ok) { "Green" } else { "Red" }) }
+function GpgPass([string]$exe, [string]$arguments, [string]$pp) {
+  # Runs a program and gives it the passphrase on standard input ending in a bare LF. PowerShell's own piping would
+  # append CR+LF on Windows, and gpg would keep the CR as part of the passphrase, so a hand-typed passphrase would never match.
+  $psi = New-Object System.Diagnostics.ProcessStartInfo $exe, $arguments
+  $psi.UseShellExecute = $false; $psi.RedirectStandardInput = $true; $psi.RedirectStandardOutput = $true
+  $p = [System.Diagnostics.Process]::Start($psi)
+  $p.StandardInput.Write($pp + "`n"); $p.StandardInput.Close()
+  $out = $p.StandardOutput.ReadToEnd(); $p.WaitForExit(); $global:LASTEXITCODE = $p.ExitCode
+  return $out
+}
 function Ok($what) { if ($LASTEXITCODE -ne 0) { throw "$what failed (exit code $LASTEXITCODE)" } }
 
 try {
@@ -41,10 +51,10 @@ try {
   $sec = Read-Host "Backup key passphrase" -AsSecureString
   $pp = [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec))
   New-Item -ItemType Directory -Force $TmpKeys | Out-Null
-  $pp | & $Gpg --homedir $TmpHome --batch --pinentry-mode loopback --passphrase-fd 0 --import $PrivateKey; Ok "import private key (temporary key folder)"
+  GpgPass $Gpg "--homedir `"$TmpHome`" --batch --pinentry-mode loopback --passphrase-fd 0 --import `"$PrivateKey`"" $pp | Out-Null; Ok "import private key (temporary key folder)"
   $dec = "`"$Gpg`" --homedir `"$TmpHome`" --batch --pinentry-mode loopback --passphrase-fd 0 --decrypt `"$Src\secrets.tar.gpg`""
-  $list = $pp | cmd /c "$dec | tar -tf -"; Ok "decrypt + list secrets (wrong passphrase stops here)"
-  $envText = $pp | cmd /c "$dec | tar -xOf - .env"; Ok "read .env from the encrypted archive"
+  $list = (GpgPass "cmd.exe" "/c `"$dec | tar -tf -`"" $pp) -split "`r?`n" | Where-Object { $_ }; Ok "decrypt + list secrets (wrong passphrase stops here)"
+  $envText = (GpgPass "cmd.exe" "/c `"$dec | tar -xOf - .env`"" $pp) -split "`r?`n"; Ok "read .env from the encrypted archive"
   $pp = $null
   $envVars = @{}; $envText | Where-Object { $_ -match '^\s*([A-Z0-9_]+)=(.*?)\s*$' } | ForEach-Object { $envVars[$Matches[1]] = $Matches[2] }
   $need = "POSTGRES_PASSWORD", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY", "TOKEN_ENCRYPTION_KEY"
