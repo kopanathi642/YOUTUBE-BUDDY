@@ -1,0 +1,82 @@
+{
+  "model": "buddy-planner-scratch-v0",
+  "architecture": "GPT-2 style decoder, trained from scratch",
+  "base_model": null,
+  "params": 2178432,
+  "config": {
+    "data": "brain/data/synth_v0",
+    "out": "brain/checkpoints/planner-scratch-v0",
+    "epochs": 3,
+    "bs": 16,
+    "lr": 0.002,
+    "layers": 4,
+    "dim": 192,
+    "heads": 6,
+    "vocab": 2048,
+    "max_len": 1024,
+    "max_tokens": 4000,
+    "limit": 0,
+    "seed": 7
+  },
+  "device": "cpu",
+  "torch": "2.15.0+cu132",
+  "dataset": {
+    "dataset_version": "buddyplan-synth-v0",
+    "label_source": "synthetic_rule_v0",
+    "warning": "Synthetic labels from documented rules. Not real footage, not expert annotations.",
+    "generator": "brain/data/build_synth.py",
+    "files": [
+      {
+        "split": "train",
+        "file": "train.jsonl",
+        "records": 6000,
+        "seed": 1001,
+        "sha256": "a18c0146491f7f6753ff94c830597fcfd7b7f7fca0fe17a644c9b5ccdb4af893"
+      },
+      {
+        "split": "val",
+        "file": "val.jsonl",
+        "records": 300,
+        "seed": 2002,
+        "sha256": "9f28a863b91ee59f8ae9ac4e5cac5dd9b0cc5c99c823b23816ee51ca0ce03a1b"
+      },
+      {
+        "split": "test",
+        "file": "test.jsonl",
+        "records": 400,
+        "seed": 3003,
+        "sha256": "d92890e21d9df570e9453bdab944ec7c5afbe8c80b1f9eddb2d56b9ba9ba7b10"
+      }
+    ]
+  },
+  "training_log": [
+    {
+      "epoch": 1,
+      "train_loss": 1.66921,
+      "val_loss": 1.41462,
+      "seconds": 1609
+    },
+    {
+      "epoch": 2,
+      "train_loss": 1.33998,
+      "val_loss": 1.22228,
+      "seconds": 2754
+    },
+    {
+      "epoch": 3,
+      "train_loss": 1.19058,
+      "val_loss": 1.13696,
+      "seconds": 3950
+    }
+  ],
+  "best_val_loss": 1.13696,
+  "files": {
+    "config.json": "b4a89a9fac84fa0f2dbf40f4bc22481587eabcde0a79635249bc351b0366df74",
+    "generation_config.json": "90a693be3b4d0a8e517b718d4379cf46321fdf0d8ecdbcf8b12955e395952330",
+    "model.safetensors": "55c927628452d14a674435138a912afbcb1f658d6b8c2acbbbb9a654f625fe76",
+    "special_tokens_map.json": "698030f5d2a921b98ebf7d3669d506189997decfc73643c5e475cffef877bdb5",
+    "tokenizer.json": "0882681c137070de0593efe71a9b8053d2cc8c99aecc79a2dc4c351e67887f03",
+    "tokenizer_config.json": "eb1858baa9ebfff960c47288a4f92e04ffbfb3abfdb66511413da9020bfa2f40"
+  },
+  "limitations": "Learns plan format, editor constraints and synthetic_rule_v0 conventions only; not expert taste; understands only the templated briefs it was trained on."
+}
