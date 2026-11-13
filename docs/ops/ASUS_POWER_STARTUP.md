@@ -17,23 +17,35 @@
 
 Why the site hasn't gone down despite the 3-hour sleep: the laptop has been used regularly. Part 2 lists real sleep and wake events from the last 7 days to confirm.
 
-## Proposed changes (each needs your approval; none affects the running site)
+## Why this matters (Windows event log, AUDIT-ASUS-2)
 
+The laptop **has been sleeping and taking the site offline**: asleep 01:02 → 20:09 on 10 Nov, and 02:01 → 05:01 → 09:29 on 11 Nov. That fits the 3-hour sleep timer on mains power.
+
+## Proposed AC-only power changes (for approval; battery settings untouched)
+
+Run in PowerShell (no admin needed for the current user's scheme):
 ```powershell
-# record current values first (written into OPS_CHANGELOG.md)
-powercfg /query SCHEME_CURRENT SUB_SLEEP > "$env:USERPROFILE\Desktop\power-before.txt"
-powercfg /query SCHEME_CURRENT SUB_BUTTONS >> "$env:USERPROFILE\Desktop\power-before.txt"
-# apply (plugged in only)
-powercfg /change standby-timeout-ac 0
-powercfg /change hibernate-timeout-ac 0
-powercfg /setacvalueindex SCHEME_CURRENT 4f971e89-eebd-4455-a8de-9e59040e7347 5ca83367-6e45-459f-a27b-476b1d01c936 0
+powercfg /qh SCHEME_CURRENT SUB_SLEEP > D:\YB-Backups\logs\power-before.txt           # record exact current values
+powercfg /qh SCHEME_CURRENT SUB_BUTTONS >> D:\YB-Backups\logs\power-before.txt
+powercfg /setacvalueindex SCHEME_CURRENT SUB_SLEEP STANDBYIDLE 0                       # sleep after: never (AC)
+powercfg /setacvalueindex SCHEME_CURRENT SUB_SLEEP HIBERNATEIDLE 0                     # hibernate after: never (AC)
+powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0                       # lid close: do nothing (AC)
 powercfg /setactive SCHEME_CURRENT
 ```
-The screen can still turn off; that doesn't affect the site.
+`/setacvalueindex` changes only the plugged-in values. Battery (DC) stays at sleep after 4 h, so in a power cut the laptop runs on battery and then sleeps safely. The screen still turns off as before.
 
-Docker: Docker Desktop → Settings → General → tick **"Start Docker Desktop when you sign in to your computer"** → Apply. That's a UI setting, no restart of containers.
+**Rollback** (the values recorded on 13 Nov; the lid value comes from AUDIT-ASUS-3):
+```powershell
+powercfg /setacvalueindex SCHEME_CURRENT SUB_SLEEP STANDBYIDLE 10800
+powercfg /setacvalueindex SCHEME_CURRENT SUB_SLEEP HIBERNATEIDLE 10800
+powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION <value from AUDIT-ASUS-3>
+powercfg /setactive SCHEME_CURRENT
+```
+**Check after applying:** `powercfg /qh SCHEME_CURRENT SUB_SLEEP STANDBYIDLE` shows `Current AC Power Setting Index: 0x00000000`, and the site stays up overnight (sleep events stop appearing in the event log).
 
-**Rollback:** `powercfg /change standby-timeout-ac 180`, `powercfg /change hibernate-timeout-ac 180`, set the lid value back to what part 2 recorded, `powercfg /setactive SCHEME_CURRENT`; untick the Docker setting.
+**Risks:** the laptop stays awake 24/7 on mains, so it's warmer and the battery stays at full charge (ASUS's "Battery Health Charging" set to Balanced or Maximum lifespan, in MyASUS, reduces battery wear). Closing the lid no longer sleeps it; keep the lid open or ensure ventilation, since a closed lid traps heat on this model.
+
+Docker: Docker Desktop → Settings → General → tick **"Start Docker Desktop when you sign in to your computer"** → Apply. This is a UI setting; containers aren't restarted.
 
 ## Unattended start-up without automatic sign-in (investigated 13 Nov)
 

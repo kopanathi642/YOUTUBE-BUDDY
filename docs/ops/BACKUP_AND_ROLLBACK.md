@@ -30,19 +30,40 @@ Status: **Step 1 done (13 Nov 17:55 IST): `D:\YB-Backups` and its subfolders cre
 
 Every night ends with `SHA256SUMS.txt` (a hash of every file) and `D:\YB-Backups\LAST-STATUS.json` (OK/FAILED per step). The script is `deploy/home/ops/backup/BACKUP-NIGHTLY.ps1`.
 
-## 2. Key setup (once, you type everything secret yourself)
-
-The encryption uses a key pair. The ASUS keeps only the **public** key, so it can lock backups every night without any secret stored on it. The **private** key, which is the only thing that can unlock them, lives off the laptop.
+## 2. Key setup (once, with you at the keyboard): `deploy/home/ops/backup/KEY-SETUP.ps1`
 
 ```powershell
-$gpg = "C:\Program Files\Git\usr\bin\gpg.exe"
-& $gpg --quick-generate-key "YouTube Buddy Backup" rsa4096 encr never      # gpg asks YOU for a passphrase in its own window
-& $gpg --armor --export "YouTube Buddy Backup" > D:\YB-Backups\keys\backup-public.asc
-& $gpg --armor --export-secret-keys "YouTube Buddy Backup" > F:\yb-backup-private.asc   # F: = your USB stick (letter may differ)
-# Keep TWO copies off this laptop: that USB stick at home + (later) the HP. Write the passphrase on paper.
-& $gpg --delete-secret-keys "YouTube Buddy Backup"                          # private key leaves the ASUS
+cd $env:USERPROFILE\YOUTUBE-BUDDY\deploy\home\ops\backup
+powershell -ExecutionPolicy Bypass -File .\KEY-SETUP.ps1 -PrivateKeyOut F:\yb-backup-private.asc   # F: = your USB stick
 ```
-**Risk: if both private-key copies or the passphrase are lost, the encrypted backups can never be opened.** Nobody, including me, can recover them.
+What it does, in order:
+1. Asks twice for a passphrase in a hidden prompt (at least 12 characters). It's passed to gpg through its input stream: never on the command line, never on disk, never logged.
+2. Creates an RSA-4096 encryption key called "YouTube Buddy Backup" in `D:\YB-Backups\keys\gnupg` (Git for Windows' gpg, no install).
+3. Exports the **public** key to `D:\YB-Backups\keys\backup-public.asc` and the **private** key (passphrase-protected) to your USB path, using gpg's `--output` (PowerShell's `>` would corrupt key files).
+4. **Proves the exported private key works** before going further: encrypts a test text, then decrypts it using only the exported file in a temporary keyring.
+5. Only then deletes the private key from the laptop, and checks that none is left.
+6. Writes the key fingerprint to `D:\YB-Backups\keys\FINGERPRINT.txt`.
+
+It refuses to run if a backup key already exists or the output file already exists, so nothing is overwritten. If the private-key path is on C:, D: or E:, it warns you to move the file off the laptop.
+
+The same flow was dry-run in the build sandbox with dummy secrets: no private key was left behind, the public key alone could not decrypt, the exported private key could, `.env` names were readable from memory, and the temporary keyring was deleted.
+
+**Afterwards (you):** copy the `.asc` file to a second safe place (a second USB stick, or the HP once it's set up). Write the passphrase on paper and keep it apart from the USB stick.
+
+### Recovering secrets from a backup (any Windows PC with Git for Windows)
+```powershell
+$gpg = "C:\Program Files\Git\usr\bin\gpg.exe"; $k = "$env:TEMP\ybk"; mkdir $k
+& $gpg --homedir ($k -replace '\\','/') --import F:\yb-backup-private.asc            # asks for the passphrase
+& $gpg --homedir ($k -replace '\\','/') --output secrets.tar --decrypt D:\YB-Backups\daily\<date>\secrets.tar.gpg
+tar -xf secrets.tar -C $env:USERPROFILE\YOUTUBE-BUDDY\deploy\home                   # restores .env + cloudflared\
+Remove-Item secrets.tar; Remove-Item $k -Recurse -Force                                 # no plaintext or key left behind
+```
+
+| If you lose… | Then |
+|---|---|
+| one copy of the private key | Use the other copy; make a new second copy |
+| both copies, or the passphrase | The encrypted backups can **never** be opened. Run KEY-SETUP again with a new key; future backups use it; the old encrypted backups stay unreadable |
+| the USB stick to someone else | They still need the passphrase. Make a new key anyway, and keep the old private key only to read older backups |
 
 ## 3. Verification (automatic, every night)
 
@@ -56,7 +77,7 @@ A failed night keeps the previous good backups; retention only removes old dated
 
 ## 4. Real restore test (first one before trusting backups, then monthly, ~20 min)
 
-`deploy/home/ops/backup/RESTORE-TEST.ps1 -Day <date> -PrivateKey <USB path>`. Everything it creates is named `ybrestore-*`: 2 containers, 2 volumes, 1 network with no internet, no published ports. It removes them at the end.
+`deploy/home/ops/backup/RESTORE-TEST.ps1 -Day <date> -PrivateKey <USB path>` (asks for the passphrase in a hidden prompt). Everything it creates is named `ybrestore-*`: 2 containers, 2 volumes, 1 network with no internet, no published ports. It removes them at the end.
 
 | Check | Pass when |
 |---|---|
@@ -72,7 +93,7 @@ Isolation, checked in the script text:
 - the script refuses to start if anything named `ybrestore*` already exists, so cleanup can only remove what that run created;
 - the storage credentials for the throwaway RustFS are passed by a file in a private temp folder, not on the command line.
 
-The private key is imported only for the test and deleted from the ASUS at the end. Expected extra memory: about 0.5 GB, fine while the llm container is stopped. Once the HP is set up, restore tests move there, which also proves the backup works on a second machine.
+The private key is imported only into a temporary keyring that is deleted at the end; decrypted `.env` values exist only in memory and are passed to Docker as environment names (never in a file or on the command line). Expected extra memory: about 0.5 GB, fine while the llm container is stopped. Once the HP is set up, restore tests move there, which also proves the backup works on a second machine.
 
 ## 5. Independent second copy (weekly)
 
