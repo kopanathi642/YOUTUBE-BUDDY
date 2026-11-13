@@ -35,12 +35,20 @@ Docker: Docker Desktop → Settings → General → tick **"Start Docker Desktop
 
 **Rollback:** `powercfg /change standby-timeout-ac 180`, `powercfg /change hibernate-timeout-ac 180`, set the lid value back to what part 2 recorded, `powercfg /setactive SCHEME_CURRENT`; untick the Docker setting.
 
-## Sign-in after a restart: your decision
+## Unattended start-up without automatic sign-in (investigated 13 Nov)
 
-| Option | Effect | Trade-off |
-|---|---|---|
-| A. Keep as is (recommended now) | After an update restart, the site is down until you sign in | Safest; downtime overnight is possible |
-| B. Narrow restarts | Set active hours to the longest window you allow (e.g. 06:00–24:00) and turn on "Notify me when a restart is required" | Fewer surprise restarts; Windows Home still forces some |
-| C. Windows auto sign-in | The site comes back by itself after any restart | Anyone who opens the laptop is signed in to your account. Only with the laptop kept locked away; adds a lock-screen task after sign-in |
+You ruled out automatic sign-in. Findings:
 
-Recommendation: A + B now; reconsider C only if overnight downtime turns out to be a real problem.
+- **Docker Desktop has no supported way to start before someone signs in.** On Docker's forum, community members say Docker Desktop "was made for development". The one reported workaround (WSL 2 off, a scheduled task launching the Docker Desktop frontend as an elevated user) is unsupported and "may break in future versions".
+- **Docker Engine inside a WSL 2 Linux distro started at boot by Task Scheduler** is a community approach. It isn't documented by Microsoft for Windows 11 Home, and reports include a boot task failing with return code 4294967295 and the WSL network adapter resetting. Unverified here.
+- **Linux on the ASUS** (the repo has `deploy/home/LINUX_LAPTOP.md`; D: even holds an old Linux installer) starts Docker as a system service with nobody signed in. This is the robust long-term answer, but it is a migration: restore everything from backups onto Linux, with downtime.
+
+| Option | Unattended after reboot? | Risk | Recommendation |
+|---|---|---|---|
+| 1. Keep Docker Desktop + fewer surprise restarts + an alert when the site is down | No, but you're told at once | Low; no migration | **Now** |
+| 2. Docker Engine in WSL 2 via a boot task | Maybe (unverified on Home) | Medium: unsupported; data must move from Docker Desktop's volumes | Try on the **HP first**, never directly on the ASUS |
+| 3. Linux on the ASUS | Yes | High one-time migration; proven backups required first | Later, as a planned project |
+
+Option 1, concretely (each needs your approval):
+- Windows Update: active hours set to the widest window (Windows allows 18 h, e.g. 06:00–24:00), "Notify me when a restart is required" on, and you restart manually after installing updates while you're at the laptop. Updates can be paused for up to 5 weeks if something is in progress.
+- A free external uptime check (e.g. UptimeRobot's free tier) on `https://youtubebuddy.com/api/v1/health` every 5 minutes, alerting your phone, so a reboot that waits for sign-in is noticed within minutes. It's an outside account you would create; I can't create it for you.

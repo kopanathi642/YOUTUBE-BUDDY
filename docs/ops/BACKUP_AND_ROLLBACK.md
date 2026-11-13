@@ -1,6 +1,6 @@
 # Backup, restore and rollback plan: ASUS server (v2, for approval)
 
-Status: **proposal. Nothing here has been run.** Based on `audit-asus-report.txt` (13 Nov 17:18 IST).
+Status: **Step 1 done (13 Nov 17:55 IST): `D:\YB-Backups` and its subfolders created, nothing else on D: touched. Steps 2–5 are proposals, not run.** Based on `audit-asus-report.txt` (13 Nov 17:18 IST).
 
 ## Facts this plan is built on
 
@@ -20,7 +20,7 @@ Status: **proposal. Nothing here has been run.** Based on `audit-asus-report.txt
 
 | Data | Method | Frequency | Kept | Encrypted |
 |---|---|---|---|---|
-| PostgreSQL `creator` DB | `pg_dump -Fc` inside the db container → `docker cp` → D:, plus roles (`pg_dumpall --globals-only`) and row counts of key tables | nightly 02:41 | 14 daily + 8 weekly | on D: no (same trust as the live DB on the same laptop); off-machine yes |
+| PostgreSQL `creator` DB | `pg_dump -Fc` streamed out of the db container straight to D: (nothing written inside the container); readability checked by a throwaway Postgres container with no network, plus roles (`pg_dumpall --globals-only`) and row counts of key tables | nightly 02:41 | 14 daily + 8 weekly | on D: no (same trust as the live DB on the same laptop); off-machine yes |
 | Uploads + exports (RustFS `youtubebuddy_media`) | `robocopy /E` (incremental, **never deletes** in the backup) from the volume folder, plus production object count and bytes | nightly, **after** the DB dump | rolling copy + 8 weekly snapshots | off-machine yes |
 | Project files | `git bundle --all` (all history, branches, stash) + `uncommitted.patch` + working-tree copy without node_modules and secrets | nightly | 14 + 8 | off-machine yes |
 | Docker configuration | compose.yaml, tunnel config.yml (not secret), image list with digests, container + volume list, Docker Desktop settings, .wslconfig. **Never** `docker inspect` / `docker compose config` (they print secrets) | nightly | 14 + 8 | n/a |
@@ -66,6 +66,12 @@ A failed night keeps the previous good backups; retention only removes old dated
 | media | the same RustFS version (pinned digest) starts on the restored data; object count ≥ the backup-time count |
 | project | `git bundle verify` passes |
 
+Isolation, checked in the script text:
+- every container runs with `--pull never` (no downloads) on an `--internal` network (no route to the host or to production) or `--network none`, with no published ports;
+- production volumes are never mounted, and the backup folder is mounted read-only;
+- the script refuses to start if anything named `ybrestore*` already exists, so cleanup can only remove what that run created;
+- the storage credentials for the throwaway RustFS are passed by a file in a private temp folder, not on the command line.
+
 The private key is imported only for the test and deleted from the ASUS at the end. Expected extra memory: about 0.5 GB, fine while the llm container is stopped. Once the HP is set up, restore tests move there, which also proves the backup works on a second machine.
 
 ## 5. Independent second copy (weekly)
@@ -108,7 +114,7 @@ The backup system never changes production. To remove it completely:
 2. Optionally delete `D:\YB-Backups` (your decision; it holds your only backups).
 3. `gpg --delete-keys "YouTube Buddy Backup"`
 
-The one production touch per night is a temporary `/tmp/yb-backup.dump` inside the db container, deleted in the same run.
+Production is only read: no file is written inside any production container, and no production volume is mounted read-write.
 
 ## 9. Exact changes requested for approval (in this order)
 

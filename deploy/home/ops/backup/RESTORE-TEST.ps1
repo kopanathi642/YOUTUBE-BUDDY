@@ -14,6 +14,9 @@ $result = [ordered]@{ day = $Day; tested = (Get-Date).ToString("s"); checks = [o
 function Check($name, $ok, $detail) { $result.checks[$name] = @{ pass = [bool]$ok; detail = "$detail" }; if (-not $ok) { Write-Host "FAIL $name - $detail" -ForegroundColor Red } else { Write-Host "PASS $name - $detail" -ForegroundColor Green } }
 
 try {
+  # 0. Guard: refuse to run if anything named ybrestore* already exists, so cleanup can only ever remove what THIS run created
+  $clash = @(docker ps -a --format "{{.Names}}" | Where-Object { $_ -like "ybrestore*" }) + @(docker volume ls --format "{{.Name}}" | Where-Object { $_ -like "ybrestore*" }) + @(docker network ls --format "{{.Name}}" | Where-Object { $_ -like "ybrestore*" })
+  if ($clash) { $script:noCleanup = $true; throw "Leftover ybrestore objects exist ($($clash -join ', ')). Inspect them; this script will not touch them." }
   # 1. Integrity: every file matches the SHA-256 recorded at backup time
   $bad = Get-Content (Join-Path $Src "SHA256SUMS.txt") | ForEach-Object { $h, $f = $_ -split '  ', 2; if ((Get-FileHash (Join-Path $Src $f) -Algorithm SHA256).Hash.ToLower() -ne $h) { $f } }
   Check "hashes" (-not $bad) ("mismatched: " + ($bad -join ", "))
@@ -30,7 +33,7 @@ try {
   # 3. Database: restore into a fresh Postgres 16 and compare row counts with the counts taken at backup time
   docker network create --internal ybrestore-net | Out-Null
   $pw = [guid]::NewGuid().ToString("N")          # throwaway password for the throwaway database
-  docker run -d --name ybrestore-db --network ybrestore-net -e POSTGRES_PASSWORD=$pw -e POSTGRES_USER=creator -e POSTGRES_DB=creator -v ybrestore_pg:/var/lib/postgresql/data postgres:16 | Out-Null
+  docker run -d --pull never --name ybrestore-db --network ybrestore-net -e POSTGRES_PASSWORD=$pw -e POSTGRES_USER=creator -e POSTGRES_DB=creator -v ybrestore_pg:/var/lib/postgresql/data postgres:16 | Out-Null
   for ($i = 0; $i -lt 30 -and (docker exec ybrestore-db pg_isready -U creator) -notmatch "accepting"; $i++) { Start-Sleep 2 }
   docker cp (Join-Path $Src "creator.dump") ybrestore-db:/tmp/r.dump
   docker exec ybrestore-db pg_restore -U creator -d creator --no-owner /tmp/r.dump
@@ -40,11 +43,13 @@ try {
   Check "database-rows" ((Compare-Object $want $got) -eq $null) ("backup: " + ($want -join "; ") + " | restored: " + ($got -join "; "))
 
   # 4. Media: copy the backup into a fresh volume, start the SAME RustFS version on it, count objects and bytes
-  docker run --rm -v ybrestore_media:/data -v "${Root}\media-current:/src:ro" postgres:16 cp -a /src/. /data/
-  docker run -d --name ybrestore-storage --network ybrestore-net -e RUSTFS_ACCESS_KEY=$($envVars.S3_ACCESS_KEY_ID) -e RUSTFS_SECRET_KEY=$($envVars.S3_SECRET_ACCESS_KEY) -e RUSTFS_CONSOLE_ENABLE=false -v ybrestore_media:/data rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2 | Out-Null
+  docker run --rm --pull never --network none -v ybrestore_media:/data -v "${Root}\media-current:/src:ro" postgres:16 cp -a /src/. /data/
+  $ef = Join-Path $Tmp "restore.env"          # credentials passed by file, not on the command line
+  "RUSTFS_ACCESS_KEY=$($envVars.S3_ACCESS_KEY_ID)`nRUSTFS_SECRET_KEY=$($envVars.S3_SECRET_ACCESS_KEY)`nRUSTFS_CONSOLE_ENABLE=false`nK=$($envVars.S3_ACCESS_KEY_ID)`nS=$($envVars.S3_SECRET_ACCESS_KEY)" | Set-Content $ef
+  docker run -d --pull never --name ybrestore-storage --network ybrestore-net --env-file $ef -v ybrestore_media:/data rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2 | Out-Null
   Start-Sleep 8
   $py = "import boto3,os;c=boto3.client('s3',endpoint_url='http://ybrestore-storage:9000',aws_access_key_id=os.environ['K'],aws_secret_access_key=os.environ['S'],region_name='us-east-1');n=s=0`nfor p in c.get_paginator('list_objects_v2').paginate(Bucket='youtubebuddy-media'):`n  for o in p.get('Contents',[]): n+=1; s+=o['Size']`nprint(n,s)"
-  $gotMedia = docker run --rm --network ybrestore-net -e K=$($envVars.S3_ACCESS_KEY_ID) -e S=$($envVars.S3_SECRET_ACCESS_KEY) youtubebuddy-app python -c $py
+  $gotMedia = docker run --rm --pull never --network ybrestore-net --env-file $ef youtubebuddy-app python -c $py
   $wantMedia = Get-Content (Join-Path $Src "media-objects.txt")
   $wn, $ws = ($wantMedia -split ' '); $gn, $gs = ($gotMedia -split ' ')
   Check "media-objects" ([int64]$gn -ge [int64]$wn) "backup-time objects/bytes: $wantMedia | restored: $gotMedia (restored may be larger: files uploaded after the dump)"
@@ -55,10 +60,12 @@ try {
 }
 catch { Check "unexpected-error" $false $_.Exception.Message }
 finally {
-  # Clean up ONLY what this script created
+  # Clean up ONLY what this script created (skipped if the guard found leftovers it did not create)
+  if (-not $script:noCleanup) {
   docker rm -f ybrestore-db ybrestore-storage 2>$null | Out-Null
   docker volume rm ybrestore_pg ybrestore_media 2>$null | Out-Null
   docker network rm ybrestore-net 2>$null | Out-Null
+  }
   if (Test-Path $Tmp) { Remove-Item $Tmp -Recurse -Force }
   # Take the private key off this laptop again (it was imported only for this test)
   $fpr = (& $Gpg --list-secret-keys --with-colons "YouTube Buddy Backup" | Select-String '^fpr' | Select-Object -First 1).ToString().Split(':')[9]

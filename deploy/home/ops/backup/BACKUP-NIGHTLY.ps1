@@ -1,6 +1,6 @@
 # YouTube Buddy X - nightly backup (DRAFT FOR APPROVAL - not scheduled, not run).
-# Writes ONLY under D:\YB-Backups. Reads production; the one thing it creates inside production is a temporary
-# dump file /tmp/yb-backup.dump in the db container, which it deletes again.
+# Writes ONLY under D:\YB-Backups. Only READS production: the dump streams out of the db container straight to D:
+# (nothing is written inside any production container); it is checked in a throwaway container with no network.
 # Never prints secrets. Never runs `docker inspect` on app containers or `docker compose config` (both expose secrets).
 # Requires: the backup public key imported once (see docs/ops/BACKUP_AND_ROLLBACK.md, "Key setup").
 
@@ -35,14 +35,17 @@ try {
 
   # 1. Database first (logical, consistent snapshot). Media is copied AFTER, so every file the dump refers to is in the backup.
   Step "database" {
-    docker exec $Db pg_dump -U creator -Fc -f /tmp/yb-backup.dump creator
-    docker exec $Db sh -c "pg_restore --list /tmp/yb-backup.dump | grep -c 'TABLE DATA'" | Set-Content (Join-Path $Dest "db-table-count.txt")
-    docker cp "${Db}:/tmp/yb-backup.dump" (Join-Path $Dest "creator.dump")
-    docker exec $Db rm -f /tmp/yb-backup.dump
+    $dump = Join-Path $Dest "creator.dump"
+    cmd /c "docker exec $Db pg_dump -U creator -Fc creator > `"$dump`""          # cmd passes the bytes unchanged
+    if ($LASTEXITCODE -ne 0) { throw "pg_dump failed" }
+    if ((Get-Item $dump).Length -lt 1KB) { throw "Dump is suspiciously small" }
+    # readable? checked by a throwaway postgres container: no network, backup folder mounted read-only, removed after
+    $tables = docker run --rm --pull never --network none -v "${Dest}:/b:ro" postgres:16 sh -c "pg_restore --list /b/creator.dump | grep -c 'TABLE DATA'"
+    if ([int]$tables -lt 10) { throw "Dump lists only $tables tables" }
+    $tables | Set-Content (Join-Path $Dest "db-table-count.txt")
     docker exec $Db pg_dumpall -U creator --globals-only | Set-Content (Join-Path $Dest "globals.sql")
-    # row counts at backup time, used by the restore test
+    # row counts at backup time (read-only query), used by the restore test
     docker exec $Db psql -U creator -d creator -At -c "select 'users',count(*) from users union all select 'projects',count(*) from projects union all select 'media_assets',count(*) from media_assets union all select 'sequence_versions',count(*) from sequence_versions union all select 'jobs',count(*) from jobs union all select 'payments',count(*) from payments" | Set-Content (Join-Path $Dest "db-rowcounts.txt")
-    if ((Get-Item (Join-Path $Dest "creator.dump")).Length -lt 1KB) { throw "Dump is suspiciously small" }
   }
 
   # 2. Uploaded and exported media (RustFS volume). Incremental copy; never deletes from the backup (/E, no /PURGE or /MIR).
@@ -69,7 +72,8 @@ try {
     docker image ls --digests --format "{{.Repository}}:{{.Tag}} {{.Digest}} {{.ID}}" | Set-Content (Join-Path $Dest "docker-images.txt")
     docker ps -a --format "{{.Names}} {{.Image}} {{.Status}}" | Set-Content (Join-Path $Dest "docker-containers.txt")
     docker volume ls --format "{{.Name}}" | Set-Content (Join-Path $Dest "docker-volumes.txt")
-    $ds = Join-Path $env:APPDATA "Docker\settings-store.json"; if (Test-Path $ds) { Copy-Item $ds (Join-Path $Dest "docker-desktop-settings.json") }
+    $ds = Join-Path $env:APPDATA "Docker\settings-store.json"   # only selected non-secret keys (the file can hold proxy credentials)
+    if (Test-Path $ds) { Select-String -Path $ds -Pattern '"AutoStart"|"MemoryMiB"|"Cpus"|"UseWindowsContainers"' | ForEach-Object { $_.Line.Trim() } | Set-Content (Join-Path $Dest "docker-desktop-settings.txt") }
     $w = Join-Path $env:USERPROFILE ".wslconfig"; if (Test-Path $w) { Copy-Item $w (Join-Path $Dest "wslconfig.txt") }
   }
 

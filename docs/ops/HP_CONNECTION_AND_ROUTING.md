@@ -16,13 +16,13 @@
 ## Connection: Tailscale, HP calls out, nothing calls the HP
 
 1. Install Tailscale on both laptops; you sign in yourself. Tags: ASUS `tag:server`, HP `tag:gpu-worker`.
-2. Access rule (tailnet policy): the only allowed flow is **HP → ASUS port 443**.
+2. Access rule (tailnet policy): the only allowed flow is **HP → ASUS port 80 (inside the tailnet)**.
    ```json
    {"tagOwners": {"tag:server": ["autogroup:admin"], "tag:gpu-worker": ["autogroup:admin"]},
-    "acls": [{"action": "accept", "src": ["tag:gpu-worker"], "dst": ["tag:server:443"]}]}
+    "acls": [{"action": "accept", "src": ["tag:gpu-worker"], "dst": ["tag:server:80"]}]}
    ```
    No rule points at the HP, so nothing can connect to it, from the internet or from the tailnet.
-3. ASUS: `tailscale serve --bg --https=443 http://127.0.0.1:8000`. This puts the app on the private tailnet name with Tailscale's HTTPS certificate. Docker, compose and the public tunnel are untouched.
+3. ASUS (Administrator console): `tailscale serve --bg --http=80 http://127.0.0.1:8000`. Serve is tailnet-only (Funnel, the public variant, is never used). Plain HTTP is deliberate: WireGuard already encrypts every packet between the laptops, and Tailscale's HTTPS mode would publish the machine names in public Certificate Transparency logs. Docker, compose and the public tunnel are untouched.
 4. **Second lock against the public internet:** the worker API is also reachable on 127.0.0.1:8000, which the public tunnel serves. Add one Cloudflare Tunnel rule *above* the others:
    ```yaml
    - hostname: youtubebuddy.com
@@ -68,12 +68,48 @@ Global switch `GPU_WORKERS_ENABLED` (default **false**). Off = everything routes
 5. Only when step 4 passes for all 6 tools: remove `COMPOSE_PROFILES=llm` and `LLM_BASE_URL` from the ASUS `.env` and recreate web + worker (~1 min). Tool status then comes from the HP's heartbeat instead of `LLM_BASE_URL`.
 6. Then run the 18 integration tests.
 
-## Decision needed now: writing tools on the live site
+## Design check (13 Nov, from Tailscale's docs and this repo's code)
 
-| Option | What happens | Risk |
+| Question | Answer | Consequence |
 |---|---|---|
-| **A. Hide them honestly until the HP takes over (recommended)** | Change the 6 tools' status to "temporarily unavailable" by emptying `LLM_BASE_URL` in `.env`, then `docker compose up -d web worker` (~30–60 s of restart). `COMPOSE_PROFILES=llm` stays, the `llm` container stays as it is. | Tools unavailable until the HP is live, but users no longer hit errors |
-| B. Restart the `llm` container as it is | Tools work again | It may freeze Docker again: 4 GB limit inside a 3.77 GB Docker VM; it happened on 12 Nov |
-| C. Leave as is | Nothing changes | Users see "ready", run the tool and get an error |
+| Is `tailscale serve` public? | No: "available only within the tailnet"; Funnel is the public feature | Don't run Funnel. Verify with test N1 |
+| Can Tailscale identity headers authenticate the HP? | No: they "are not populated for traffic originating from tagged devices" (serve strips spoofed copies) | The worker token is the credential |
+| Does the HP need any open port? | No: no rule targets `tag:gpu-worker` | The HP only makes outgoing connections |
+| Windows Firewall changes? | None. Tailscale manages its own adapter; serve listens only on the tailnet | No firewall changes on either laptop |
+| Does the worker key expire? | Tagged devices have key expiry off by default | Worker keeps working unattended |
+| Could the worker API be reached through the public tunnel? | Yes, unless blocked: the tunnel forwards **every** path to web:8000 | **Three layers**, below |
 
-Rollback for A: put the old value back, the same one-line edit, then `docker compose up -d web worker`.
+Three layers keep the worker API off the public internet:
+1. **Tunnel rule:** `^/api/v1/worker/` → `http_status:404` for both hostnames (Cloudflare never forwards it).
+2. **App check:** worker routes refuse any request carrying `CF-Connecting-IP` or `CF-Ray`. Cloudflare sets these headers on every public request and a visitor can't remove them, so this holds even if layer 1 were ever misconfigured.
+3. **Token:** a valid, unrevoked, unpaused worker token (stored only as a SHA-256 hash) is required on every call. A worker can see only the jobs it has claimed, and only those jobs' inputs.
+
+### Networking tests before anything goes live (each recorded in OPS_CHANGELOG)
+
+| # | Test | Expected |
+|---|---|---|
+| N1 | From a phone on mobile data (no Tailscale): `http://<asus-tailnet-name>/api/v1/health` | Does not load |
+| N2 | From the HP: same URL | `"status":"ok"` |
+| N3 | From the HP: any other ASUS port (e.g. 8000, 5432, 9000) | Connection refused or times out |
+| N4 | From the ASUS: anything on the HP | Fails (no rule allows it) |
+| N5 | Public: `https://youtubebuddy.com/api/v1/worker/heartbeat` | 404 from the tunnel rule |
+| N6 | Over the tailnet, no token / wrong token / revoked token | 401 / 401 / 403 |
+| N7 | Request with a forged `CF-Connecting-IP` over the tailnet | 403 (app check) |
+| N8 | The live site during all of the above | Unchanged: health OK, sign-in works |
+
+## Option A: the exact change, for approval (not applied)
+
+What changes: one character in `deploy\home\.env`, a `#` in front of the `LLM_BASE_URL=` line. `COMPOSE_PROFILES=llm` and the `llm` container stay exactly as they are.
+
+Why this way: `.env` has mixed Windows (CRLF) and Unix (LF) line endings, and a PowerShell rewrite could alter every line, including the passwords. A one-character `sed` edit leaves every other byte identical, and the old value stays in the file as a comment.
+
+Steps:
+1. Record the SHA-256 of `.env` (a hash reveals nothing).
+2. `sed -i 's/^LLM_BASE_URL=/#LLM_BASE_URL=/' deploy/home/.env` (run by me through the device shell; it touches only that line).
+3. Confirm only that line differs: the line count is the same, and only that line now starts with `#`.
+4. You run, in `deploy\home`: `docker compose up -d web worker`. Only web and worker are recreated; db, storage, tunnel and llm aren't touched, and no image is rebuilt. Expect 30–60 s of "site unavailable" (error 502 through the tunnel). A job running at that moment is picked up again after its 60 s lease expires.
+5. Verify: `/api/v1/health` returns ok; `/api/v1/ai/tools/052` shows `needs_key`; the worker container reports healthy; the editor opens.
+
+Rollback: `sed -i 's/^#LLM_BASE_URL=/LLM_BASE_URL=/' deploy/home/.env`, then `docker compose up -d web worker` (the same 30–60 s).
+
+No change without a restart is possible with today's code: tool status is read from environment variables and there's no runtime switch. The worker-API release will add an admin switch for tool availability (stored in `platform_settings`), so future pauses won't need a restart.
