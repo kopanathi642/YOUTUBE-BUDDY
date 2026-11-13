@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Buddy annotated edit project (v1)",
+  "description": "One rights-cleared edit used for training. Every record must carry provenance; records without a licence that permits ML training are rejected.",
+  "type": "object",
+  "required": [
+    "id",
+    "provenance",
+    "brief",
+    "assets",
+    "plan",
+    "annotation"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "source",
+        "license",
+        "rights_holder",
+        "consent_ml_training",
+        "collected_at"
+      ],
+      "properties": {
+        "source": {
+          "enum": [
+            "own_project",
+            "commissioned_editor",
+            "creator_consent",
+            "cc_by",
+            "cc0",
+            "synthetic"
+          ]
+        },
+        "license": {
+          "type": "string"
+        },
+        "rights_holder": {
+          "type": "string"
+        },
+        "consent_ml_training": {
+          "const": true
+        },
+        "consent_reference": {
+          "type": "string"
+        },
+        "collected_at": {
+          "type": "string",
+          "format": "date"
+        },
+        "contains_people": {
+          "type": "boolean"
+        },
+        "personal_data_removed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "brief": {
+      "type": "object",
+      "required": [
+        "text",
+        "mood",
+        "target_s",
+        "aspect"
+      ],
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "mood": {
+          "enum": [
+            "calm",
+            "energetic",
+            "emotional",
+            "suspenseful",
+            "happy",
+            "documentary"
+          ]
+        },
+        "target_s": {
+          "type": "number"
+        },
+        "aspect": {
+          "enum": [
+            "16:9",
+            "9:16",
+            "1:1"
+          ]
+        },
+        "lock": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      }
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "duration"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "video",
+              "music"
+            ]
+          },
+          "duration": {
+            "type": "number"
+          },
+          "segments": {
+            "type": "array"
+          },
+          "bpm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "description": "Same EditPlan as brain/buddy_brain/plan.py"
+    },
+    "annotation": {
+      "type": "object",
+      "required": [
+        "label_source",
+        "annotator_id"
+      ],
+      "properties": {
+        "label_source": {
+          "enum": [
+            "human_expert",
+            "human_creator",
+            "synthetic_rule_v0",
+            "model_proposal_human_corrected"
+          ]
+        },
+        "annotator_id": {
+          "type": "string"
+        },
+        "annotator_experience_years": {
+          "type": "number"
+        },
+        "quality_rating_1to5": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "reasoning": {
+          "type": "string"
+        },
+        "rejected_alternatives": {
+          "type": "array",
+          "description": "for preference (DPO) training"
+        }
+      }
+    }
+  }
+}

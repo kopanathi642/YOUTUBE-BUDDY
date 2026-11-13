@@ -1,0 +1,4 @@
+/data/synth_v0/*.jsonl
+/incoming/
+/adapters/
+__pycache__/

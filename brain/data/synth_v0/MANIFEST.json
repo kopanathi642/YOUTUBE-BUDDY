@@ -1,0 +1,29 @@
+{
+  "dataset_version": "buddyplan-synth-v0",
+  "label_source": "synthetic_rule_v0",
+  "warning": "Synthetic labels from documented rules. Not real footage, not expert annotations.",
+  "generator": "brain/data/build_synth.py",
+  "files": [
+    {
+      "split": "train",
+      "file": "train.jsonl",
+      "records": 6000,
+      "seed": 1001,
+      "sha256": "a18c0146491f7f6753ff94c830597fcfd7b7f7fca0fe17a644c9b5ccdb4af893"
+    },
+    {
+      "split": "val",
+      "file": "val.jsonl",
+      "records": 300,
+      "seed": 2002,
+      "sha256": "9f28a863b91ee59f8ae9ac4e5cac5dd9b0cc5c99c823b23816ee51ca0ce03a1b"
+    },
+    {
+      "split": "test",
+      "file": "test.jsonl",
+      "records": 400,
+      "seed": 3003,
+      "sha256": "d92890e21d9df570e9453bdab944ec7c5afbe8c80b1f9eddb2d56b9ba9ba7b10"
+    }
+  ]
+}

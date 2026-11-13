@@ -1,0 +1,5 @@
+{
+  "bos_token": "<bos>",
+  "eos_token": "<END>",
+  "pad_token": "<pad>"
+}
