@@ -10,8 +10,12 @@
 # You type the passphrase into gpg's prompt; it is never shown or stored.
 # Usage:  powershell -ExecutionPolicy Bypass -File RESTORE-TEST.ps1 -Day 2026-11-14 -PrivateKey F:\yb-backup-private.asc
 
-param([Parameter(Mandatory)][string]$Day, [Parameter(Mandatory)][string]$PrivateKey,
+param([Parameter(Mandatory)][string]$Day, [string]$PrivateKey, [switch]$NoKey,
       [string]$Root = "D:\YB-Backups", [string]$Repo = "$env:USERPROFILE\YOUTUBE-BUDDY")
+# -NoKey: the private key is unavailable. Database, media and project are still restored and checked; the throwaway
+# storage gets its credentials from the LIVE .env (read only, kept in memory). The secrets check is reported SKIPPED and
+# the overall result is PARTIAL - never PASSED - because the encrypted configuration was not proven restorable.
+if (-not $NoKey -and -not $PrivateKey) { throw "Give -PrivateKey <path to the .asc file>, or -NoKey for a partial test without it." }
 $ErrorActionPreference = "Stop"
 $Gpg     = "C:\Program Files\Git\usr\bin\gpg.exe"
 $GpgConf = "C:\Program Files\Git\usr\bin\gpgconf.exe"
@@ -53,22 +57,29 @@ try {
   $bad = Get-Content (Join-Path $Src "SHA256SUMS.txt") | ForEach-Object { $h, $f = $_ -split '  ', 2; if ((Get-FileHash (Join-Path $Src $f) -Algorithm SHA256).Hash.ToLower() -ne $h) { $f } }
   Check "hashes" (-not $bad) $(if ($bad) { "mismatched: " + ($bad -join ", ") } else { "all files match SHA256SUMS.txt" })
 
-  # 2. Secrets: private key into a TEMPORARY key folder; decrypt to memory only. The passphrase is read hidden and
-  #    passed to gpg through its input stream (never on the command line or disk).
-  $sec = Read-Host "Backup key passphrase" -AsSecureString
-  $pp = [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec))
-  New-Item -ItemType Directory -Force $TmpKeys | Out-Null
-  GpgPass $Gpg "--homedir `"$TmpHome`" --batch --pinentry-mode loopback --passphrase-fd 0 --import `"$(MsysPath $PrivateKey)`"" $pp | Out-Null; Ok "import private key (temporary key folder)"
-  $dec = "`"$Gpg`" --homedir `"$TmpHome`" --batch --pinentry-mode loopback --passphrase-fd 0 --decrypt `"$(MsysPath "$Src\secrets.tar.gpg")`""
-  $list = (GpgPass "cmd.exe" "/c `"$dec | tar -tf -`"" $pp) -split "`r?`n" | Where-Object { $_ }; Ok "decrypt + list secrets (wrong passphrase stops here)"
-  $envText = (GpgPass "cmd.exe" "/c `"$dec | tar -xOf - .env`"" $pp) -split "`r?`n"; Ok "read .env from the encrypted archive"
-  $pp = $null
-  $envVars = @{}; $envText | Where-Object { $_ -match '^\s*([A-Z0-9_]+)=(.*?)\s*$' } | ForEach-Object { $envVars[$Matches[1]] = $Matches[2] }
-  $need = "POSTGRES_PASSWORD", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY", "TOKEN_ENCRYPTION_KEY"
-  $missing = $need | Where-Object { -not $envVars[$_] }
-  Check "secrets-env" (-not $missing) $(if ($missing) { "missing: $($missing -join ', ')" } else { "required names present (values not shown)" })
-  $cf = @("cloudflared/cert.pem", "cloudflared/tunnel.json", "cloudflared/config.yml") | Where-Object { $list -notcontains $_ }
-  Check "secrets-cloudflare" (-not $cf) $(if ($cf) { "missing: $($cf -join ', ')" } else { "cert.pem, tunnel.json, config.yml present" })
+  if ($NoKey) {
+    $result.checks["secrets"] = @{ pass = $true; skipped = $true; detail = "SKIPPED: private key unavailable - secrets.tar.gpg not proven restorable" }
+    Write-Host "SKIP secrets - private key unavailable; using the live .env for the throwaway storage credentials" -ForegroundColor Yellow
+    $envVars = @{}; Get-Content (Join-Path $Repo "deploy\home\.env") | Where-Object { $_ -match '^\s*(S3_ACCESS_KEY_ID|S3_SECRET_ACCESS_KEY)=(.*?)\s*$' } | ForEach-Object { $envVars[$Matches[1]] = $Matches[2] }
+    if (-not $envVars.S3_ACCESS_KEY_ID -or -not $envVars.S3_SECRET_ACCESS_KEY) { throw "Live .env lacks the storage credential names" }
+  } else {
+    # 2. Secrets: private key into a TEMPORARY key folder; decrypt to memory only. The passphrase is read hidden and
+    #    passed to gpg through its input stream (never on the command line or disk).
+    $sec = Read-Host "Backup key passphrase" -AsSecureString
+    $pp = [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec))
+    New-Item -ItemType Directory -Force $TmpKeys | Out-Null
+    GpgPass $Gpg "--homedir `"$TmpHome`" --batch --pinentry-mode loopback --passphrase-fd 0 --import `"$(MsysPath $PrivateKey)`"" $pp | Out-Null; Ok "import private key (temporary key folder)"
+    $dec = "`"$Gpg`" --homedir `"$TmpHome`" --batch --pinentry-mode loopback --passphrase-fd 0 --decrypt `"$(MsysPath "$Src\secrets.tar.gpg")`""
+    $list = (GpgPass "cmd.exe" "/c `"$dec | tar -tf -`"" $pp) -split "`r?`n" | Where-Object { $_ }; Ok "decrypt + list secrets (wrong passphrase stops here)"
+    $envText = (GpgPass "cmd.exe" "/c `"$dec | tar -xOf - .env`"" $pp) -split "`r?`n"; Ok "read .env from the encrypted archive"
+    $pp = $null
+    $envVars = @{}; $envText | Where-Object { $_ -match '^\s*([A-Z0-9_]+)=(.*?)\s*$' } | ForEach-Object { $envVars[$Matches[1]] = $Matches[2] }
+    $need = "POSTGRES_PASSWORD", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY", "TOKEN_ENCRYPTION_KEY"
+    $missing = $need | Where-Object { -not $envVars[$_] }
+    Check "secrets-env" (-not $missing) $(if ($missing) { "missing: $($missing -join ', ')" } else { "required names present (values not shown)" })
+    $cf = @("cloudflared/cert.pem", "cloudflared/tunnel.json", "cloudflared/config.yml") | Where-Object { $list -notcontains $_ }
+    Check "secrets-cloudflare" (-not $cf) $(if ($cf) { "missing: $($cf -join ', ')" } else { "cert.pem, tunnel.json, config.yml present" })
+  }
 
   # 3. Database: fresh Postgres 16 on the isolated network; compare row counts with those recorded at backup time
   docker network create --internal ybrestore-net | Out-Null; Ok "create isolated network"; $created = $true
@@ -108,7 +119,9 @@ finally {
   $pp = $null; $envVars = $null; $envText = $null
   Remove-Item Env:\RUSTFS_ACCESS_KEY, Env:\RUSTFS_SECRET_KEY, Env:\POSTGRES_PASSWORD -ErrorAction SilentlyContinue
   if (Test-Path $TmpKeys) { & $GpgConf --homedir $TmpHome --kill gpg-agent; Remove-Item $TmpKeys -Recurse -Force }   # private key gone from this laptop
-  $result.passed = -not ($result.checks.Values | Where-Object { -not $_.pass })
-  $result | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $Root "logs\restore-test-$Day.json")
-  Write-Host ("RESULT: " + $(if ($result.passed) { "PASSED" } else { "FAILED" }))
+  $ok = -not ($result.checks.Values | Where-Object { -not $_.pass })
+  $result.passed = $ok -and -not $NoKey
+  $result.result = if (-not $ok) { "FAILED" } elseif ($NoKey) { "PARTIAL" } else { "PASSED" }
+  $result | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $Root ("logs\restore-test-$Day" + $(if ($NoKey) { "-nokey" } else { "" }) + ".json"))
+  Write-Host ("RESULT: " + $result.result + $(if ($result.result -eq "PARTIAL") { " (database, media and project restored; secrets NOT verified - key missing)" } else { "" }))
 }

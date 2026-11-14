@@ -140,6 +140,10 @@ def llm_ready() -> bool:
 
 def llm_json(system: str, user: str, max_tokens: int = 4000) -> tuple[dict, str]:
     """Ask for one JSON object. Returns (parsed, model_name)."""
+    from .. import gpu
+    ready = gpu.prepared_reply(system, user, max_tokens)
+    if ready is not None:                                    # replay after the GPU worker answered this exact prompt
+        return parse_json(ready), gpu.model_label()
     if os.environ.get("GROQ_API_KEY"):
         model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
         base = os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1").rstrip("/")
@@ -164,6 +168,10 @@ def llm_json(system: str, user: str, max_tokens: int = 4000) -> tuple[dict, str]
             raise ProviderError("Groq returned an unreadable response. Please try again.") from e
         if not isinstance(text, str):
             raise ProviderError("Groq returned an unreadable response. Please try again.")
+    elif gpu.llm_routed():
+        if gpu.CURRENT_JOB.get() is None:
+            raise ProviderError("AI writing runs on the GPU worker and is only available for queued tools right now")
+        raise gpu.DeferToGpu(gpu.llm_task(system, user, max_tokens))
     elif llm_local():
         model = os.environ.get("LLM_LOCAL_MODEL", "local")
         base = os.environ["LLM_BASE_URL"].rstrip("/")

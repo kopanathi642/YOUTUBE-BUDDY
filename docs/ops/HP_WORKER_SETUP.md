@@ -64,18 +64,36 @@ The exact CUDA wheel (`cu126`) is confirmed against the driver the audit finds.
 
 Writing model on the HP: llama.cpp's Windows CUDA release (GitHub `ggml-org/llama.cpp` → Releases → `…bin-win-cuda-…x64.zip`), with the same Qwen3-4B Q4_K_M model the ASUS uses. It listens **only on 127.0.0.1**; the worker calls it locally, so nothing reaches it from the network. Expected use: about 3 GB of VRAM.
 
-## H5: GPU worker app (built after approval; not written yet)
+## H5: GPU worker app (built and tested; switched off on the server until you approve)
 
-To be added to this repo as `gpu-worker/`. The HP runs it in the venv above. What it does:
-1. **Readiness check** before accepting work: driver and CUDA OK, free VRAM ≥ the job's need, disk ≥ 20 GB, FFmpeg present.
-2. Sends its capabilities (GPU, VRAM, models) and a heartbeat every 15 s to the ASUS worker API over Tailscale.
-3. Claims one job at a time from the `gpu` queue; keeps the job's lease alive while working.
-4. Downloads inputs through the worker API; runs the job; uploads results in 16 MB parts with a SHA-256 for each file.
-5. Defers a job it can't fit in VRAM instead of crashing.
+What exists now in the repo:
+- `gpu-worker/worker.py`, the HP client. Python standard library only, nothing to `pip install`.
+- `/api/v1/worker/*` on the server, plus admin controls at `/api/v1/admin/gpu*`.
+- Both stay inactive until `GPU_WORKERS_ENABLED=true` (and `GPU_LLM=true` for the writing tools) is set on the ASUS.
 
-Identity: you register the HP on the admin page, which shows a worker token **once**. You paste it into `C:\YB-Worker\gpu-worker\worker.local.toml` on the HP (never into chat). That file also records `role = "gpu-worker"`. The ASUS keeps only the token's hash; revoking it there cuts the HP off immediately.
+How a writing-tool run flows:
+1. The ASUS worker runs the tool up to the model call.
+2. It parks the job in the `gpu` queue ("Waiting for GPU worker").
+3. The HP claims it, runs Qwen3-4B on its GPU through its local llama.cpp, and returns only the text.
+4. The ASUS validates the text and finishes the job with the existing code.
 
-Auto-start: a Task Scheduler task "YB GPU Worker", run at sign-in, restart on failure every 1 min, up to 3 times.
+The HP never receives database or storage credentials.
+
+Tested (pytest, real PostgreSQL, the real client against the API served by uvicorn):
+- waits while no worker is online; the claim is atomic, with no second claim;
+- lease expiry reclaims a job from a worker that died mid-job, and the dead worker can't complete it afterwards;
+- a duplicate completion is a no-op; an unusable answer is rejected, then retried or failed according to the run's attempt limit;
+- cancelling while waiting or while running is handled, including a completion that arrives after a cancel;
+- the public tunnel (`CF-Connecting-IP`/`CF-Ray`) is refused, bad and revoked tokens are refused, the off switch and pause work, and normal users can't reach the admin controls.
+
+Setup on the HP, after H2–H4:
+1. On the ASUS admin page (or `POST /api/v1/admin/gpu/workers {"name":"hp-victus"}`), register the worker. Copy the token shown **once**.
+2. On the HP, copy `gpu-worker\worker.local.toml.example` to `worker.local.toml`, then paste the token and the ASUS tailnet name. This file is git-ignored.
+3. Start the model server on the HP, bound to 127.0.0.1 only: `llama-server -hf Qwen/Qwen3-4B-GGUF:Q4_K_M --host 127.0.0.1 --port 8080 -ngl 99 -c 6144 --jinja`
+4. Start the worker: `py -3.11 gpu-worker\worker.py`. The log shows heartbeats and each job.
+5. Auto-start: a Task Scheduler task "YB GPU Worker" at sign-in, restarting on failure. It's set up from the HP chat.
+
+Readiness: the worker offers the `llm` task only while its local model server answers `/health`. It reports GPU name and free VRAM from `nvidia-smi` with each heartbeat.
 
 ## H6: Integration tests (all 18 from the master prompt)
 

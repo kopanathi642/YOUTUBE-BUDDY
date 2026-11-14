@@ -94,6 +94,10 @@ def get_job(job_id: uuid.UUID, user: User = Depends(current_user), db: Session =
 def cancel_job(job_id: uuid.UUID, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
     j = load_job(db, user, job_id, Role.editor)
     jobs.request_cancel(db, j)
+    if j.status == JobStatus.canceled:     # cancelled before any worker picked it up (e.g. waiting for the GPU worker)
+        from ..worker import _mark_media_failed
+        db.flush()
+        _mark_media_failed(db, j, "cancelled by user")
     audit(db, request, "job.cancel", user=user, workspace_id=j.workspace_id, target_type="job", target_id=j.id)
     db.commit()
     return ser_job(j)

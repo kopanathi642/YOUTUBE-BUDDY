@@ -585,8 +585,13 @@ for s in STUDIOS:
 LOCAL_LLM_TOOLS_DEFAULT = "052,054,055,056,057,059"
 
 
+def _gpu_llm() -> bool:
+    from .. import gpu
+    return gpu.llm_routed()
+
+
 def local_llm_only() -> bool:
-    return bool(os.environ.get("LLM_BASE_URL")) and not (os.environ.get("GROQ_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY"))
+    return bool(os.environ.get("LLM_BASE_URL") or _gpu_llm()) and not (os.environ.get("GROQ_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY"))
 
 
 def local_llm_tools() -> set[str]:
@@ -595,7 +600,7 @@ def local_llm_tools() -> set[str]:
 
 def keys() -> dict:
     return {"fal": bool(os.environ.get("FAL_KEY")),
-            "llm": bool(os.environ.get("GROQ_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_BASE_URL")),
+            "llm": bool(os.environ.get("GROQ_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_BASE_URL") or _gpu_llm()),
             "youtube": bool(os.environ.get("YOUTUBE_API_KEY"))}
 
 
@@ -618,6 +623,9 @@ def status(t: dict, k: dict | None = None) -> dict:
         missing = []            # the hosted model on fal.ai can do the whole job instead
     if missing:
         return {"state": "needs_key", "needs": [NEEDS_TEXT[m] for m in dict.fromkeys(missing)], "detail": e["note"]}
+    if "llm" in need and _gpu_llm() and not (os.environ.get("GROQ_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY")):
+        return {"state": "ready", "needs": [], "detail": e["note"], "runs_on": "gpu_worker",
+                "notice": "Runs on the GPU worker. If it is offline, your run waits in the queue and starts when it is back."}
     return {"state": "ready", "needs": [], "detail": e["note"]}
 
 

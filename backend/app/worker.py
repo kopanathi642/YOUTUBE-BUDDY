@@ -476,11 +476,21 @@ def process_one(worker_id: str, queues: list[str]) -> bool:
         os.makedirs(s.scratch_dir, exist_ok=True)
         tmp = tempfile.mkdtemp(prefix=f"job-{job.id}-", dir=s.scratch_dir)
         ctx = Ctx(db, job, worker_id)
+        from . import gpu
+        cur = gpu.CURRENT_JOB.set(job)
         try:
             result = HANDLERS[job.kind](ctx, tmp)
             db.refresh(job)
             jobs.finish(db, job, result=result)
             log.info(f"job {job.id} succeeded")
+        except gpu.DeferToGpu as d:
+            db.rollback(); db.refresh(job)
+            if job.cancel_requested:
+                jobs.fail(db, job, "cancelled by user", retryable=False)
+                _mark_media_failed(db, job, "cancelled by user")
+            else:
+                gpu.park(db, job, d.task)
+                log.info(f"job {job.id} waits for a GPU worker")
         except Cancelled:
             db.rollback(); db.refresh(job)
             jobs.fail(db, job, "cancelled by user", retryable=False)
@@ -498,6 +508,7 @@ def process_one(worker_id: str, queues: list[str]) -> bool:
                 _mark_media_failed(db, job, str(e))
             log.exception(f"job {job.id} error")
         finally:
+            gpu.CURRENT_JOB.reset(cur)
             shutil.rmtree(tmp, ignore_errors=True)
         return True
     finally:

@@ -247,6 +247,20 @@ class Generation(Base, Timestamped):
     rating: Mapped[int | None] = mapped_column(Integer)
 
 
+class GpuWorker(Base):
+    """A registered GPU worker (the HP laptop). Authenticates with a token whose SHA-256 is stored here; the token itself
+    is shown to the admin once. Revoking or pausing takes effect on the worker's next call."""
+    __tablename__ = "gpu_workers"
+    id: Mapped[uuid.UUID] = uuid_pk()
+    name: Mapped[str] = mapped_column(String(60), unique=True, nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    capabilities: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    paused: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
 class PlatformSetting(Base):
     """Small admin-editable settings (UPI payee details, QR storage key). Never secrets."""
     __tablename__ = "platform_settings"
