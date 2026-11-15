@@ -56,7 +56,7 @@ function ReadAt([int64]$off, [int]$len, [byte[]]$into) {
 }
 try {
   for ($off = [int64]0; $off -lt $size; $off += $Chunk) {
-    $len = [int][Math]::Min($Chunk, $size - $off)
+    $len = [int][Math]::Min([int64]$Chunk, $size - $off)
     try { ReadAt $off $len $buf; $out.Write($buf, 0, $len) }
     catch [IO.IOException] {
       for ($s = 0; $s -lt $len; $s += $Small) {            # retry this block in small pieces
@@ -66,7 +66,7 @@ try {
       }
     }
     if ($off -ge $nextReport) {
-      $pct = [int](100 * $off / [Math]::Max(1, $size)); $mbps = ($off / 1MB) / [Math]::Max(1, ((Get-Date) - $t0).TotalSeconds)
+      $pct = [int](100 * $off / [Math]::Max([int64]1, $size)); $mbps = ($off / 1MB) / [Math]::Max(1, ((Get-Date) - $t0).TotalSeconds)
       Write-Host ("  {0,3}%  {1:N0} MB read  {2:N1} MB/s  unreadable so far: {3:N0} KB" -f $pct, ($off / 1MB), $mbps, ($badBytes / 1KB))
       $nextReport = $off + 256MB
     }
