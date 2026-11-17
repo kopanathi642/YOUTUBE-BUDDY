@@ -55,7 +55,7 @@ Rollback: `tailscale serve reset` on the ASUS, then uninstall Tailscale. The pub
 ```powershell
 git clone https://github.com/kopanathi642/YOUTUBE-BUDDY.git C:\YB-Worker
 cd C:\YB-Worker
-py -3.11 -m venv .venv
+py -3 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install torch --index-url https://download.pytorch.org/whl/cu126
 python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"   # must print True NVIDIA GeForce RTX 4050 ...
@@ -90,7 +90,7 @@ Setup on the HP, after H2–H4:
 1. On the ASUS admin page (or `POST /api/v1/admin/gpu/workers {"name":"hp-victus"}`), register the worker. Copy the token shown **once**.
 2. On the HP, copy `gpu-worker\worker.local.toml.example` to `worker.local.toml`, then paste the token and the ASUS tailnet name. This file is git-ignored.
 3. Start the model server on the HP, bound to 127.0.0.1 only: `llama-server -hf Qwen/Qwen3-4B-GGUF:Q4_K_M --host 127.0.0.1 --port 8080 -ngl 99 -c 6144 --jinja`
-4. Start the worker: `py -3.11 gpu-worker\worker.py`. The log shows heartbeats and each job.
+4. Start the worker: `py -3 gpu-worker\worker.py` (stdlib only: any Python 3.11+ works). The log shows heartbeats and each job.
 5. Auto-start: a Task Scheduler task "YB GPU Worker" at sign-in, restarting on failure. It's set up from the HP chat.
 
 Readiness: the worker offers the `llm` task only while its local model server answers `/health`. It reports GPU name and free VRAM from `nvidia-smi` with each heartbeat.

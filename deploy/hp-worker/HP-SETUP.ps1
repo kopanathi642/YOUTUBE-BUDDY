@@ -27,7 +27,7 @@ try {
   Head "1/6 Is this the HP with a working NVIDIA GPU?"
   if (-not (Have "nvidia-smi")) { throw "nvidia-smi not found: install/update the NVIDIA driver (NVIDIA App -> Drivers), restart, run again. Nothing was installed." }
   $gpu = (nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader | Select-Object -First 1).Trim()
-  $cudaLine = (nvidia-smi | Select-String "CUDA Version:\s*([\d.]+)").Matches[0].Groups[1].Value
+  $cudaLine = (nvidia-smi | Select-String "CUDA (?:UMD )?Version:\s*([\d.]+)").Matches[0].Groups[1].Value
   Write-Host "GPU: $gpu | driver supports CUDA $cudaLine | $((Get-CimInstance Win32_Processor).Name.Trim()) | RAM $([math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory/1GB)) GB"
   if ($gpu -notmatch "RTX") { throw "Expected an NVIDIA RTX GPU, found '$gpu'. Stopping." }
   if ([version]$cudaLine -lt [version]"12.4") { throw "NVIDIA driver too old (CUDA $cudaLine, need 12.4+). Update it with the NVIDIA App, restart, run again." }
@@ -68,9 +68,11 @@ try {
   $ldir = Join-Path $Dir "llama"; $exe = Join-Path $ldir "llama-server.exe"
   if (Test-Path $exe) { Write-Host "already there: $exe" }
   else {
-    $rel = Invoke-RestMethod "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest" -Headers @{ "User-Agent" = "yb-hp-setup" }
-    $bin = $rel.assets | Where-Object name -match '^llama-.*-bin-win-cuda-12\.\d+-x64\.zip$' | Select-Object -First 1
-    if (-not $bin) { throw "No Windows CUDA 12 build found in llama.cpp release $($rel.tag_name)." }
+    # "latest" can be a nightly-tag-only release; the Windows builds are in the numbered bNNNNN (pre-)releases
+    $rels = Invoke-RestMethod "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=30" -Headers @{ "User-Agent" = "yb-hp-setup" }
+    $rel = $null; $bin = $null
+    foreach ($r in $rels) { $b = $r.assets | Where-Object name -match '^llama-.*-bin-win-cuda-12\.\d+-x64\.zip$' | Select-Object -First 1; if ($b) { $rel = $r; $bin = $b; break } }
+    if (-not $bin) { throw "No Windows CUDA 12 build found in the last 30 llama.cpp releases." }
     $cver = [regex]::Match($bin.name, 'cuda-(12\.\d+)').Groups[1].Value
     $rt = $rel.assets | Where-Object name -match "^cudart-llama-bin-win-cuda-$([regex]::Escape($cver))-x64\.zip$" | Select-Object -First 1
     New-Item -ItemType Directory -Force $ldir | Out-Null
