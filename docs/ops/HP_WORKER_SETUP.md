@@ -43,9 +43,9 @@ Tailscale's free Personal plan allows 6 users and is free. **Tailscale describes
 3. Access rules (the HP may talk to the ASUS, nothing else is allowed):
    ```json
    {"tagOwners": {"tag:server": ["autogroup:admin"], "tag:gpu-worker": ["autogroup:admin"]},
-    "acls": [{"action": "accept", "src": ["tag:gpu-worker"], "dst": ["tag:server:443"]}]}
+    "acls": [{"action": "accept", "src": ["tag:gpu-worker"], "dst": ["tag:server:80"]}]}
    ```
-4. On the **ASUS**: `tailscale serve --bg --https=443 http://127.0.0.1:8000`. This publishes the app **only inside your tailnet**; Docker and the Cloudflare Tunnel stay as they are.
+4. On the **ASUS**: `tailscale serve --bg --http=80 http://127.0.0.1:8000`. This publishes the app **only inside your tailnet** (plain HTTP on purpose: WireGuard already encrypts it, and HTTPS mode would put the machine names in public certificate logs; see HP_CONNECTION_AND_ROUTING.md); Docker and the Cloudflare Tunnel stay as they are.
 5. Check from the HP: `curl https://<asus-name>.<tailnet>.ts.net/api/v1/health` returns `"status":"ok"`. From a phone off Wi-Fi without Tailscale, the same address must **not** load.
 
 Rollback: `tailscale serve reset` on the ASUS, then uninstall Tailscale. The public site is never affected.
