@@ -64,58 +64,46 @@ try {
   py -3 -m py_compile (Join-Path $Dir "gpu-worker\worker.py"); if ($LASTEXITCODE) { throw "worker.py does not compile with this Python" }
   Write-Host "code at $Dir (commit $((git -C $Dir rev-parse --short HEAD).Trim()))" -ForegroundColor Green
 
-  Head "4/6 llama.cpp (official Windows CUDA build)"
-  $ldir = Join-Path $Dir "llama"; $exe = Join-Path $ldir "llama-server.exe"
-  if (Test-Path $exe) { Write-Host "already there: $exe" }
-  else {
-    # "latest" can be a nightly-tag-only release; the Windows builds are in the numbered bNNNNN (pre-)releases
-    $rels = Invoke-RestMethod "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=30" -Headers @{ "User-Agent" = "yb-hp-setup" }
-    $rel = $null; $bin = $null
-    foreach ($r in $rels) { $b = $r.assets | Where-Object name -match '^llama-.*-bin-win-cuda-12\.\d+-x64\.zip$' | Select-Object -First 1; if ($b) { $rel = $r; $bin = $b; break } }
-    if (-not $bin) { throw "No Windows CUDA 12 build found in the last 30 llama.cpp releases." }
-    $cver = [regex]::Match($bin.name, 'cuda-(12\.\d+)').Groups[1].Value
-    $rt = $rel.assets | Where-Object name -match "^cudart-llama-bin-win-cuda-$([regex]::Escape($cver))-x64\.zip$" | Select-Object -First 1
-    New-Item -ItemType Directory -Force $ldir | Out-Null
-    foreach ($a in @($bin, $rt) | Where-Object { $_ }) {
-      $zip = Join-Path $env:TEMP $a.name
-      Write-Host "downloading $($a.name) ($([math]::Round($a.size/1MB)) MB) from github.com/ggml-org/llama.cpp ..."
-      Invoke-WebRequest $a.browser_download_url -OutFile $zip -UseBasicParsing
-      Expand-Archive $zip -DestinationPath $ldir -Force; Remove-Item $zip
-    }
-    $found = Get-ChildItem $ldir -Recurse -Filter llama-server.exe | Select-Object -First 1
-    if (-not $found) { throw "llama-server.exe not found after unzip" }
-    if ($found.DirectoryName -ne $ldir) { Get-ChildItem $found.DirectoryName | Move-Item -Destination $ldir -Force }
-    Write-Host "llama.cpp $($rel.tag_name) (CUDA $cver) installed" -ForegroundColor Green
-  }
-  $start = Join-Path $Dir "start-llm.cmd"
-  Set-Content $start -Encoding ascii -Value "@echo off`r`nrem Writing model for the GPU worker. Listens on 127.0.0.1 only (not reachable from the network).`r`n`"$exe`" -hf Qwen/Qwen3-4B-GGUF:Q4_K_M --host 127.0.0.1 --port 8080 -ngl 99 -c 6144 --jinja"
+  Head "4/6 Ollama — pull Qwen3-4B model"
+  # Ollama is already installed (code-signed; not blocked by Smart App Control).
+  # Just make sure the model is downloaded and write a convenience start script.
+  $ollamaExe = "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe"
+  if (-not (Test-Path $ollamaExe)) { $ollamaExe = (Get-Command ollama -ErrorAction SilentlyContinue)?.Source }
+  if (-not $ollamaExe) { throw "ollama.exe not found. Install Ollama from https://ollama.com and re-run." }
+  Write-Host "Ollama found: $ollamaExe" -ForegroundColor Green
 
-  Head "5/6 Model download + real GPU test"
+  Write-Host "Pulling qwen3:4b model (first run downloads ~2.5 GB; subsequent runs are instant) ..."
+  & $ollamaExe pull qwen3:4b
+  if ($LASTEXITCODE) { throw "ollama pull qwen3:4b failed (exit $LASTEXITCODE)" }
+  Write-Host "Model ready." -ForegroundColor Green
+
+  $start = Join-Path $Dir "start-llm.cmd"
+  Set-Content $start -Encoding ascii -Value "@echo off`r`nrem Start Ollama so the GPU worker can reach it on 127.0.0.1:11434`r`nset OLLAMA_HOST=127.0.0.1`r`nset OLLAMA_ORIGINS=`r`n`"$ollamaExe`" serve"
+  Write-Host "start-llm.cmd written to $start" -ForegroundColor Green
+
+  Head "5/6 GPU test via Ollama"
   if ($SkipModel) { Write-Host "skipped (-SkipModel)" }
   else {
-    $logOut = Join-Path $Dir "llama-test-$stamp.log"
-    $llama = Start-Process -FilePath $exe -ArgumentList "-hf Qwen/Qwen3-4B-GGUF:Q4_K_M --host 127.0.0.1 --port 8080 -ngl 99 -c 6144 --jinja" -RedirectStandardError $logOut -RedirectStandardOutput "$logOut.out" -WindowStyle Hidden -PassThru
-    Write-Host "downloading the model (~2.5 GB, first time only) and loading it on the GPU ... (log: $logOut)"
+    Write-Host "Starting ollama serve for the test ..."
+    $env:OLLAMA_HOST = "127.0.0.1"
+    $proc = Start-Process -FilePath $ollamaExe -ArgumentList "serve" -WindowStyle Hidden -PassThru
     $ready = $false; $t0 = Get-Date
-    while (-not $ready -and ((Get-Date) - $t0).TotalMinutes -lt 45) {
-      Start-Sleep 10
-      if ($llama.HasExited) { throw "llama-server stopped. Last log lines:`n$((Get-Content $logOut -Tail 15) -join "`n")" }
-      try { $ready = (Invoke-WebRequest "http://127.0.0.1:8080/health" -UseBasicParsing -TimeoutSec 5).StatusCode -eq 200 } catch { }
-      if (-not $ready) { Write-Host ("  {0:N0} min ..." -f ((Get-Date) - $t0).TotalMinutes) }
+    while (-not $ready -and ((Get-Date) - $t0).TotalSeconds -lt 60) {
+      Start-Sleep 2
+      try { $ready = (Invoke-WebRequest "http://127.0.0.1:11434/" -UseBasicParsing -TimeoutSec 3).StatusCode -eq 200 } catch { }
     }
-    if (-not $ready) { throw "model not ready after 45 minutes (slow internet?). Run the script again; the download resumes." }
-    $body = @{ messages = @(@{ role = "system"; content = "Reply with JSON only." }, @{ role = "user"; content = 'Give 3 YouTube video title ideas about cooking dal, as {"titles": [...]}' });
-               temperature = 0.4; max_tokens = 300; response_format = @{ type = "json_object" }; chat_template_kwargs = @{ enable_thinking = $false } } | ConvertTo-Json -Depth 6
+    if (-not $ready) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue; throw "ollama serve did not start within 60 s" }
+    $body = @{ model = "qwen3:4b"; messages = @(@{ role = "system"; content = "Reply with JSON only. No thinking tags." }, @{ role = "user"; content = 'Give 3 YouTube video title ideas about cooking dal, as {"titles": [...]}' });
+               temperature = 0.4; max_tokens = 300; stream = $false } | ConvertTo-Json -Depth 6
     $sw = [Diagnostics.Stopwatch]::StartNew()
-    $r = Invoke-RestMethod "http://127.0.0.1:8080/v1/chat/completions" -Method Post -ContentType "application/json" -Body $body -TimeoutSec 300
+    $r = Invoke-RestMethod "http://127.0.0.1:11434/v1/chat/completions" -Method Post -ContentType "application/json" -Body $body -TimeoutSec 120
     $sw.Stop()
     $txt = $r.choices[0].message.content
     $null = $txt | ConvertFrom-Json        # throws if the answer is not valid JSON
-    $tps = if ($r.timings.predicted_per_second) { "{0:N1} tokens/s" -f $r.timings.predicted_per_second } else { "" }
-    $vram = (nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader).Trim()
+    $vram = if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) { (nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader).Trim() } else { "n/a" }
     Write-Host "test answer (valid JSON): $txt" -ForegroundColor Green
-    Write-Host ("took {0:N1} s {1} | GPU memory in use: {2}" -f $sw.Elapsed.TotalSeconds, $tps, $vram) -ForegroundColor Green
-    Stop-Process -Id $llama.Id -Force; $llama = $null
+    Write-Host ("took {0:N1} s | GPU memory in use: {1}" -f $sw.Elapsed.TotalSeconds, $vram) -ForegroundColor Green
+    Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
   }
 
   Head "6/6 Worker config file"
@@ -126,5 +114,5 @@ try {
   Write-Host "`nHP SETUP DONE." -ForegroundColor Green
   Write-Host "Next, when the ASUS is on: open Tailscale (system tray) and sign in yourself, on BOTH laptops, with the same account."
 }
-catch { Write-Host "`nSTOPPED: $($_.Exception.Message)" -ForegroundColor Red; if ($llama -and -not $llama.HasExited) { Stop-Process -Id $llama.Id -Force }; Stop-Transcript | Out-Null; exit 1 }
+catch { Write-Host "`nSTOPPED: $($_.Exception.Message)" -ForegroundColor Red; if ($proc -and -not $proc.HasExited) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }; Stop-Transcript | Out-Null; exit 1 }
 Stop-Transcript | Out-Null

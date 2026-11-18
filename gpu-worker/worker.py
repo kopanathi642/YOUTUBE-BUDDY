@@ -88,11 +88,16 @@ def gpu_info() -> dict:
 
 
 def llm_ready(cfg: dict) -> bool:
-    try:
-        status, body = _http("GET", cfg["llm_url"] + "/health", timeout=5)
-        return status == 200 and (body or {}).get("status", "ok") == "ok"
-    except Exception:  # noqa: BLE001
-        return False
+    # Ollama: GET / returns {"status":"ok"} on 200.  llama.cpp: GET /health returns {"status":"ok"}.
+    # Try both so the same worker.py works with either backend.
+    for path in ("/", "/health"):
+        try:
+            status, body = _http("GET", cfg["llm_url"] + path, timeout=5)
+            if status == 200 and (body or {}).get("status", "ok") == "ok":
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+    return False
 
 
 def capabilities(cfg: dict) -> dict:
