@@ -2,7 +2,7 @@ import Legal from "./pages/Legal";
 import { createContext, lazy, ReactNode, Suspense, useCallback, useContext, useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { api, ApiError, Me, Workspace } from "./api";
-import Landing from "./pages/Landing";
+import Landing from "./pages/CosmicLanding";
 import AuthPage from "./pages/Auth";
 import { universeById } from "./universes";
 
