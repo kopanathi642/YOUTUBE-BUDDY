@@ -2,6 +2,7 @@
 server_url = "http://yb-server"          # the ASUS's name inside your Tailscale network (tailscale serve, port 80)
 token      = "ybw_PASTE_TOKEN_HERE"      # shown ONCE when you register the worker on the admin page
 llm_url    = "http://127.0.0.1:11434"    # Ollama server on this laptop (ollama serve), bound to 127.0.0.1 only
+llm_model  = "qwen3:4b"                 # exact model name as Ollama knows it; use "local" for llama.cpp
 llm_label  = "Qwen3-4B (GPU worker)"
 max_tokens = 2500
 llm_timeout = 900

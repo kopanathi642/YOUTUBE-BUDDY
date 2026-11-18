@@ -6,7 +6,8 @@ this laptop's GPU and sends back only the result. It never sees the database or 
 Config: gpu-worker/worker.local.toml (never commit it; it holds the worker token):
     server_url = "http://yb-server"            # ASUS name inside your tailnet (tailscale serve, port 80)
     token      = "ybw_..."                     # shown once on the admin page when you register this worker
-    llm_url    = "http://127.0.0.1:8080"       # llama.cpp server on this laptop, listening on 127.0.0.1 only
+    llm_url    = "http://127.0.0.1:11434"      # Ollama server on this laptop (ollama serve)
+    llm_model  = "qwen3:4b"                    # model name as Ollama knows it; "local" for llama.cpp
     name_hint  = "hp-victus"                   # optional, shown in logs
 Run:  python gpu-worker/worker.py            (stop with Ctrl+C; a running job is handed back for another try)
 """
@@ -88,12 +89,13 @@ def gpu_info() -> dict:
 
 
 def llm_ready(cfg: dict) -> bool:
-    # Ollama: GET / returns {"status":"ok"} on 200.  llama.cpp: GET /health returns {"status":"ok"}.
-    # Try both so the same worker.py works with either backend.
+    # Ollama: GET / returns plain text "Ollama is running" with status 200.
+    # llama.cpp: GET /health returns {"status":"ok"} with status 200.
+    # Accept any 200 on either path — the content is not important.
     for path in ("/", "/health"):
         try:
-            status, body = _http("GET", cfg["llm_url"] + path, timeout=5)
-            if status == 200 and (body or {}).get("status", "ok") == "ok":
+            status, _body = _http("GET", cfg["llm_url"] + path, timeout=5)
+            if status == 200:
                 return True
         except Exception:  # noqa: BLE001
             pass
@@ -106,10 +108,25 @@ def capabilities(cfg: dict) -> dict:
 
 
 def run_llm(cfg: dict, task: dict, stop: threading.Event) -> str:
-    """Same request the server would send to its own llama.cpp (see backend providers.llm_json)."""
-    body = {"model": "local", "max_tokens": min(int(task["max_tokens"]), int(cfg.get("max_tokens", 2500))), "temperature": 0.4,
-            "response_format": {"type": "json_object"}, "chat_template_kwargs": {"enable_thinking": False},
-            "messages": [{"role": "system", "content": task["system"]}, {"role": "user", "content": task["user"]}]}
+    """Call the local LLM via OpenAI-compatible /v1/chat/completions.
+
+    Works with both Ollama (llm_model = "qwen3:4b", think suppressed via options)
+    and llama.cpp (llm_model = "local", chat_template_kwargs for thinking control).
+    """
+    model = cfg.get("llm_model", "qwen3:4b")
+    max_tok = min(int(task["max_tokens"]), int(cfg.get("max_tokens", 2500)))
+    body = {
+        "model": model,
+        "max_tokens": max_tok,
+        "temperature": 0.4,
+        "response_format": {"type": "json_object"},
+        # Ollama: suppress chain-of-thought via options (think key ignored on /v1 path,
+        # but num_ctx and num_predict are honoured).
+        # llama.cpp: chat_template_kwargs suppresses thinking; Ollama silently ignores it.
+        "chat_template_kwargs": {"enable_thinking": False},
+        "options": {"num_ctx": 6144, "num_predict": max_tok, "temperature": 0.4},
+        "messages": [{"role": "system", "content": task["system"]}, {"role": "user", "content": task["user"]}],
+    }
     result: dict = {}
 
     def go():
