@@ -26,6 +26,18 @@ function ToolCard({ t }: { t: Tool }) {
 }
 
 /** /ai-generator — studio hub + global tool search */
+/** Plain-language shortcuts to the most-used tools. A shortcut only shows when its tool is ready. */
+const QUICK = [
+  { id: "023", label: "Remove background", hint: "Cut yourself out of a video" },
+  { id: "101", label: "Add captions", hint: "Subtitles from your speech" },
+  { id: "104", label: "Dub into a language", hint: "New voice in Hindi, English and more" },
+  { id: "112", label: "Make Shorts", hint: "Long video into 9:16 clips" },
+  { id: "041", label: "Text to voice", hint: "Type a line, hear it spoken" },
+  { id: "026", label: "Make it sharper", hint: "Upscale blurry video" },
+  { id: "093", label: "Cut silences", hint: "Remove the quiet gaps" },
+  { id: "052", label: "Write a hook", hint: "Your first 15 seconds" },
+];
+
 export function AiHub() {
   const { cat } = useCatalogue();
   const { workspace, me } = useAuth();
@@ -48,6 +60,12 @@ export function AiHub() {
         {me?.is_platform_admin && cat && !cat.keys.fal && <div className="keys-banner"><KeyRound size={16} /><div><b>Connect services to enable more tools.</b>
           <span> Video, image, music, lip-sync and 3D generation run on fal.ai (Veo 3.1, Kling 3, Seedance, MiniMax, FLUX, ElevenLabs). Add <code>FAL_KEY</code> in the host's secret settings to turn on {cat.tools.filter((t) => t.status.needs.some((n) => n.startsWith("FAL"))).length} tools.
             {!cat.keys.llm && <> Writing and strategy tools need <code>GROQ_API_KEY</code>, <code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code>.</>}{!cat.keys.youtube && <> Channel research needs <code>YOUTUBE_API_KEY</code>.</>}</span></div></div>}
+        {!q.trim() && cat && <>
+          <h3 className="hub-h">What do you want to do?</h3>
+          <div className="quick-tasks">{QUICK.map((qk) => { const t = cat.tools.find((x) => x.id === qk.id); if (!t || t.status.state !== "ready") return null; return (
+            <Link key={qk.id} to={`/ai-generator/tool/${qk.id}`} className="quick-task"><b>{qk.label}</b><span>{qk.hint}</span></Link>); })}</div>
+          <h3 className="hub-h">Or browse all tools by studio</h3>
+        </>}
         {!q.trim() && <div className="studios">
           {cat?.studios.map((s) => { const m = STUDIO_META[s.id]; const I = m.icon; const ts = cat.tools.filter((t) => t.studio === s.id); const r = ts.filter((t) => t.status.state === "ready").length; return (
             <Link key={s.id} to={`/ai-generator/studio/${s.id}`} className={`studio-card motif-${m.motif}`} style={{ "--s1": m.c1, "--s2": m.c2 } as CSSProperties}>

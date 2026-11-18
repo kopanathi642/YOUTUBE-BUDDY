@@ -537,3 +537,14 @@
 .aiw .spk-row { display: grid; grid-template-columns: 90px 1fr 120px; gap: 10px; align-items: center; font-size: 13px; }
 .aiw .spk-bar { height: 10px; border-radius: 5px; background: rgba(255,255,255,.06); overflow: hidden; }
 .aiw .spk-bar i { display: block; height: 100%; background: #7b61ff; }
+
+/* Hub: plain-language quick tasks */
+.aiw .quick-tasks { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; margin: 10px 0 18px; }
+.aiw .quick-task { display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; border-radius: 14px; text-decoration: none; color: var(--text);
+  border: 1px solid rgba(167,139,250,.35); background: linear-gradient(160deg, rgba(124,58,237,.22), rgba(18,13,46,.6));
+  transition: transform .2s, border-color .2s, box-shadow .2s; }
+.aiw .quick-task:hover { transform: translateY(-3px); border-color: #a78bfa; box-shadow: 0 12px 30px rgba(124,58,237,.35); }
+.aiw .quick-task b { font-size: 16px; }
+.aiw .quick-task span { font-size: 13px; color: var(--text-2); }
+.aiw .hub-h { font-size: 17px; color: var(--text); font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .aiw .quick-task { transition: none; } }

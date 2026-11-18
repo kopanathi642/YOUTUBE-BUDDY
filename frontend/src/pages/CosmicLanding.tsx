@@ -1,8 +1,9 @@
-import { CSSProperties, useEffect, useMemo, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
-import { Blend, Brain, Captions, ChevronRight, CircleCheck, Clapperboard, Clock, Eye, Film, Lock, Maximize, Orbit, Play, Scissors, SlidersHorizontal, Sparkles, Type, User, Volume2, Wrench, Zap } from "lucide-react";
+import { CSSProperties, ReactNode, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { Blend, Brain, Captions, ChevronRight, CircleCheck, Clapperboard, Clock, Eye, Film, Lock, Maximize, Orbit, Play, Scissors, SlidersHorizontal, Sparkles, Type, Volume2, Wrench, Zap } from "lucide-react";
 import { api } from "../api";
-import { useAuth, useBrand } from "../App";
+import { useBrand } from "../App";
+import GlobalBar from "../components/GlobalBar";
 import "@fontsource/inter/latin-400.css";
 import "@fontsource/inter/latin-500.css";
 import "@fontsource/inter/latin-600.css";
@@ -11,12 +12,12 @@ import "@fontsource/space-grotesk/latin-500.css";
 import "@fontsource/space-grotesk/latin-700.css";
 import "../cosmic.css";
 
-/* Signed-out home: the founder's "Creator Universe" design. The tool counts at the bottom come from the server
+/* Signed-in gateway: the founder's "Creator Universe" design. The tool counts at the bottom come from the server
    (/public/studios), so they always match what really works. Video generators are shown as locked until a provider is set up. */
 
 type Catalogue = { total: number; live: number; planned?: number };
 
-const go = (route: string) => `/signin?next=${encodeURIComponent(route)}`;
+
 
 const FORMATS = [
   { id: "16:9", label: "16:9 Landscape", w: 276, h: 124 },
@@ -51,8 +52,9 @@ const Wave = ({ n }: { n: number }) => (
   </div>
 );
 
-export default function CosmicLanding() {
-  const { me, loading } = useAuth();
+/** Signed-in Universe Gateway in the founder's "Creator Universe" design. `children` = the user's own work, shown under the status bar. */
+export default function CreatorUniverseView({ name, children }: { name?: string; children?: ReactNode }) {
+  const go = (route: string) => route;
   const brand = useBrand();
   const [cat, setCat] = useState<Catalogue | null>(null);
   const [fixes, setFixes] = useState<Record<string, boolean>>({ trim: true, audio: true, colour: true });
@@ -62,8 +64,6 @@ export default function CosmicLanding() {
   const stripWave = useMemo(() => <Wave n={60} />, []);
   const edWave = useMemo(() => <Wave n={120} />, []);
 
-  if (loading) return <div className="cu" />;
-  if (me) return <Navigate to="/universes" replace />;
 
   const planned = cat?.planned ?? 0;
   const locked = cat ? cat.total - cat.live - planned : 0;
@@ -72,17 +72,11 @@ export default function CosmicLanding() {
     <div className="cu" id="top">
       <Sky />
 
-      <header className="cu-nav">
-        <a href="#top" className="cu-brand" aria-label={`${brand} home`}>
-          <Play size={34} color="#A78BFA" strokeWidth={2.2} aria-hidden />
-          <span><b className="cu-disp">{brand}</b><small>by YouTube Buddy X</small></span>
-        </a>
-        <Link to="/signin" className="cu-signin"><User size={17} aria-hidden />Sign in</Link>
-      </header>
+      <GlobalBar sub="CREATOR UNIVERSE" />
 
       <section className="cu-hero">
         <h1>Creator <span className="cu-grad">Universe</span></h1>
-        <p>Edit a video, make a Short, or find the <b>AI tool</b> you need.</p>
+        <p>{name ? `Welcome back, ${name}. ` : ""}Edit a video, make a Short, or find the <b>AI tool</b> you need.</p>
         <div className="cu-underline" aria-hidden />
       </section>
 
@@ -127,7 +121,7 @@ export default function CosmicLanding() {
               {FIXES.map(({ id, label, icon: Icon }) => (
                 <label key={id}><input type="checkbox" checked={fixes[id]} onChange={() => setFixes({ ...fixes, [id]: !fixes[id] })} /><Icon size={20} aria-hidden />{label}</label>
               ))}
-              <Link to="/signup" className="cu-review"><Eye size={19} aria-hidden />Review changes</Link>
+              <Link to="/editor" className="cu-review"><Eye size={19} aria-hidden />Review changes</Link>
             </div>
           </div>
           <div className="cu-tl" aria-hidden>
@@ -156,9 +150,9 @@ export default function CosmicLanding() {
         <div className="cu-title" style={{ marginTop: 34 }}><h2 id="gen-h">Special Video Generators</h2></div>
         <div className="cu-locked"><span><Lock size={15} aria-hidden />Locked · provider setup required</span></div>
         <div className="cu-gens">
-          <div className="cu-gen t"><b>Text to Video</b></div>
-          <div className="cu-gen i"><b>Image to Video</b></div>
-          <div className="cu-gen a"><b>Product Ad</b></div>
+          <Link to="/ai-generator" className="cu-gen t"><b>Text to Video</b></Link>
+          <Link to="/ai-generator" className="cu-gen i"><b>Image to Video</b></Link>
+          <Link to="/ai-generator" className="cu-gen a"><b>Product Ad</b></Link>
         </div>
         {cat && (
           <div className="cu-status" aria-label="AI tool status">
@@ -168,8 +162,7 @@ export default function CosmicLanding() {
           </div>
         )}
       </section>
-
-      <footer className="cu-foot">© {new Date().getFullYear()} {brand}<Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link><Link to="/signup">Create free account</Link></footer>
+      {children}
     </div>
   );
 }

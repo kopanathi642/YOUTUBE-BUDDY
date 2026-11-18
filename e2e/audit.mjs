@@ -54,17 +54,12 @@ const setRange = (sel, v) => page.locator(sel).evaluate((el, v) => { Object.getO
 const saved = () => page.waitForFunction(() => document.querySelector(".save-block")?.textContent?.includes("Cloud Saved"), null, { timeout: 15000 });
 
 // ---------------- public pages
-await step("Landing page loads, story scrolls, nav anchors work, live tool counts, search", async () => {
-  await page.goto(B + "/"); await page.waitForSelector("text=Shoot once.");
-  for (const a of ["#story", "#tools", "#pricing"]) await page.click(`.lp-links a[href="${a}"]`);
-  // the story drives the stage from the scroll position: the last chapter must have played after scrolling past it
-  await page.evaluate(() => document.querySelector(".lp-story").scrollIntoView({ block: "end" }));
-  await page.waitForFunction(() => parseFloat(getComputedStyle(document.querySelector(".lp")).getPropertyValue("--c6")) > 0.5);
-  // Editor + every studio with at least one live tool (studios with none are hidden until their service is connected)
-  const live = (await (await page.request.get(B + "/api/v1/public/studios")).json()).studios.filter((s) => s.live > 0).length;
-  await page.waitForFunction((n) => document.querySelectorAll(".lp-dir-row:not(.skel)").length === n, live + 1);
-  await page.fill("input[aria-label='Search tools']", "dub");
-  await page.waitForFunction(() => document.querySelectorAll(".lp-dir-row").length === 1);
+await step("Landing page loads, nav anchors work, live tool count, real prices", async () => {
+  await page.goto(B + "/"); await page.waitForSelector("text=WITHOUT LIMITS");
+  for (const a of ["#features", "#universes", "#pricing"]) await page.click(`.ch-links a[href="${a}"]`);
+  const live = (await (await page.request.get(B + "/api/v1/public/studios")).json()).live;
+  await page.waitForSelector(`text=${live} tools ready`);
+  await page.waitForSelector(".ch-plan .price");
 });
 await step("Sign-up validation shows errors", async () => {
   await page.goto(B + "/signup"); await page.fill("#n", "A"); await page.fill("#e", "bad"); await page.fill("#p", "short");
@@ -74,7 +69,7 @@ await step("Sign-up validation shows errors", async () => {
 const email = `audit${Date.now()}@example.com`;
 await step("Sign up", async () => {
   await page.fill("#n", "Audit Bot"); await page.fill("#e", email); await page.fill("#p", "audit-password-123");
-  await page.click("button:has-text('Create account')"); await page.waitForURL("**/universes"); await page.waitForSelector(".portal");
+  await page.click("button:has-text('Create account')"); await page.waitForURL("**/universes"); await page.waitForSelector(".cu-unis");
   await page.goto(B + "/editor"); await page.waitForSelector(".dash-stats b");
 });
 await step("Sign out and sign in again", async () => {

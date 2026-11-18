@@ -25,7 +25,7 @@ await timePage("Landing", "/", "text=Shoot once.");
 await page.goto(B + "/signup");
 await page.fill("#n", "Speed Bot"); await page.fill("#e", `speed${Date.now()}@example.com`); await page.fill("#p", "speed-password-123");
 let t0 = performance.now();
-await page.click("button:has-text('Create account')"); await page.waitForURL("**/universes"); await page.waitForSelector(".portal");
+await page.click("button:has-text('Create account')"); await page.waitForURL("**/universes"); await page.waitForSelector(".cu-unis");
 rows.push({ what: "Sign up → universes", ms: ms(t0) });
 await timePage("Editor home", "/editor", ".dash-stats b");
 await timePage("AI Generator", "/ai-generator", ".aiw");

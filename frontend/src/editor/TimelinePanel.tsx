@@ -6,7 +6,9 @@ import { keyTimes } from "../keyframes";
 import { assetFrames } from "./Editor";
 
 const HEAD_W = 214;
-const ROW_H = { video: 27, audio: 27 };
+const ROW_H = { video: 30, audio: 30 };
+/** CapCut-style heights: the main video track (V1) is tall enough for a strip of thumbnails, voice/music tracks show a waveform. */
+const rowHeight = (t: Track, badge: string) => (badge === "V1" ? 72 : t.kind === "audio" && (badge === "A1" || badge === "A2") ? 44 : ROW_H[t.kind]);
 
 type Drag = { mode: "move" | "trimL" | "trimR" | "scrub"; id?: string; x0: number; origStart: number; origEnd: number; base: Timeline; moved: boolean };
 
@@ -150,7 +152,7 @@ function TrackRow({ badge, t, tl, view, ppf, contentW, assets, selected, readOnl
   const accepts = (types: readonly string[]) => types.includes("application/x-cu-asset") &&
     (t.kind === "audio" ? types.includes("application/x-cu-kind-audio") : !types.includes("application/x-cu-kind-audio"));
   return (
-    <div className="tl-row" style={{ height: ROW_H[t.kind] }}>
+    <div className={`tl-row${badge === "V1" ? " tl-mainrow" : ""}`} style={{ height: rowHeight(t, badge) }}>
       <div className={`tl-head ${t.kind}`}>
         <span className="tl-badge">{badge}</span>
         <span className="tl-name ellipsis" title={t.name}>{t.name}</span>
