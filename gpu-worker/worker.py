@@ -57,7 +57,12 @@ def _http(method: str, url: str, body: dict | None = None, headers: dict | None 
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             raw = r.read()
-            return r.status, (json.loads(raw) if raw else None)
+            ct = r.headers.get("content-type", "")
+            # Only JSON-parse when the response is actually JSON.
+            # Ollama's GET / returns plain text "Ollama is running"; json.loads would throw.
+            if raw and "application/json" in ct:
+                return r.status, json.loads(raw)
+            return r.status, None
     except urllib.error.HTTPError as e:
         try:
             detail = json.loads(e.read() or b"{}").get("detail", "")
@@ -120,11 +125,12 @@ def run_llm(cfg: dict, task: dict, stop: threading.Event) -> str:
         "max_tokens": max_tok,
         "temperature": 0.4,
         "response_format": {"type": "json_object"},
-        # Ollama: suppress chain-of-thought via options (think key ignored on /v1 path,
-        # but num_ctx and num_predict are honoured).
-        # llama.cpp: chat_template_kwargs suppresses thinking; Ollama silently ignores it.
+        # Suppress chain-of-thought on both backends:
+        #   Ollama /v1: honours "reasoning_effort": "none" (confirmed working)
+        #   llama.cpp /v1: honours "chat_template_kwargs": {"enable_thinking": false}
+        # Both keys are silently ignored by the backend that doesn't know them.
+        "reasoning_effort": "none",
         "chat_template_kwargs": {"enable_thinking": False},
-        "options": {"num_ctx": 6144, "num_predict": max_tok, "temperature": 0.4},
         "messages": [{"role": "system", "content": task["system"]}, {"role": "user", "content": task["user"]}],
     }
     result: dict = {}
