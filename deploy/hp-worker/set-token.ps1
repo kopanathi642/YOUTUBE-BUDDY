@@ -10,9 +10,9 @@ while ($true) {
   if ($tok -match '^ybw_[A-Za-z0-9_-]{16,}$') { break }
   Write-Host "That doesn't look like a key (it must start with ybw_). Try again." -ForegroundColor Yellow
 }
-$txt = Get-Content $cfg -Raw
+$txt = [IO.File]::ReadAllText($cfg)
 $txt = [regex]::Replace($txt, '(?m)^\s*token\s*=.*$', ('token      = "' + $tok + '"'))
-Set-Content $cfg $txt -Encoding utf8 -NoNewline
+[IO.File]::WriteAllText($cfg, $txt.TrimStart([char]0xFEFF), (New-Object Text.UTF8Encoding $false))   # no BOM: Python tomllib rejects it
 $tok = $null
 Write-Host "Key saved in $cfg" -ForegroundColor Green
 
