@@ -39,7 +39,8 @@ def public_studios():
         ts = [t for t in TOOLS.values() if t["studio"] == st["id"]]
         live = [t["name"] for t in ts if status(t, k)["state"] == "ready"]
         out.append({**st, "total": len(ts), "live": len(live), "live_tools": live})
-    return {"studios": out, "total": len(TOOLS), "live": sum(s["live"] for s in out)}
+    planned = sum(1 for t in TOOLS.values() if status(t, k)["state"] == "unbuilt")
+    return {"studios": out, "total": len(TOOLS), "live": sum(s["live"] for s in out), "planned": planned}
 
 
 @router.get("/ai/tools/{tool_id}")
