@@ -2,3 +2,5 @@
 /incoming/
 /adapters/
 __pycache__/
+incoming/
+youtube_dataset/yt_*/
