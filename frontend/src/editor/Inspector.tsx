@@ -4,6 +4,7 @@ import { Asset } from "../api";
 import { Clip, Timeline, Track, Transform, DEFAULT_TRANSFORM, DEFAULT_TITLE, Title, Crop, framesToTimecode, len, updateClip, setSpeed } from "../timeline";
 import { LOOKS, withLook, sanitizeGrade } from "../grade";
 import { Ease, KfProp, clearProp, isAnimated, keyTimes, removeKey, setKey, tfAt } from "../keyframes";
+import { EFFECTS, STYLES, ANIMATIONS, TEXT_STYLES, Effect, EffectType, animationKeys, applyAnimation, clampEffect, effectMeta, sortEffects } from "../effects";
 import { TRANSITION_LIST, TransitionType, nextTouching, previousTouching, transitionLinks } from "../transitions";
 
 /** Free typing; applied (and clamped) on Enter or blur. Esc reverts. */
@@ -144,7 +145,35 @@ export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab,
           </details>}
         </>}
         {tab === "effects" && <div className="insp-sec">
-          {visual ? <><div className="label">Looks (colour presets)</div>
+          {visual && !isTitle && <>
+            <div className="label">Styles (one click: colour + effects)</div>
+            <div className="look-list fx-styles">{STYLES.map((st) => <button key={st.name} className="btn sm" disabled={ro}
+              onClick={() => set({ effects: st.effects.map(clampEffect), color: st.grade ? withLook(st.grade) : clip.color }, "style")}>{st.name}</button>)}
+              <button className="btn sm ghost" disabled={ro || !(clip.effects?.length)} onClick={() => set({ effects: null }, "nofx")}>No effects</button></div>
+            <div className="label" style={{ marginTop: 10 }}>Video effects</div>
+            {(clip.effects ?? []).length === 0 && <div className="dim" style={{ fontSize: 11.5, marginBottom: 6 }}>No effects on this clip yet. Pick a style above or add one below.</div>}
+            {sortEffects(clip.effects ?? []).map((e) => { const m = effectMeta(e.type);
+              const put = (amount: number) => set({ effects: (clip.effects ?? []).map((x) => (x.type === e.type ? clampEffect({ type: e.type, amount }) : x)) }, `fx:${e.type}`);
+              return <div key={e.type} className="fx-row" title={m.hint}>
+                <span className="fx-name">{m.label}</span>
+                {m.min !== m.max ? <><input type="range" min={m.min} max={m.max} step={m.step} value={e.amount} disabled={ro} aria-label={`${m.label} strength`} onChange={(ev) => put(+ev.target.value)} />
+                  <span className="mono fx-val">{m.unit ? `${Math.round(e.amount * 100) / 100}${m.unit}` : `${Math.round(e.amount * 100)}%`}</span></> : <span className="fx-val dim">on</span>}
+                <button className="btn icon ghost xs" aria-label={`Remove ${m.label}`} disabled={ro} onClick={() => set({ effects: (clip.effects ?? []).filter((x) => x.type !== e.type) }, `fxdel:${e.type}`)}>×</button>
+              </div>; })}
+            <select className="fx-add" value="" disabled={ro} aria-label="Add a video effect" onChange={(ev) => { const t = ev.target.value as EffectType; if (!t) return;
+              const m = effectMeta(t); set({ effects: [...(clip.effects ?? []), { type: t, amount: m.def } as Effect] }, `fxadd:${t}`); }}>
+              <option value="">+ Add effect…</option>
+              {(["Colour", "Stylize", "Sharpen", "Frame"] as const).map((g) => <optgroup key={g} label={g}>{EFFECTS.filter((x) => x.group === g && !(clip.effects ?? []).some((y) => y.type === x.type)).map((x) => <option key={x.type} value={x.type}>{x.label}</option>)}</optgroup>)}
+            </select>
+          </>}
+          {visual && <>
+            <div className="label" style={{ marginTop: 12 }}>Animations</div>
+            {(["in", "out", "combo"] as const).map((kind) => <div key={kind} className="anim-row"><span className="dim">{kind === "in" ? "In" : kind === "out" ? "Out" : "Combo"}</span>
+              <div className="look-list">{ANIMATIONS.filter((a) => a.kind === kind).map((a) => <button key={a.label} className="btn sm" disabled={ro || len(clip) < 6}
+                onClick={() => set({ keyframes: applyAnimation(clip, animationKeys(a.id, kind, clip, len(clip), fps, tl.width, tl.height)) }, `anim:${kind}:${a.id}`)}>{a.label}</button>)}</div></div>)}
+            <div className="dim" style={{ fontSize: 11 }}>Animations are keyframes: fine-tune them in the Inspector tab, or "Remove animation" there.</div>
+          </>}
+          {visual ? <><div className="label" style={{ marginTop: 12 }}>Looks (colour presets)</div>
             <div className="look-list">{LOOKS.map((l) => <button key={l.name} className="btn sm" disabled={ro} onClick={() => set({ color: withLook(l.grade) }, "look")}>{l.name}</button>)}
               <button className="btn sm ghost" disabled={ro || !clip.color} onClick={() => set({ color: null }, "nolook")}>None</button></div>
             {asset?.analysis?.auto_grade && <button className="btn sm" style={{ marginTop: 8 }} disabled={ro} onClick={() => set({ color: sanitizeGrade(asset.analysis.auto_grade) }, "auto")}>Auto colour (measured)</button>}</>
@@ -181,7 +210,7 @@ export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab,
         </div>}
         {tab === "text" && (isTitle ? <div className="insp-sec">
           <div className="label">Style</div>
-          <div className="look-list" style={{ marginBottom: 8 }}>{TITLE_STYLES.map(([n, st]) => <button key={n} className="btn sm" disabled={ro} onClick={() => setTitle(st, "style")}>{n}</button>)}</div>
+          <div className="look-list" style={{ marginBottom: 8 }}>{[...TEXT_STYLES.map((t) => [t.name, t.patch] as [string, Partial<Title>]), ...TITLE_STYLES].map(([n, st]) => <button key={n} className="btn sm" disabled={ro} onClick={() => setTitle(st, "style")}>{n}</button>)}</div>
           <label className="label" htmlFor="title-text">Text</label>
           <textarea id="title-text" className="notes" style={{ width: "100%", minHeight: 64 }} defaultValue={ti.text} key={clip.id} disabled={ro} maxLength={300}
             onBlur={(e) => e.target.value.trim() && e.target.value !== ti.text && setTitle({ text: e.target.value }, "text")} />

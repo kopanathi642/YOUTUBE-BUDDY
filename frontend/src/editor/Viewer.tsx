@@ -8,6 +8,7 @@ import { TState, transitionLinks, transitionState } from "../transitions";
 import { isNeutral, svgFilterBody } from "../grade";
 import { ratioOf } from "../compose";
 import EditOverlay from "./EditOverlay";
+import { svgEffectsBody, overlayEffects, flippedV } from "../effects";
 import type { EditType } from "../editops";
 
 export type Sampler = (w: number) => HTMLCanvasElement | null;
@@ -184,11 +185,13 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
 
   const k = view.w / tl.width;
   const graded = layers.filter((L) => L.kind === "video" && !isNeutral(L.clip.color));
+  const fxBodies = new Map(layers.filter((L) => L.kind === "video" && L.clip.effects?.length).map((L) => [L.clip.id, svgEffectsBody(L.clip.effects, k)] as const).filter(([, b]) => b));
   const cur = sequences.find((s) => s.id === currentSeqId);
   return (
     <section className="ed-viewer panel" aria-label="Program monitor">
       <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden>
-        <defs dangerouslySetInnerHTML={{ __html: graded.map((L) => `<filter id="g-${L.clip.id}" color-interpolation-filters="sRGB">${svgFilterBody(L.clip.color!)}</filter>`).join("") }} />
+        <defs dangerouslySetInnerHTML={{ __html: graded.map((L) => `<filter id="g-${L.clip.id}" color-interpolation-filters="sRGB">${svgFilterBody(L.clip.color!)}</filter>`).join("")
+          + [...fxBodies].map(([id, body]) => `<filter id="e-${id}" color-interpolation-filters="sRGB" x="0" y="0" width="1" height="1">${body}</filter>`).join("") }} />
       </svg>
       <div className="viewer-head">
         <div style={{ position: "relative" }}>
@@ -237,14 +240,21 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
               }
               const g = geom(L, k);
               const fxs = fxStyle(L.clip, k, tf.scale);
-              const filt = [isNeutral(L.clip.color) ? "" : `url(#g-${L.clip.id})`, fxs.filter].filter(Boolean).join(" ");
+              const filt = [isNeutral(L.clip.color) ? "" : `url(#g-${L.clip.id})`, fxs.filter, fxBodies.has(L.clip.id) ? `url(#e-${L.clip.id})` : ""].filter(Boolean).join(" ");
               const wrap: React.CSSProperties = { width: g.w, height: g.h, left: g.cx - g.w / 2, top: g.cy - g.h / 2, zIndex: L.z,
-                transform: `rotate(${tf.rotation}deg)${L.clip.fx?.flip_h ? " scaleX(-1)" : ""}`, opacity, filter: filt || undefined, ...fxs.wrap };
+                transform: `rotate(${tf.rotation}deg)${L.clip.fx?.flip_h ? " scaleX(-1)" : ""}${flippedV(L.clip.effects) ? " scaleY(-1)" : ""}`, opacity, filter: filt || undefined, ...fxs.wrap };
+              const ov = overlayEffects(L.clip.effects);
+              const over = (ov.vignette || ov.grain || ov.bars) ? <div className="layer fx-over" aria-hidden style={{ width: g.w, height: g.h, left: g.cx - g.w / 2, top: g.cy - g.h / 2, zIndex: L.z,
+                transform: `rotate(${tf.rotation}deg)`, opacity, borderRadius: fxs.wrap.borderRadius, overflow: "hidden", position: "absolute", pointerEvents: "none" }}>
+                {ov.vignette && <i style={{ position: "absolute", inset: 0, background: ov.vignette }} />}
+                {ov.grain > 0 && <i className="fx-grain" style={{ opacity: Math.min(0.85, ov.grain * 0.9) }} />}
+                {ov.bars > 0 && <><i style={{ position: "absolute", left: 0, right: 0, top: 0, height: `${ov.bars * 100}%`, background: "#000" }} /><i style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: `${ov.bars * 100}%`, background: "#000" }} /></>}
+              </div> : null;
               const inner: React.CSSProperties = { position: "absolute", width: g.fullW, height: g.fullH, left: g.offX, top: g.offY };
               const ref = (el: any) => { if (el) els.current.set(L.clip.id, el); else els.current.delete(L.clip.id); };
-              return wrapT(<div key={L.clip.id} className="layer clipwrap" style={wrap}>{a.kind === "image"
+              return wrapT(<><div key={L.clip.id} className="layer clipwrap" style={wrap}>{a.kind === "image"
                 ? <img ref={ref} src={a.proxy_url!} crossOrigin="anonymous" style={inner} alt="" draggable={false} />
-                : <video ref={ref} src={a.proxy_url!} crossOrigin="anonymous" style={inner} preload="auto" playsInline />}</div>);
+                : <video ref={ref} src={a.proxy_url!} crossOrigin="anonymous" style={inner} preload="auto" playsInline />}</div>{over}</>);
             })}
             {layers.filter((L) => L.kind === "audio").map((L) => (
               <audio key={L.clip.id} ref={(el) => { if (el) els.current.set(L.clip.id, el); else els.current.delete(L.clip.id); }} src={L.asset.proxy_url!} crossOrigin="anonymous" preload="auto" />

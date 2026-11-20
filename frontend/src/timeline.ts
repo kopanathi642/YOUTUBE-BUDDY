@@ -24,6 +24,7 @@ export type Clip = {
   volume: number; fade_in: number; fade_out: number; transform: Transform; keyframes?: Keyframes | null;
   transition_in?: { type: import("./transitions").TransitionType; frames: number } | null;
   color?: ColorGrade | null; denoise?: boolean; speed?: number; crop?: Crop | null; title?: Title | null; fx?: ClipFx | null;
+  effects?: import("./effects").Effect[] | null;
 };
 export type Track = { id: string; kind: "video" | "audio"; name: string; muted: boolean; hidden: boolean; locked: boolean; clips: Clip[] };
 export type MarkerColor = "blue" | "cyan" | "green" | "yellow" | "red" | "pink" | "purple";

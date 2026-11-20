@@ -14,6 +14,7 @@ import uuid
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from .effects import Effect, check_effects, effect_filters
 
 SCHEMA_VERSION = 1
 ALLOWED_FPS = (24, 25, 30, 50, 60)
@@ -289,6 +290,12 @@ class Clip(BaseModel):
     transition_in: Transition | None = None  # blend from the previous touching clip on the same track
     denoise: bool = False  # FFmpeg FFT noise reduction on this clip's audio (applied in export)
     fx: ClipFx | None = None
+    effects: list[Effect] | None = Field(None, max_length=12)   # Resolve/Premiere/CapCut-style effects (app/effects.py)
+
+    @model_validator(mode="after")
+    def _effects_once(self):
+        check_effects(self.effects)
+        return self
 
     @property
     def length(self) -> int:
@@ -635,6 +642,8 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
                     chain.append(f"crop=iw*{_f(1 - c.left - c.right)}:ih*{_f(1 - c.top - c.bottom)}:iw*{_f(c.left)}:ih*{_f(c.top)}")
                 if fx and fx.flip_h:
                     chain.append("hflip")
+                fx_geo, fx_pic = effect_filters(clip.effects)
+                chain += fx_geo
                 if cw:
                     chain += [f"scale={cw}:{ch}", "setsar=1"]
                 else:
@@ -643,6 +652,7 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
                     chain += grade_filters(clip.color, workdir, assets, tag=f"c{idx}")
                 if fx and fx.blur:
                     chain.append(f"gblur=sigma={_f(fx.blur)}")
+                chain += fx_pic
                 chain.append("format=yuva420p")
                 lw = lh = None
                 if fx and fx.shaped() and cw:
