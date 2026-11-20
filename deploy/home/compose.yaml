@@ -23,7 +23,7 @@ x-app-env: &appenv
   FIREBASE_API_KEY: AIzaSyBDvbm-e_74r8nxeTVTLB9ON7tEoy0Th_M
   FIREBASE_APP_ID: "1:303749195157:web:feec44ec9f4796b5bfc29c"
   CONTACT_EMAIL: youtubebuddyhelp@gmail.com
-  ADMIN_EMAILS: kumarbhargav642@gmail.com
+  ADMIN_EMAILS: "kumarbhargav642@gmail.com,youtubebuddyhelp@gmail.com"   # founder/owner accounts (platform admin)
   DEVELOPER_EMAILS: kumarbhargav642@gmail.com
   # no paid AI by default: free/open models only
   AI_MONTHLY_BUDGET_USD: "0"
