@@ -1,6 +1,11 @@
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { Captions, Facebook, Instagram, Languages, Mic, Play, Smartphone, Sparkles, Users, Video, Wand2, X as XIcon, Youtube, LayoutPanelTop } from "lucide-react";
+import {
+  Play, Wand2, Mic, Languages,
+  Smartphone, Video, LayoutPanelTop,
+  Facebook, Instagram, X as XIcon, Youtube,
+  Zap, Layers, ArrowRight, CheckCircle2,
+} from "lucide-react";
 import { api } from "../api";
 import { useAuth, useBrand } from "../App";
 import "@fontsource/inter/latin-400.css";
@@ -11,72 +16,315 @@ import "@fontsource/space-grotesk/latin-500.css";
 import "@fontsource/space-grotesk/latin-700.css";
 import "../home1.css";
 
-/* Signed-out home: the "Creator Universe" cosmic design. Tool counts and prices come from the server
-   (/public/studios, /public/plans) — nothing is a placeholder, and features that aren't switched on say so. */
+/* Signed-out home — Premium dark SaaS redesign.
+   All numbers from /public/studios and /public/plans — no fake data. */
 
 type Catalogue = { total: number; live: number };
-type PublicPlan = { id: string; name: string; price_inr: number; year_price_inr: number; ai_credit_inr: number | null; blurb: string };
+type PublicPlan = {
+  id: string;
+  name: string;
+  price_inr: number;
+  year_price_inr: number;
+  ai_credit_inr: number | null;
+  blurb: string;
+};
 
-const go = (route: string) => `/signin?next=${encodeURIComponent(route)}`;
+const go  = (route: string) => `/signin?next=${encodeURIComponent(route)}`;
 const inr = (n: number) => "₹" + n.toLocaleString("en-IN");
 
 const PLAN_POINTS: Record<string, string[]> = {
-  free: ["Full multitrack editor", "Captions, translation, dubbing, voices", "Background and object removal", "1080p export with a small badge"],
-  creator: ["Everything in Free", "No badge on exports", "Premium AI credit every month", "AI video, image and voice engines"],
-  pro: ["Everything in Creator", "More premium AI credit", "Priority queue for exports and AI", "For teams and busy channels"],
+  free:    ["Full multitrack editor", "Captions, translation, dubbing", "Background & object removal", "1080p export with small badge"],
+  creator: ["Everything in Free", "No badge on exports", "Premium AI credits monthly", "AI video, image & voice engines"],
+  pro:     ["Everything in Creator", "More premium AI credits", "Priority queue for exports & AI", "Best for teams & busy channels"],
 };
 
-const wave = (n: number, min: number, color: string) =>
-  Array.from({ length: n }, (_, i) => (
-    <i key={i} style={{ height: `${min + ((i * 37) % (100 - min))}%`, background: color, animationDelay: `-${((i * 0.11) % 1.2).toFixed(2)}s` }} />
-  ));
+type Nebula = {
+  w: number;
+  h: number;
+  l?: string | number;
+  r?: string | number;
+  ml?: number;
+  t: number;
+  bg: string;
+  ad?: string;
+};
 
-function Sky() {
-  const neb = (s: CSSProperties) => <div className="ch-neb" style={s} />;
-  return (
-    <div className="ch-sky" aria-hidden>
-      {neb({ width: 1100, height: 700, left: "50%", marginLeft: -550, top: -260, background: "radial-gradient(ellipse, rgba(124,58,237,.55), rgba(124,58,237,0) 65%)" })}
-      {neb({ width: 700, height: 700, left: -260, top: 200, background: "radial-gradient(circle, rgba(59,130,246,.35), rgba(59,130,246,0) 65%)", animationDelay: "-8s" })}
-      {neb({ width: 700, height: 700, right: -260, top: 120, background: "radial-gradient(circle, rgba(168,85,247,.4), rgba(168,85,247,0) 65%)" })}
-      {neb({ width: 900, height: 900, left: "50%", marginLeft: -450, top: 1500, background: "radial-gradient(circle, rgba(124,58,237,.28), rgba(124,58,237,0) 65%)", animationDelay: "-5s" })}
-      {neb({ width: 900, height: 900, right: -300, top: 2500, background: "radial-gradient(circle, rgba(79,70,229,.32), rgba(79,70,229,0) 65%)" })}
-      <div className="ch-stars" /><div className="ch-stars2" />
-    </div>
-  );
-}
-
-function Scene({ big }: { big?: boolean }) {
-  return (
-    <div className="ch-scene" style={big ? { flex: 1, background: "linear-gradient(180deg,#7C8DBF 0%,#C9C2EA 40%,#EDE9FE 50%,#5A6690 51%)" } : undefined}>
-      <span className="ch-cloud" /><i className="ch-m1" /><i className="ch-snow" /><i className="ch-m2" />
-    </div>
-  );
-}
-
-const FEATURES = [
-  { t: "AI Video Generation", d: "Video scenes from words and images with top engines.", tag: "Creator plan", soon: true, icon: Video, c: ["#8B5CF6", "#EC4899"] },
-  { t: "Universal Editor", d: "Multi-track timeline, titles, colour wheels and live scopes.", tag: "Unlimited", icon: LayoutPanelTop, c: ["#6366F1", "#3B82F6"] },
-  { t: "Auto Shorts", d: "Your best moments become 9:16 clips automatically.", tag: "Ready", icon: Smartphone, c: ["#F59E0B", "#EC4899"] },
-  { t: "AI Voice", d: "Natural text-to-speech voices, Hindi included.", tag: "Ready", icon: Mic, c: ["#EC4899", "#8B5CF6"] },
-  { t: "Magic Edit & Remove", d: "Silences, noise, colour and backgrounds in one click.", tag: "Ready", icon: Wand2, c: ["#10B981", "#6366F1"] },
-  { t: "Translate & Dub", d: "Captions and voice in 13 languages.", tag: "Ready", icon: Languages, c: ["#3B82F6", "#06B6D4"] },
+const NEBULAS: Nebula[] = [
+  { w:1200, h:700,  l:"50%", ml:-600, t:-300, bg:"radial-gradient(ellipse,rgba(0,240,255,.18),rgba(0,240,255,0) 65%)" },
+  { w:800,  h:800,  l:-300,  t:200,   bg:"radial-gradient(circle,rgba(139,92,246,.2),rgba(139,92,246,0) 65%)", ad:"-8s" },
+  { w:800,  h:800,  r:-300,  t:300,   bg:"radial-gradient(circle,rgba(0,240,255,.15),rgba(0,240,255,0) 65%)", ad:"-4s" },
+  { w:900,  h:900,  l:"50%", ml:-450, t:1600, bg:"radial-gradient(circle,rgba(139,92,246,.18),rgba(139,92,246,0) 65%)", ad:"-12s" },
+  { w:1000, h:1000, r:-400,  t:2800,  bg:"radial-gradient(circle,rgba(0,240,255,.12),rgba(0,240,255,0) 65%)" },
 ];
 
+/* ── Background: stars + nebulas ──────────────────────────── */
+function Sky() {
+  return (
+    <div className="ch-sky" aria-hidden>
+      <div className="ch-grid-bg" />
+      {/* Nebula blobs */}
+      {NEBULAS.map((s, i) => (
+        <div key={i} className="ch-neb" style={{
+          width: s.w, height: s.h,
+          left: s.l, right: s.r,
+          marginLeft: s.ml,
+          top: s.t,
+          background: s.bg,
+          animationDelay: s.ad ?? "0s",
+        } as CSSProperties} />
+      ))}
+      <div className="ch-stars" />
+      <div className="ch-stars2" />
+      <div className="ch-stars3" />
+    </div>
+  );
+}
+
+/* ── 3D Isometric Workspace (pure CSS) ────────────────────── */
+function Workspace({ live }: { live?: number }) {
+  const waveNodes = useMemo(
+    () => Array.from({ length: 32 }, (_, i) => ({ delay: `-${((i * 0.09) % 1.1).toFixed(2)}s` })),
+    []
+  );
+
+  return (
+    <div className="ch-workspace ch-rise5" aria-hidden>
+      {/* Main frame */}
+      <div className="ch-ws-frame">
+        {/* Top bar */}
+        <div className="ch-ws-bar">
+          <div className="ch-ws-dots">
+            <i style={{ background: "#F87171" }} />
+            <i style={{ background: "#FBBF24" }} />
+            <i style={{ background: "#34D399" }} />
+          </div>
+          <span className="ch-ws-title">YouTube Buddy — Project: New Story.ybs</span>
+          <span className="ch-ws-badge">● LIVE</span>
+        </div>
+
+        {/* Video preview */}
+        <div className="ch-ws-preview">
+          <div className="ch-ws-scene-sky" />
+          <div className="ch-ws-scene-glow" />
+          <div className="ch-ws-scene-horizon" />
+          <div className="ch-ws-scene-city" />
+          {/* City windows */}
+          {[
+            {l:60,b:38},{l:120,b:52},{l:180,b:30},{l:240,b:45},{l:300,b:28},
+            {l:360,b:35},{l:420,b:48},{l:480,b:25},{l:540,b:40},
+          ].map(({l,b},i) => (
+            <div key={i} className="ch-ws-window" style={{
+              left: l, bottom: `${b}%`,
+              animationDelay: `-${(i * 0.4).toFixed(1)}s`,
+            }} />
+          ))}
+          {/* Play button */}
+          <div className="ch-ws-play">
+            <div className="ch-ws-play-tri" />
+          </div>
+          {/* Scan line */}
+          <div className="ch-ws-scan" />
+        </div>
+
+        {/* Timeline */}
+        <div className="ch-ws-timeline">
+          <div className="ch-ws-tl-label">Timeline · 00:01:12 / 00:04:38</div>
+          <div className="ch-tl-head" />
+          <div className="ch-tl-row">
+            <span style={{ flex:3, background:"linear-gradient(90deg,rgba(0,240,255,.7),rgba(0,180,200,.5))" }} />
+            <span style={{ flex:5, background:"linear-gradient(90deg,rgba(139,92,246,.7),rgba(109,40,217,.5))" }} />
+            <span style={{ flex:2, background:"linear-gradient(90deg,rgba(99,102,241,.6),rgba(79,70,229,.4))" }} />
+            <span style={{ flex:4, background:"linear-gradient(90deg,rgba(0,240,255,.5),rgba(0,200,230,.35))" }} />
+          </div>
+          <div className="ch-tl-row">
+            <span style={{ flex:4, background:"linear-gradient(90deg,rgba(109,40,217,.6),rgba(139,92,246,.4))" }} />
+            <span style={{ flex:2 }} />
+            <span style={{ flex:5, background:"linear-gradient(90deg,rgba(109,40,217,.5),rgba(79,70,229,.35))" }} />
+            <span style={{ flex:3 }} />
+          </div>
+          <div className="ch-wave-row">
+            {waveNodes.map((n, i) => (
+              <i key={i} style={{ animationDelay: n.delay, opacity: 0.7 + (i % 3) * 0.1 }} />
+            ))}
+          </div>
+          <div className="ch-tl-row" style={{ height: 14 }}>
+            <span style={{ flex:2, background:"rgba(52,211,153,.5)", borderRadius:3 }} />
+            <span style={{ flex:1 }} />
+            <span style={{ flex:4, background:"rgba(52,211,153,.4)", borderRadius:3 }} />
+            <span style={{ flex:2 }} />
+            <span style={{ flex:3, background:"rgba(52,211,153,.5)", borderRadius:3 }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Floating card: Auto-Cut */}
+      <div className="ch-ws-pill" style={{
+        top: 60, right: -28,
+        border: "1px solid rgba(0,240,255,0.25)",
+        background: "rgba(0,10,20,0.75)",
+        color: "#00f0ff",
+        animationDelay: "0s",
+      }}>
+        <div className="ch-ws-pill-dot" style={{ background:"#00f0ff", boxShadow:"0 0 8px #00f0ff" }} />
+        Auto-Cut ✦
+      </div>
+      {/* Floating card: AI Voice */}
+      <div className="ch-ws-pill" style={{
+        top: 160, right: -38,
+        border: "1px solid rgba(139,92,246,0.3)",
+        background: "rgba(10,5,30,0.75)",
+        color: "#a78bfa",
+        animationDelay: "-2s",
+      }}>
+        <div className="ch-ws-pill-dot" style={{ background:"#a78bfa", boxShadow:"0 0 8px #a78bfa" }} />
+        AI Voice 🎙
+      </div>
+      {/* Floating card: 3D Gen / live tools */}
+      <div className="ch-ws-pill" style={{
+        top: 260, right: -24,
+        border: "1px solid rgba(245,158,11,0.25)",
+        background: "rgba(15,10,5,0.75)",
+        color: "#f59e0b",
+        animationDelay: "-4s",
+        fontSize: 10,
+      }}>
+        <div className="ch-ws-pill-dot" style={{ background:"#f59e0b", boxShadow:"0 0 8px #f59e0b" }} />
+        {live != null ? `${live} Tools Live` : "Tools Live"} ⚡
+      </div>
+
+      {/* Bottom card: waveform */}
+      <div className="ch-ws-card" style={{
+        bottom: -18, left: -28,
+        width: 180,
+        border: "1px solid rgba(0,240,255,0.15)",
+        background: "rgba(4,3,13,0.85)",
+        animationDelay: "-3s",
+        animation: "ch-float 6s ease-in-out -3s infinite",
+      }}>
+        <div className="ch-ws-card-label" style={{ color:"#00f0ff" }}>AI Audio</div>
+        <div style={{ display:"flex", alignItems:"flex-end", gap:3, height:32 }}>
+          {Array.from({length:16}, (_,i) => (
+            <div key={i} style={{
+              flex:1,
+              borderRadius:2,
+              background:"linear-gradient(180deg,#00f0ff,#8b5cf6)",
+              transformOrigin:"bottom",
+              animation:`ch-bars ${0.9 + (i%3)*0.15}s ease-in-out -${((i*0.08)%0.9).toFixed(2)}s infinite`,
+            }} />
+          ))}
+        </div>
+        <div className="ch-ws-card-sub">Auto noise removal on</div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Bento grid feature cards ─────────────────────────────── */
+const BENTO = [
+  {
+    id:"editor", span2:true,
+    icon: <LayoutPanelTop size={22} color="#fff" strokeWidth={1.8} />,
+    iconBg: "linear-gradient(135deg,#00b8d4,#8b5cf6)",
+    iconGlow: "0 0 24px rgba(0,184,212,0.5)",
+    tag:"Unlimited", tagColor:"rgba(0,240,255,0.15)", tagText:"#00f0ff",
+    h:"Universal Editor",
+    p:"Professional multi-track timeline, colour wheels, live scopes, and auto-cut — your full post studio in the browser.",
+    art:true,
+  },
+  {
+    id:"ai-video",
+    icon: <Video size={22} color="#fff" strokeWidth={1.8} />,
+    iconBg: "linear-gradient(135deg,#8b5cf6,#ec4899)",
+    iconGlow: "0 0 24px rgba(139,92,246,0.5)",
+    tag:"Creator plan", tagColor:"rgba(139,92,246,0.15)", tagText:"#a78bfa",
+    h:"AI Video Generation",
+    p:"Kling, Veo & FLUX engines turn words and images into real video scenes.",
+  },
+  {
+    id:"shorts",
+    icon: <Smartphone size={22} color="#fff" strokeWidth={1.8} />,
+    iconBg: "linear-gradient(135deg,#f59e0b,#ec4899)",
+    iconGlow: "0 0 24px rgba(245,158,11,0.5)",
+    tag:"Ready", tagColor:"rgba(245,158,11,0.15)", tagText:"#f59e0b",
+    h:"Auto Shorts",
+    p:"Your best moments auto-detected and clipped into 9:16 vertical reels.",
+  },
+  {
+    id:"voice", tall:true,
+    icon: <Mic size={22} color="#fff" strokeWidth={1.8} />,
+    iconBg: "linear-gradient(135deg,#ec4899,#8b5cf6)",
+    iconGlow: "0 0 24px rgba(236,72,153,0.5)",
+    tag:"Ready", tagColor:"rgba(236,72,153,0.15)", tagText:"#f472b6",
+    h:"AI Voice",
+    p:"Natural text-to-speech voices including Hindi, with professional studio quality output.",
+    waveArt:true,
+  },
+  {
+    id:"magic",
+    icon: <Wand2 size={22} color="#fff" strokeWidth={1.8} />,
+    iconBg: "linear-gradient(135deg,#10b981,#6366f1)",
+    iconGlow: "0 0 24px rgba(16,185,129,0.5)",
+    tag:"Ready", tagColor:"rgba(16,185,129,0.15)", tagText:"#34d399",
+    h:"Magic Edit & Remove",
+    p:"Silences, noise, colour, backgrounds — fixed in one click with AI precision.",
+  },
+  {
+    id:"translate",
+    icon: <Languages size={22} color="#fff" strokeWidth={1.8} />,
+    iconBg: "linear-gradient(135deg,#3b82f6,#06b6d4)",
+    iconGlow: "0 0 24px rgba(59,130,246,0.5)",
+    tag:"Ready", tagColor:"rgba(59,130,246,0.15)", tagText:"#60a5fa",
+    h:"Translate & Dub",
+    p:"Captions and AI dubbing in 13 languages — go global without a studio.",
+  },
+];
+
+/* ── Waveform bar helper ───────────────────────────────────── */
+function WaveBars({ n = 20, colors }: { n?: number; colors: [string, string] }) {
+  return (
+    <div style={{ display:"flex", alignItems:"flex-end", gap:3, height:52, marginTop:12 }}>
+      {Array.from({ length: n }, (_, i) => (
+        <div key={i} style={{
+          flex: 1,
+          borderRadius: 3,
+          background: `linear-gradient(180deg,${colors[0]},${colors[1]})`,
+          transformOrigin: "bottom",
+          animation: `ch-bars ${0.8 + (i%4)*0.15}s ease-in-out -${((i*0.07)%0.9).toFixed(2)}s infinite`,
+        }} />
+      ))}
+    </div>
+  );
+}
+
+/* ── Big wave builder for IDE ────────────────────────────── */
+const mkWave = (n: number) =>
+  Array.from({ length: n }, (_, i) => ({
+    delay: `-${((i * 0.09) % 1.1).toFixed(2)}s`,
+    color: i % 3 === 0 ? "#00f0ff" : i % 3 === 1 ? "#8b5cf6" : "#a78bfa",
+  }));
+
+/* ── Main component ───────────────────────────────────────── */
 export default function HomeLanding() {
   const { me, loading } = useAuth();
   const brand = useBrand();
-  const [cat, setCat] = useState<Catalogue | null>(null);
+  const [cat, setCat]     = useState<Catalogue | null>(null);
   const [plans, setPlans] = useState<PublicPlan[] | null>(null);
   const [yearly, setYearly] = useState(false);
-  const [tools, setTools] = useState<Record<string, boolean>>({ "Auto Reframe": true, "Remove Silences": true, "Auto Captions": true, "Background Removal": false, "Colour Fix": true });
+  const [aiOn, setAiOn]   = useState<Record<string, boolean>>({
+    "Auto Reframe": true,
+    "Remove Silences": true,
+    "Auto Captions": true,
+    "BG Removal": false,
+    "Colour Fix": true,
+    "AI Noise Gate": true,
+  });
 
   useEffect(() => {
     api<Catalogue>("/public/studios").then(setCat).catch(() => setCat(null));
-    api<{ plans: PublicPlan[] }>("/public/plans").then((r) => setPlans(r.plans)).catch(() => setPlans([]));
+    api<{ plans: PublicPlan[] }>("/public/plans").then(r => setPlans(r.plans)).catch(() => setPlans([]));
   }, []);
 
-  const heroWave = useMemo(() => wave(70, 30, "linear-gradient(180deg,#C4B5FD,#7C3AED)"), []);
-  const bigWave = useMemo(() => wave(90, 25, "linear-gradient(180deg,#6EE7B7,#059669)"), []);
+  const bigWave = useMemo(() => mkWave(80), []);
 
   if (loading) return <div className="ch" />;
   if (me) return <Navigate to="/universes" replace />;
@@ -87,163 +335,345 @@ export default function HomeLanding() {
     <div className="ch" id="top">
       <Sky />
 
-      <header className="ch-wrap ch-nav">
-        <a href="#top" className="ch-brand" aria-label={`${brand} home`}><span className="ch-logo"><Play size={15} fill="#fff" strokeWidth={0} /></span><span className="ch-disp">{brand}</span></a>
-        <nav className="ch-links" aria-label="Main">
-          <a href="#features">Features</a><a href="#universes">Universes</a><a href="#pricing">Pricing</a><a href="#footer">About Us</a>
-        </nav>
-        <div className="ch-actions">
-          <Link to="/signin" className="ch-ghost">Sign In</Link>
-          <Link to="/signup" className="ch-cta sm">Start Free</Link>
-        </div>
-      </header>
+      {/* ── NAV ─────────────────────────────────────────────── */}
+      <nav className="ch-nav" role="navigation" aria-label="Main">
+        <div className="ch-wrap">
+          <a href="#top" className="ch-brand" aria-label={`${brand} home`}>
+            <span className="ch-logo">
+              <Play size={15} fill="#fff" strokeWidth={0} />
+            </span>
+            <span className="ch-disp">{brand}</span>
+          </a>
 
-      <section className="ch-wrap ch-hero">
-        <p className="ch-kicker ch-disp ch-rise1">THE FUTURE OF CREATION IS HERE</p>
-        <h1 className="ch-rise2">TELL YOUR STORY<br /><span className="ch-grad">WITHOUT LIMITS</span></h1>
-        <p className="ch-lead ch-rise3">The AI-powered home for video editors, animators and creators to bring their stories to life — made for Indian creators.</p>
-        <div className="ch-rise3" style={{ marginTop: 28 }}><Link to="/signup" className="ch-cta lg">Get Started for Free</Link></div>
-
-        <div className="ch-stage ch-rise4" aria-hidden>
-          <div className="ch-horizon" />
-          <div className="ch-frame ch-hero-win">
-            <div className="ch-win">
-              <div className="ch-dots"><i style={{ background: "#F87171" }} /><i style={{ background: "#FBBF24" }} /><i style={{ background: "#34D399" }} /><span style={{ marginLeft: 10 }}>Project: New Story</span></div>
-              <div className="ch-panel ch-thumbs">
-                {["#4C1D95,#1E1B4B", "#1E3A8A,#0F172A", "#6D28D9,#312E81", "#334155,#1E1B4B", "#7C3AED,#1E3A8A", "#0F766E,#1E1B4B"].map((g) => <span key={g} style={{ background: `linear-gradient(180deg,${g})` }} />)}
-              </div>
-              <Scene />
-              <div className="ch-panel ch-tools"><b style={{ color: "#fff" }}>AI Tools</b><span /><span /><span /><span /></div>
-              <div className="ch-tl">
-                <div className="ch-head" />
-                <div className="ch-row" style={{ height: 22 }}><span style={{ flex: 3, background: "#6D28D9" }} /><span style={{ flex: 5, background: "#7C3AED" }} /><span style={{ flex: 3, background: "#6366F1" }} /></div>
-                <div className="ch-wave" style={{ height: 28 }}>{heroWave}</div>
-                <div className="ch-row" style={{ height: 18 }}><span style={{ flex: 4, background: "rgba(52,211,153,.55)" }} /><span style={{ flex: 2 }} /><span style={{ flex: 3, background: "rgba(52,211,153,.55)" }} /></div>
-              </div>
-            </div>
+          <div className="ch-links">
+            <a href="#features">Features</a>
+            <a href="#universes">Universes</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#footer">About</a>
           </div>
-          <div className="ch-phone"><div>
-            <div style={{ height: 150, borderRadius: 16, overflow: "hidden", position: "relative", background: "linear-gradient(180deg,#A5B4FC,#C4B5FD 45%,#4C1D95 46%)" }}>
-              <i style={{ position: "absolute", inset: 0, background: "#2E2A5A", clipPath: "polygon(0 70%,30% 45%,55% 66%,80% 40%,100% 60%,100% 100%,0 100%)" }} />
-            </div>
-            <span style={{ fontSize: 11, color: "#A59CC8" }}>AI Tools</span>
-            <span className="ch-sw">Auto Reframe<span className="ch-switch on" /></span>
-            <span className="ch-sw">Captions<span className="ch-switch on" /></span>
-          </div></div>
-          <div className="ch-tiles">
-            <span><Sparkles size={20} color="#C4B5FD" />Smart Video</span>
-            <span><Wand2 size={20} color="#C4B5FD" />Magic Edit</span>
-            <span><Captions size={20} color="#C4B5FD" />Captions</span>
-            <span><Smartphone size={20} color="#C4B5FD" />Auto Shorts</span>
+
+          <div className="ch-actions">
+            <Link to="/signin" className="ch-ghost">Sign In</Link>
+            <Link to="/signup" className="ch-cta sm">Start Free →</Link>
           </div>
         </div>
-      </section>
+      </nav>
 
-      <section className="ch-wrap ch-sec" id="universes">
-        <h2>Choose Your Universe</h2>
-        <p className="ch-sub">Explore our specialized creation ecosystems.</p>
-        <div className="ch-grid3">
-          <Link to={go("/ai-generator")} className="ch-card" style={{ background: "linear-gradient(170deg,rgba(124,58,237,.3),rgba(18,13,46,.9) 65%)", borderColor: "rgba(167,139,250,.35)" }}>
-            <span className="t ch-disp">AI GENERATOR UNIVERSE</span>
-            <span className="ch-art" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }} aria-hidden>
-              <span className="ch-models"><span><b className="ch-disp">K</b>Kling</span><span><span className="ch-flux" />FLUX</span><span><b className="ch-disp" style={{ fontSize: 15 }}>veo</b>Veo</span></span>
-              <span style={{ display: "flex", gap: 8 }}>
-                <span className="ch-pill" style={{ background: "rgba(250,204,21,.18)", color: "#FDE68A" }}>Top video engines</span>
-                {cat && <span className="ch-pill" style={{ background: "rgba(139,92,246,.25)", color: "#DDD6FE" }}>{cat.live} tools ready</span>}
+      {/* ── HERO ────────────────────────────────────────────── */}
+      <section className="ch-hero" id="universes">
+        <div className="ch-wrap">
+          {/* Left */}
+          <div className="ch-hero-left">
+            <div className="ch-kicker ch-rise1">
+              <span className="ch-kicker-dot" />
+              AI-Powered Creator Studio · Made in India
+            </div>
+
+            <h1 className="ch-rise2">
+              Create Videos<br />
+              <em>Without Limits</em>
+            </h1>
+
+            <p className="ch-hero-desc ch-rise3">
+              The all-in-one AI studio for video editors, animators, and
+              creators — edit, dub, translate and generate, all in one place.
+              {cat && ` ${cat.live} AI tools ready right now.`}
+            </p>
+
+            <div className="ch-hero-ctas ch-rise4">
+              <Link to="/signup" className="ch-cta lg">
+                Get Started Free
+              </Link>
+              <a href="#features" className="ch-cta-secondary">
+                <Play size={14} fill="currentColor" strokeWidth={0} />
+                See Features
+              </a>
+            </div>
+
+            <div className="ch-trust ch-rise5">
+              <span className="ch-trust-item">
+                <span className="ch-trust-dot" />
+                Free forever plan
               </span>
-            </span>
-            <p>Kling, FLUX and Veo engines on the Creator plan, plus {cat ? cat.live : "dozens of"} tools that run today.</p>
-            <span className="ch-btn" style={{ border: "1px solid rgba(167,139,250,.7)", background: "rgba(139,92,246,.18)" }}>Enter AI Generator</span>
-          </Link>
-
-          <Link to={go("/editor")} className="ch-card" style={{ background: "linear-gradient(170deg,rgba(59,130,246,.25),rgba(18,13,46,.9) 65%)", borderColor: "rgba(147,197,253,.3)" }}>
-            <span className="t ch-disp">EDITOR UNIVERSE</span>
-            <span className="ch-art" style={{ padding: 10, display: "flex", flexDirection: "column", gap: 6 }} aria-hidden>
-              <span style={{ flex: 1, borderRadius: 8, position: "relative", overflow: "hidden", background: "linear-gradient(180deg,#93A5D8,#C4B5FD 50%,#3A4466 51%)" }}><i style={{ position: "absolute", inset: 0, background: "#2A3156", clipPath: "polygon(0 75%,25% 45%,45% 65%,70% 35%,100% 62%,100% 100%,0 100%)" }} /></span>
-              <span className="ch-row" style={{ height: 12 }}><span style={{ flex: 3, background: "#6366F1" }} /><span style={{ flex: 5, background: "#8B5CF6" }} /><span style={{ flex: 2, background: "#3B82F6" }} /></span>
-              <span style={{ height: 12, borderRadius: 3, background: "repeating-linear-gradient(90deg,#34D399 0 2px,transparent 2px 5px)", opacity: 0.7 }} />
-            </span>
-            <p>Professional timeline, titles, waveforms, colour wheels and live scopes.</p>
-            <span className="ch-btn" style={{ border: "1px solid rgba(147,197,253,.7)", background: "rgba(59,130,246,.18)" }}>Enter Editor Universe</span>
-          </Link>
-
-          <div className="ch-card hov" style={{ background: "linear-gradient(170deg,rgba(255,255,255,.07),rgba(18,13,46,.9) 65%)", borderColor: "rgba(255,255,255,.15)" }}>
-            <span style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span className="t ch-disp">SUPER UNIVERSE</span><span className="ch-pill" style={{ background: "rgba(255,255,255,.1)", color: "#CFC7EA" }}>Roadmap</span></span>
-            <span className="ch-art" style={{ display: "grid", placeItems: "center" }} aria-hidden>
-              <span className="ch-hub"><i style={{ left: -7, top: 55, background: "#6366F1" }} /><i style={{ right: -7, top: 55, background: "#8B5CF6" }} /><i style={{ left: 55, top: -7, background: "#3B82F6" }} /><i style={{ left: 55, bottom: -7, background: "#A78BFA" }} /></span>
-              <span style={{ width: 54, height: 54, borderRadius: 16, background: "linear-gradient(135deg,#8B5CF6,#4F46E5)", display: "grid", placeItems: "center", boxShadow: "0 0 30px rgba(139,92,246,.6)" }}><Users size={24} color="#fff" /></span>
-            </span>
-            <p>A centralized command hub for teams, automation and workflows.</p>
-            <span className="ch-btn" style={{ border: "1px solid rgba(255,255,255,.2)", color: "#A59CC8", fontWeight: 600 }}>Locked / Roadmap</span>
+              <span className="ch-trust-item">
+                <span className="ch-trust-dot" />
+                No credit card needed
+              </span>
+              {cat && (
+                <span className="ch-trust-item">
+                  <span className="ch-trust-dot" />
+                  {cat.live} tools online
+                </span>
+              )}
+            </div>
           </div>
+
+          {/* Right: 3D workspace */}
+          <Workspace live={cat?.live} />
         </div>
       </section>
 
-      <section className="ch-wrap ch-sec" id="features">
-        <h2>AI-Powered Capabilities</h2>
-        <p className="ch-sub">Integrated tools that do the heavy lifting.</p>
-        <div className="ch-grid3" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))", gap: 20 }}>
-          {FEATURES.map(({ t, d, tag, soon, icon: Icon, c }) => (
-            <div key={t} className="ch-card hov ch-feat">
-              <span className="ch-pill tag" style={soon ? { background: "rgba(255,255,255,.1)", color: "#CFC7EA" } : { background: "rgba(139,92,246,.35)", color: "#EDE9FE" }}>{tag}</span>
-              <h3>{t}</h3><p>{d}</p>
-              <span className="ico" aria-hidden style={{ background: `linear-gradient(135deg,${c[0]},${c[1]})`, boxShadow: `0 14px 34px ${c[0]}77` }}><Icon size={36} color="#fff" strokeWidth={1.8} /></span>
+      {/* ── STAT BAND ───────────────────────────────────────── */}
+      <div className="ch-wrap">
+        <div className="ch-stats" aria-label="Platform statistics">
+          <div className="ch-stat-item">
+            <span className="ch-stat-num">{cat ? cat.live : "—"}</span>
+            <span className="ch-stat-label">AI Tools Live</span>
+          </div>
+          <div className="ch-stat-item">
+            <span className="ch-stat-num">13+</span>
+            <span className="ch-stat-label">Languages</span>
+          </div>
+          <div className="ch-stat-item">
+            <span className="ch-stat-num">4K</span>
+            <span className="ch-stat-label">Export Quality</span>
+          </div>
+          <div className="ch-stat-item">
+            <span className="ch-stat-num">∞</span>
+            <span className="ch-stat-label">Free Plan</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── BENTO GRID ──────────────────────────────────────── */}
+      <section className="ch-sec ch-wrap" id="features">
+        <div className="ch-sec-eyebrow">Every tool you need</div>
+        <h2>The Complete Creator Toolkit</h2>
+        <p className="ch-sub">
+          Professional-grade AI tools that handle the heavy lifting — so you can focus on the story.
+        </p>
+
+        <div className="ch-bento">
+          {BENTO.map(card => (
+            <div
+              key={card.id}
+              className={`ch-bcard${card.span2 ? " span2" : ""}${card.tall ? " tall" : ""}`}
+            >
+              <div
+                className="ch-bcard-icon"
+                style={{ background: card.iconBg, boxShadow: card.iconGlow }}
+              >
+                {card.icon}
+              </div>
+              <h3>{card.h}</h3>
+              <p>{card.p}</p>
+
+              {/* Wave art for wide editor card */}
+              {card.art && (
+                <WaveBars n={28} colors={["#00f0ff","#8b5cf6"]} />
+              )}
+              {/* Wave art for voice card */}
+              {card.waveArt && (
+                <WaveBars n={16} colors={["#ec4899","#8b5cf6"]} />
+              )}
+
+              <span
+                className="ch-bcard-tag"
+                style={{ background: card.tagColor, color: card.tagText }}
+              >
+                {card.tag}
+              </span>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="ch-wrap ch-sec ch-big" aria-label="The editor">
-        <div className="ch-frame" style={{ borderRadius: 20, boxShadow: "0 50px 100px rgba(0,0,0,.55), 0 0 80px rgba(139,92,246,.25)" }}>
-          <div className="ch-win" style={{ borderRadius: 19, background: "rgba(13,10,34,.97)" }}>
-            <div className="bar"><b>Project: New Story</b><span style={{ color: "#A59CC8" }}>16:9 · 30 fps</span><span style={{ marginLeft: "auto", color: "#CFC7EA" }}>Your workspace</span><span style={{ width: 26, height: 26, borderRadius: "50%", background: "linear-gradient(135deg,#F59E0B,#EC4899)" }} /></div>
-            <div className="rail" aria-hidden><i /><i /><i /><i /><i /></div>
-            <div className="col assets" aria-hidden>
-              <b>Assets</b>
-              <div className="ch-thumbs">{["#93A5D8,#3A4466", "#C4B5FD,#312E81", "#334155,#0F172A", "#7C3AED,#1E1B4B"].map((g) => <span key={g} style={{ height: 62, borderRadius: 8, background: `linear-gradient(180deg,${g})` }} />)}</div>
-              {[["#4C1D95", "Scene Opening"], ["#1E3A8A", "Voice Story"], ["#065F46", "Background music"], ["#6D28D9", "Video overlays"]].map(([c, n]) => <span key={n} className="line"><i style={{ background: c }} />{n}</span>)}
+      {/* ── PRO IDE SHOWCASE ────────────────────────────────── */}
+      <section className="ch-ide-section ch-wrap">
+        <div style={{ textAlign:"center", marginBottom:0 }}>
+          <div className="ch-sec-eyebrow">Pro Editor IDE</div>
+          <h2>Your Studio, in the Browser</h2>
+          <p className="ch-sub">
+            A full non-linear editor with AI tools baked in — no install, no limits.
+          </p>
+        </div>
+
+        <div className="ch-ide-wrap">
+          <div className="ch-ide-frame">
+            {/* Topbar */}
+            <div className="ch-ide-topbar">
+              <div className="ch-ide-dots">
+                <i style={{ background:"#F87171" }} />
+                <i style={{ background:"#FBBF24" }} />
+                <i style={{ background:"#34D399" }} />
+              </div>
+              <span className="ch-ide-title">YouTube Buddy Pro Editor — Project: New Story.ybs</span>
+              <div className="ch-ide-tabs">
+                <span className="ch-ide-tab active">Timeline</span>
+                <span className="ch-ide-tab">Export</span>
+                <span className="ch-ide-tab">AI</span>
+              </div>
+              <div className="ch-ide-status">
+                <span className="ch-ide-status-dot" />
+                Auto-saving
+              </div>
             </div>
-            <div className="col" aria-hidden>
-              <b>Video preview</b>
-              <Scene big />
-              <div className="ch-transport"><span className="p"><Play size={11} fill="#0D0A22" strokeWidth={0} /></span><span className="ch-prog"><i /></span>01:12 / 04:38</div>
-            </div>
-            <div className="col ai">
-              <b>AI Tools</b>
-              {Object.entries(tools).map(([k, v]) => (
-                <button key={k} type="button" role="switch" aria-checked={v} onClick={() => setTools({ ...tools, [k]: !v })}>{k}<span className={`ch-switch big${v ? " on" : ""}`} /></button>
-              ))}
-            </div>
-            <div className="tline" aria-hidden>
-              <div className="ch-head" style={{ top: 8, bottom: 8 }} />
-              <div className="ch-row" style={{ height: 34 }}>{["#93A5D8,#3A4466:2", "#C4B5FD,#312E81:3", "#7C3AED,#1E1B4B:2", "#93A5D8,#3A4466:4"].map((s, i) => { const [g, f] = s.split(":"); return <span key={i} style={{ flex: +f, borderRadius: 6, background: `linear-gradient(180deg,${g})` }} />; })}</div>
-              <div className="ch-row" style={{ height: 28 }}><span style={{ flex: 5, borderRadius: 6, background: "linear-gradient(90deg,#7C3AED,#A78BFA)" }} /><span style={{ flex: 3, borderRadius: 6, background: "linear-gradient(90deg,#6D28D9,#8B5CF6)" }} /><span style={{ flex: 3 }} /></div>
-              <div className="ch-wave" style={{ height: 34, alignItems: "center" }}>{bigWave}</div>
+
+            {/* Body grid */}
+            <div className="ch-ide-body">
+              {/* Left panel: assets */}
+              <div className="ch-ide-panel">
+                <b>Assets</b>
+                {[
+                  { bg:"linear-gradient(180deg,#93a5d8,#3a4466)" },
+                  { bg:"linear-gradient(180deg,#c4b5fd,#312e81)" },
+                  { bg:"linear-gradient(180deg,#334155,#0f172a)" },
+                  { bg:"linear-gradient(180deg,#7c3aed,#1e1b4b)" },
+                ].map((t,i) => (
+                  <div key={i} className="ch-ide-thumb" style={{ background:t.bg }} />
+                ))}
+                <div style={{ marginTop:4 }}>
+                  {[
+                    ["#4c1d95","Scene Opening"],
+                    ["#1e3a8a","Voice Story"],
+                    ["#065f46","Background Music"],
+                    ["#6d28d9","Video Overlays"],
+                  ].map(([c,n]) => (
+                    <div key={n} style={{ display:"flex",alignItems:"center",gap:8,padding:"5px 0",fontSize:12,color:"#64748b",borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+                      <span style={{ width:28,height:16,borderRadius:4,background:c,flexShrink:0 }} />
+                      {n}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Centre: video preview */}
+              <div className="ch-ide-panel-col" style={{ display:"flex",flexDirection:"column",gap:0 }}>
+                <div style={{ padding:"12px 12px 0",fontSize:12,color:"#64748b",fontWeight:600 }}>Video Preview</div>
+                <div className="ch-ide-preview">
+                  <div className="ch-ide-preview-sky" />
+                  <div className="ch-ide-preview-glow" />
+                  <div className="ch-ide-preview-horizon" />
+                  <div className="ch-ide-preview-city" />
+                </div>
+                <div className="ch-ide-transport">
+                  <div className="ch-ide-play-btn">
+                    <div className="ch-ide-play-tri" />
+                  </div>
+                  <div className="ch-ide-prog">
+                    <div className="ch-ide-prog-fill" />
+                  </div>
+                  <span>01:12 / 04:38</span>
+                  <span style={{ marginLeft:"auto",color:"#4b5563" }}>16:9 · 30 fps</span>
+                </div>
+              </div>
+
+              {/* Right panel: AI tools */}
+              <div className="ch-ide-panel right">
+                <b>AI Tools</b>
+                {Object.entries(aiOn).map(([k, v]) => (
+                  <div key={k} className="ch-ai-row">
+                    <span>{k}</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={v}
+                      className={`ch-sw2${v ? " on" : ""}`}
+                      onClick={() => setAiOn({ ...aiOn, [k]: !v })}
+                      aria-label={`Toggle ${k}`}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Timeline spanning all cols */}
+              <div className="ch-ide-tline">
+                <div className="ch-ide-tl-head" />
+                {/* Video track */}
+                <div className="ch-ide-tl-row">
+                  {[["#93a5d8,#3a4466","2"],["#c4b5fd,#312e81","3"],["#7c3aed,#1e1b4b","2"],["#93a5d8,#3a4466","4"]].map((s,i) => {
+                    const [g,f] = s;
+                    return (
+                      <span key={i} style={{
+                        flex: +f,
+                        borderRadius: 6,
+                        background: `linear-gradient(180deg,${g})`,
+                      }} />
+                    );
+                  })}
+                </div>
+                {/* Audio track */}
+                <div className="ch-ide-tl-row" style={{ height:20 }}>
+                  <span style={{ flex:5,borderRadius:6,background:"linear-gradient(90deg,rgba(0,240,255,.5),rgba(0,180,200,.35))" }} />
+                  <span style={{ flex:3,borderRadius:6,background:"linear-gradient(90deg,rgba(0,180,200,.4),rgba(0,140,170,.25))" }} />
+                  <span style={{ flex:3 }} />
+                </div>
+                {/* Waveform */}
+                <div className="ch-ide-wave">
+                  {bigWave.map((n, i) => (
+                    <i key={i} style={{
+                      background: `linear-gradient(180deg,${n.color},rgba(0,0,0,0))`,
+                      animationDelay: n.delay,
+                    }} />
+                  ))}
+                </div>
+                {/* Effects track */}
+                <div className="ch-ide-tl-row" style={{ height:16 }}>
+                  <span style={{ flex:2,borderRadius:5,background:"rgba(52,211,153,.5)" }} />
+                  <span style={{ flex:1 }} />
+                  <span style={{ flex:4,borderRadius:5,background:"rgba(52,211,153,.4)" }} />
+                  <span style={{ flex:2 }} />
+                  <span style={{ flex:3,borderRadius:5,background:"rgba(52,211,153,.5)" }} />
+                </div>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Feature chips under IDE */}
+        <div style={{ display:"flex", justifyContent:"center", gap:12, marginTop:28, flexWrap:"wrap" }}>
+          {["Multi-Track Timeline","AI Node Graph","Colour Grading","Real-Time Scopes","AI Assistant Sidebar"].map(chip => (
+            <span key={chip} style={{
+              display:"flex",alignItems:"center",gap:7,
+              fontSize:13,fontWeight:600,color:"#94a3b8",
+              padding:"8px 16px",borderRadius:999,
+              border:"1px solid rgba(255,255,255,0.08)",
+              background:"rgba(255,255,255,0.03)",
+            }}>
+              <CheckCircle2 size={13} color="#00f0ff" />
+              {chip}
+            </span>
+          ))}
+        </div>
       </section>
 
+      {/* ── PRICING ─────────────────────────────────────────── */}
       {plans && plans.length > 0 && (
-        <section className="ch-wrap ch-sec" id="pricing">
+        <section className="ch-sec ch-wrap" id="pricing">
+          <div className="ch-sec-eyebrow">Pricing</div>
           <h2>Unleash Your Creativity</h2>
-          <p className="ch-sub">Powerful plans for creators of all sizes.</p>
-          <div className="ch-toggle" role="radiogroup" aria-label="Billing period">
-            <button type="button" role="radio" aria-checked={!yearly} className={!yearly ? "on" : ""} onClick={() => setYearly(false)}>Monthly</button>
-            <button type="button" role="radio" aria-checked={yearly} className={yearly ? "on" : ""} onClick={() => setYearly(true)}>Yearly, 2 months free</button>
+          <p className="ch-sub">Powerful plans for creators of all sizes. Start free, upgrade when you're ready.</p>
+
+          <div style={{ display:"flex", justifyContent:"center", margin:"40px 0" }}>
+            <div className="ch-toggle" role="radiogroup" aria-label="Billing period">
+              <button type="button" role="radio" aria-checked={!yearly} className={!yearly ? "on" : ""} onClick={() => setYearly(false)}>Monthly</button>
+              <button type="button" role="radio" aria-checked={yearly}  className={yearly  ? "on" : ""} onClick={() => setYearly(true)}>Yearly · 2 months free</button>
+            </div>
           </div>
-          <div className="ch-grid3" style={{ alignItems: "stretch" }}>
-            {plans.map((p) => {
+
+          <div className="ch-plans">
+            {plans.map(p => {
               const pop = p.id === "creator";
               const price = yearly ? p.year_price_inr : p.price_inr;
               return (
-                <div key={p.id} className={`ch-card hov ch-plan${pop ? " pop" : ""}`}>
+                <div key={p.id} className={`ch-plan${pop ? " pop" : ""}`}>
                   {pop && <span className="badge">MOST POPULAR</span>}
                   <span className="name">{p.name}</span>
-                  <span style={{ color: "#A59CC8", fontSize: 14 }}>{p.blurb}</span>
-                  <span className="price">{price ? inr(price) : "₹0"}{price ? <small> / {yearly ? "year" : "month"}</small> : null}</span>
-                  <ul>{(PLAN_POINTS[p.id] ?? []).map((x) => <li key={x}>{x}</li>)}</ul>
-                  <Link to={p.id === "free" ? "/signup" : go(`/settings?plan=${p.id}`)} className="go">{p.id === "free" ? "Start Now" : `Go ${p.name}`}</Link>
+                  <span className="plan-desc">{p.blurb}</span>
+                  <span className="price">
+                    {price ? inr(price) : "₹0"}
+                    {price ? <small>&nbsp;/ {yearly ? "year" : "month"}</small> : null}
+                  </span>
+                  <ul>
+                    {(PLAN_POINTS[p.id] ?? []).map(x => <li key={x}>{x}</li>)}
+                  </ul>
+                  <Link
+                    to={p.id === "free" ? "/signup" : go(`/settings?plan=${p.id}`)}
+                    className="go"
+                  >
+                    {p.id === "free" ? "Start Now — Free" : `Go ${p.name}`}
+                    <ArrowRight size={15} style={{ marginLeft:6, verticalAlign:"middle" }} />
+                  </Link>
                 </div>
               );
             })}
@@ -251,20 +681,80 @@ export default function HomeLanding() {
         </section>
       )}
 
-      <footer className="ch-foot" id="footer">
-        <div className="ch-wrap cols">
-          <div style={{ flex: "1 1 260px", gap: 16 }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 10 }}><span className="ch-logo" style={{ width: 40, height: 40 }}><Play size={17} fill="#fff" strokeWidth={0} /></span><b className="ch-disp" style={{ fontSize: 20 }}>{brand}</b></span>
-            <span style={{ color: "#A59CC8" }}>Made in India for creators everywhere.</span>
-            <span style={{ display: "flex", gap: 10 }} aria-label="Social links (coming soon)">
-              {[Facebook, Instagram, XIcon, Youtube].map((I, i) => <span key={i} style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,.08)", display: "grid", placeItems: "center" }}><I size={15} color="#CFC7EA" aria-hidden /></span>)}
-            </span>
+      {/* ── CTA BAND ────────────────────────────────────────── */}
+      <div className="ch-wrap">
+        <div className="ch-cta-band">
+          <div className="ch-cta-band-inner">
+            <div className="ch-cta-band-glow" />
+            <div className="ch-sec-eyebrow" style={{ margin:0 }}>
+              <Zap size={12} style={{ marginRight:4, verticalAlign:"middle" }} />
+              Ready to create?
+            </div>
+            <h2>Your best videos start here.</h2>
+            <p>Join thousands of creators building extraordinary content with AI tools that actually work.</p>
+            <div style={{ display:"flex", gap:14, justifyContent:"center", flexWrap:"wrap" }}>
+              <Link to="/signup" className="ch-cta lg">Start for Free — No Card Needed</Link>
+              <a href="#features" className="ch-cta-secondary">
+                <Layers size={15} />
+                Explore Features
+              </a>
+            </div>
           </div>
-          <div><b>Product</b><a href="#features">Features</a><Link to={go("/ai-generator")}>AI Generator</Link><Link to={go("/editor")}>Editor</Link></div>
-          <div><b>Resources</b><a href="#pricing">Pricing</a><Link to="/signup">Create account</Link></div>
-          <div><b>Legal</b><Link to="/privacy">Privacy</Link><Link to="/terms">Terms of use</Link></div>
         </div>
-        <p className="copy">© {year} {brand}. {cat ? `Servers online, ${cat.live} AI tools working.` : ""}</p>
+      </div>
+
+      {/* ── FOOTER ──────────────────────────────────────────── */}
+      <footer className="ch-foot" id="footer">
+        <div className="ch-wrap">
+          <div className="ch-foot-inner">
+            <div>
+              <a href="#top" className="ch-foot-brand">
+                <span className="ch-logo" style={{ width:36,height:36 }}>
+                  <Play size={15} fill="#fff" strokeWidth={0} />
+                </span>
+                <span className="ch-disp">{brand}</span>
+              </a>
+              <p className="ch-foot-desc">
+                The AI-powered video studio built for Indian creators — and everyone else.
+                Made with ♥ in India.
+              </p>
+              <div className="ch-foot-social" aria-label="Social links">
+                {([Facebook, Instagram, XIcon, Youtube] as const).map((I, i) => (
+                  <span key={i} className="ch-foot-soc" aria-hidden>
+                    <I size={15} color="#94a3b8" />
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="ch-foot-col">
+              <b>Product</b>
+              <a href="#features">Features</a>
+              <Link to={go("/ai-generator")}>AI Generator</Link>
+              <Link to={go("/editor")}>Pro Editor</Link>
+              <a href="#pricing">Pricing</a>
+            </div>
+
+            <div className="ch-foot-col">
+              <b>Resources</b>
+              <Link to="/signup">Create account</Link>
+              <Link to="/signin">Sign in</Link>
+              <a href="#universes">Universes</a>
+            </div>
+
+            <div className="ch-foot-col">
+              <b>Legal</b>
+              <Link to="/privacy">Privacy policy</Link>
+              <Link to="/terms">Terms of use</Link>
+            </div>
+          </div>
+
+          <p className="ch-copy">
+            © {year} {brand}.
+            {cat ? ` Servers online · ${cat.live} AI tools ready.` : ""}
+            {" "}Made in India 🇮🇳
+          </p>
+        </div>
       </footer>
     </div>
   );
