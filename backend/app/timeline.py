@@ -14,7 +14,7 @@ import uuid
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from .effects import Effect, check_effects, effect_filters
+from .effects import AudioFx, Effect, audio_filters, check_audio_fx, check_effects, effect_filters
 
 SCHEMA_VERSION = 1
 ALLOWED_FPS = (24, 25, 30, 50, 60)
@@ -293,10 +293,12 @@ class Clip(BaseModel):
     denoise: bool = False  # FFmpeg FFT noise reduction on this clip's audio (applied in export)
     fx: ClipFx | None = None
     effects: list[Effect] | None = Field(None, max_length=12)   # Resolve/Premiere/CapCut-style effects (app/effects.py)
+    audio_fx: list[AudioFx] | None = Field(None, max_length=12)  # Fairlight-style audio effects (app/effects.py)
 
     @model_validator(mode="after")
     def _effects_once(self):
         check_effects(self.effects)
+        check_audio_fx(self.audio_fx)
         return self
 
     @property
@@ -644,7 +646,7 @@ def compile_ffmpeg(tl: Timeline, assets: dict[uuid.UUID, AssetInfo], out_path: s
                     chain.append(f"crop=iw*{_f(1 - c.left - c.right)}:ih*{_f(1 - c.top - c.bottom)}:iw*{_f(c.left)}:ih*{_f(c.top)}")
                 if fx and fx.flip_h:
                     chain.append("hflip")
-                fx_geo, fx_pic = effect_filters(clip.effects)
+                fx_geo, fx_pic = effect_filters(clip.effects, f"fx{idx}")
                 chain += fx_geo
                 if cw:
                     chain += [f"scale={cw}:{ch}", "setsar=1"]
@@ -836,6 +838,7 @@ def _audio_chain(graph: list[str], idx: int, clip: Clip, fps: int) -> str:
     chain.append(f"atrim=duration={_f(dur)}")
     if clip.denoise:
         chain.append("afftdn=nr=18:nf=-40:tn=1")
+    chain += audio_filters(clip.audio_fx)
     if clip.volume != 1:
         chain.append(f"volume={_f(clip.volume)}")
     if clip.fade_in:

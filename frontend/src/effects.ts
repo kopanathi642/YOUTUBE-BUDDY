@@ -5,10 +5,13 @@ import type { Clip, ColorGrade, Timeline, Title } from "./timeline";
 import type { Keyframes, Keyframe } from "./keyframes";
 
 export type EffectType = "bw" | "sepia" | "hue" | "invert" | "posterize" | "sharpen" | "vignette" | "grain" | "rgbsplit" | "letterbox" | "flipv"
-  | "emboss" | "edges" | "sketch" | "scanlines";
+  | "emboss" | "edges" | "sketch" | "scanlines" | "glow" | "halation" | "hblur" | "vblur" | "mosaic" | "falsecolor"
+  | "greenkey" | "bluekey" | "lumakey" | "denoise" | "deflicker";
 export type Effect = { type: EffectType; amount: number };
+export type EffectGroup = "Colour" | "Blur" | "Light" | "Stylize" | "Sharpen" | "Key" | "Restore" | "Frame";
+export const EFFECT_GROUPS: EffectGroup[] = ["Colour", "Blur", "Light", "Stylize", "Sharpen", "Key", "Restore", "Frame"];
 
-export const EFFECTS: { type: EffectType; label: string; group: "Colour" | "Stylize" | "Sharpen" | "Frame"; min: number; max: number; step: number; def: number; unit?: string; hint: string }[] = [
+export const EFFECTS: { type: EffectType; label: string; group: EffectGroup; min: number; max: number; step: number; def: number; unit?: string; hint: string }[] = [
   { type: "bw", label: "Black & White", group: "Colour", min: 0, max: 1, step: 0.05, def: 1, hint: "Remove colour (strength 0–100%)" },
   { type: "sepia", label: "Sepia", group: "Colour", min: 0, max: 1, step: 0.05, def: 0.8, hint: "Warm old-photo tone" },
   { type: "hue", label: "Hue Shift", group: "Colour", min: -180, max: 180, step: 1, def: 60, unit: "°", hint: "Rotate every colour around the colour wheel" },
@@ -23,12 +26,27 @@ export const EFFECTS: { type: EffectType; label: string; group: "Colour" | "Styl
   { type: "emboss", label: "Emboss", group: "Stylize", min: 0.2, max: 2, step: 0.1, def: 1, hint: "Raised, stamped-metal look" },
   { type: "edges", label: "Edge Detect", group: "Stylize", min: 0.5, max: 3, step: 0.1, def: 1, hint: "Only the outlines, glowing on black" },
   { type: "sketch", label: "Pencil Sketch", group: "Stylize", min: 0.5, max: 3, step: 0.1, def: 1.2, hint: "Dark pencil lines on white paper" },
+  { type: "hblur", label: "Directional Blur ↔", group: "Blur", min: 1, max: 60, step: 1, def: 12, unit: " px", hint: "Motion-style blur, left–right" },
+  { type: "vblur", label: "Directional Blur ↕", group: "Blur", min: 1, max: 60, step: 1, def: 12, unit: " px", hint: "Motion-style blur, up–down" },
+  { type: "mosaic", label: "Mosaic Blur", group: "Blur", min: 4, max: 80, step: 1, def: 18, unit: " px", hint: "Pixelate into blocks (hide faces, number plates)" },
+  { type: "glow", label: "Glow", group: "Light", min: 0.1, max: 1, step: 0.05, def: 0.6, hint: "Soft light bloom over the whole picture" },
+  { type: "halation", label: "Halation", group: "Light", min: 0.1, max: 1, step: 0.05, def: 0.6, hint: "Film-style red-orange glow around bright areas" },
+  { type: "falsecolor", label: "False Color", group: "Colour", min: 1, max: 1, step: 1, def: 1, hint: "Exposure check: dark = purple/blue, mid-grey = green, bright = yellow/red" },
+  { type: "greenkey", label: "Green Screen", group: "Key", min: 1, max: 12, step: 0.5, def: 4, hint: "Remove a green background (higher = stronger, harder edge). Put your background on the track below." },
+  { type: "bluekey", label: "Blue Screen", group: "Key", min: 1, max: 12, step: 0.5, def: 4, hint: "Remove a blue background. Put your background on the track below." },
+  { type: "lumakey", label: "Luma Key", group: "Key", min: 0.02, max: 0.6, step: 0.02, def: 0.15, hint: "Remove dark areas (e.g. fire, smoke or light leaks shot on black)" },
+  { type: "denoise", label: "Video Denoise", group: "Restore", min: 0.2, max: 1, step: 0.1, def: 0.5, hint: "Cleans grainy low-light video. Applied in the export (not shown in the preview)." },
+  { type: "deflicker", label: "De-Flicker", group: "Restore", min: 1, max: 1, step: 1, def: 1, hint: "Evens out light flicker (tube lights, timelapse). Applied in the export (not shown in the preview)." },
   { type: "scanlines", label: "Scanlines", group: "Stylize", min: 0.1, max: 0.8, step: 0.05, def: 0.35, hint: "Old CRT TV lines (every 4 px)" },
 ];
 export const effectMeta = (t: EffectType) => EFFECTS.find((e) => e.type === t)!;
 export const clampEffect = (e: Effect): Effect => { const m = effectMeta(e.type); return { type: e.type, amount: +Math.min(m.max, Math.max(m.min, Math.round(e.amount / m.step) * m.step)).toFixed(4) }; };
 /** Effects in the order export applies them (the preview follows the same order). */
-export const EFFECT_ORDER: EffectType[] = ["flipv", "bw", "sepia", "hue", "invert", "posterize", "sharpen", "emboss", "edges", "sketch", "rgbsplit", "vignette", "grain", "scanlines", "letterbox"];
+export const EFFECT_ORDER: EffectType[] = ["flipv", "denoise", "deflicker", "greenkey", "bluekey", "lumakey", "hblur", "vblur", "bw", "sepia", "hue", "invert", "posterize",
+  "sharpen", "emboss", "edges", "sketch", "falsecolor", "mosaic", "glow", "halation", "rgbsplit", "vignette", "grain", "scanlines", "letterbox"];
+export const EXPORT_ONLY: EffectType[] = ["denoise", "deflicker"];
+export const GLOW_SIGMA = 14, LUMA_KEY_SOFT = 6;
+export const FALSE_COLOUR = ["#2b0a3d", "#1f3a93", "#2f6fbf", "#6b6b6b", "#3fae49", "#9a9a9a", "#f28cb1", "#f5d431", "#e53935"];
 export const sortEffects = (fx: Effect[]) => [...fx].sort((a, b) => EFFECT_ORDER.indexOf(a.type) - EFFECT_ORDER.indexOf(b.type));
 
 // ---------- colour maths (W3C Filter Effects; same numbers in backend/app/effects.py)
@@ -62,8 +80,27 @@ const f = (v: number) => +v.toFixed(5);
 /** SVG filter body for the colour/pixel effects of a clip. `k` = screen px per sequence px. Empty when none apply. */
 export function svgEffectsBody(effects: Effect[] | null | undefined, k: number): string {
   const out: string[] = [];
+  let n = 0;
   for (const e of sortEffects(effects ?? [])) {
-    const a = e.amount;
+    const a = e.amount, id = `p${n++}`;
+    const keep = `<feColorMatrix type="identity" result="${id}"/>`;
+    if (e.type === "greenkey") out.push(`<feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 ${f(a / 2)} ${f(-a)} ${f(a / 2)} 0 1"/>`);
+    if (e.type === "bluekey") out.push(`<feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 ${f(a / 2)} ${f(a / 2)} ${f(-a)} 0 1"/>`);
+    if (e.type === "lumakey") out.push(`<feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 ${f(0.213 * LUMA_KEY_SOFT)} ${f(0.715 * LUMA_KEY_SOFT)} ${f(0.072 * LUMA_KEY_SOFT)} 0 ${f(-LUMA_KEY_SOFT * a)}"/>`);
+    if (e.type === "hblur") out.push(`<feGaussianBlur stdDeviation="${f(a * k)} 0" edgeMode="duplicate"/>`);
+    if (e.type === "vblur") out.push(`<feGaussianBlur stdDeviation="0 ${f(a * k)}" edgeMode="duplicate"/>`);
+    if (e.type === "glow" || e.type === "halation") out.push(keep, `<feGaussianBlur in="${id}" stdDeviation="${f(GLOW_SIGMA * k)}" edgeMode="duplicate"/>`,
+      e.type === "halation" ? `<feColorMatrix type="matrix" values="1 0 0 0 0 0 0.25 0 0 0 0 0 0 0 0 0 0 0 1 0"/>` : "",
+      `<feComponentTransfer>${["R", "G", "B"].map((c) => `<feFunc${c} type="linear" slope="${f(a)}"/>`).join("")}</feComponentTransfer>`,
+      `<feBlend in2="${id}" mode="screen"/>`, `<feComposite in2="${id}" operator="in"/>`);
+    if (e.type === "mosaic") { const b = Math.max(2, a * k), h = b / 2;
+      out.push(keep, `<feFlood x="${f(h)}" y="${f(h)}" width="1" height="1" flood-color="#000"/>`, `<feComposite width="${f(b)}" height="${f(b)}"/>`, `<feTile/>`,
+        `<feComposite in="${id}" operator="in"/>`, `<feMorphology operator="dilate" radius="${f(h)}"/>`); }
+    if (e.type === "falsecolor") {
+      const cols = FALSE_COLOUR.map((c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16) / 255));
+      out.push(`<feColorMatrix type="matrix" values="${m4(saturateM(0).map(f))}"/>`,
+        `<feComponentTransfer>${["R", "G", "B"].map((ch, j) => `<feFunc${ch} type="table" tableValues="${cols.map((c) => f(c[j])).join(" ")}"/>`).join("")}</feComponentTransfer>`);
+    }
     if (e.type === "bw") out.push(`<feColorMatrix type="matrix" values="${m4(saturateM(1 - a).map(f))}"/>`);
     if (e.type === "sepia") out.push(`<feColorMatrix type="matrix" values="${m4(sepiaM(a).map(f))}"/>`);
     if (e.type === "hue") out.push(`<feColorMatrix type="matrix" values="${m4(hueM(a).map(f))}"/>`);
@@ -96,6 +133,7 @@ export function overlayEffects(effects: Effect[] | null | undefined) {
     const d = i / 12; return `rgba(0,0,0,${f(1 - vignetteFactor(v.amount, d))}) ${f(d * 100)}%`; }).join(", ")})` : null;
   return { vignette, grain: g ? g.amount : 0, bars: lb ? lb.amount : 0, scan: sl ? sl.amount : 0 };
 }
+export const exportOnlyEffects = (effects: Effect[] | null | undefined) => (effects ?? []).filter((e) => EXPORT_ONLY.includes(e.type));
 export const flippedV = (effects: Effect[] | null | undefined) => !!effects?.some((e) => e.type === "flipv");
 
 // ---------- styles (one-click looks = colour grade + effects)

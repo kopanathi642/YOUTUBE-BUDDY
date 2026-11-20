@@ -8,7 +8,8 @@ import { TState, transitionLinks, transitionState } from "../transitions";
 import { isNeutral, svgFilterBody } from "../grade";
 import { ratioOf } from "../compose";
 import EditOverlay from "./EditOverlay";
-import { svgEffectsBody, overlayEffects, flippedV } from "../effects";
+import { svgEffectsBody, overlayEffects, flippedV, exportOnlyEffects } from "../effects";
+import { routeElement, resumeAudio, audioExportOnly } from "../audiofx";
 import type { EditType } from "../editops";
 
 export type Sampler = (w: number) => HTMLCanvasElement | null;
@@ -115,8 +116,10 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
       const want = (L.clip.in + (held ?? Math.max(0, playhead - L.clip.start)) * sp(L.clip)) / fps;
       if (el.playbackRate !== sp(L.clip)) { el.playbackRate = sp(L.clip); (el as any).preservesPitch = true; }
       el.muted = muted || L.trackMuted || !L.asset.has_audio;
+      if (L.asset.has_audio) { try { routeElement(el as HTMLMediaElement, L.clip.audio_fx); } catch { /* audio effects unavailable: plays dry */ } }
       el.volume = Math.min(1, L.clip.volume * fadeFactor(L.clip, L.clip.start + lf(L)));
       if (active && playing) {
+        resumeAudio();
         if (Math.abs(el.currentTime - want) > 0.25) el.currentTime = want;
         if (el.paused) el.play().catch(() => {});
       } else {
@@ -267,6 +270,10 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
               <span className={`chip ${analysed ? "ok" : ""}`}>{analysed ? "Analysis ready" : "Analysing…"}</span>
               {layers.some((L) => L.clip.color?.enabled !== false && (L.clip.color?.lut?.strength ?? 0) > 0 && playhead >= L.clip.start && playhead < end(L.clip)) &&
                 <span className="chip" title="LUTs are applied in the export; see the before/after in Color Grading → LUTs">LUT in export</span>}
+              {layers.some((L) => audioExportOnly(L.clip.audio_fx).length > 0 && playhead >= L.clip.start && playhead < end(L.clip)) &&
+                <span className="chip" title="De-Esser, Pitch and Dialogue Leveler are applied when you export; the preview plays without them">Voice FX in export</span>}
+              {layers.some((L) => exportOnlyEffects(L.clip.effects).length > 0 && playhead >= L.clip.start && playhead < end(L.clip)) &&
+                <span className="chip" title="Video Denoise / De-Flicker are applied when you export; the preview shows the clip without them">Clean-up in export</span>}
             </div>}
           </div>
         </div>

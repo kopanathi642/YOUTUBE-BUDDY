@@ -4,7 +4,8 @@ import { Asset } from "../api";
 import { Clip, Timeline, Track, Transform, DEFAULT_TRANSFORM, DEFAULT_TITLE, Title, Crop, framesToTimecode, len, updateClip, setSpeed } from "../timeline";
 import { LOOKS, withLook, sanitizeGrade } from "../grade";
 import { Ease, KfProp, clearProp, isAnimated, keyTimes, removeKey, setKey, tfAt } from "../keyframes";
-import { EFFECTS, STYLES, ANIMATIONS, TEXT_STYLES, Effect, EffectType, animationKeys, applyAnimation, clampEffect, effectMeta, sortEffects } from "../effects";
+import { AUDIO_FX, AUDIO_GROUPS, AUDIO_ORDER, AudioFxType, VOICE_PRESETS, audioMeta, clampAudio } from "../audiofx";
+import { EFFECTS, EFFECT_GROUPS, STYLES, ANIMATIONS, TEXT_STYLES, Effect, EffectType, animationKeys, applyAnimation, clampEffect, effectMeta, sortEffects } from "../effects";
 import { TRANSITION_LIST, TransitionType, nextTouching, previousTouching, transitionLinks } from "../transitions";
 
 /** Free typing; applied (and clamped) on Enter or blur. Esc reverts. */
@@ -163,7 +164,7 @@ export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab,
             <select className="fx-add" value="" disabled={ro} aria-label="Add a video effect" onChange={(ev) => { const t = ev.target.value as EffectType; if (!t) return;
               const m = effectMeta(t); set({ effects: [...(clip.effects ?? []), { type: t, amount: m.def } as Effect] }, `fxadd:${t}`); }}>
               <option value="">+ Add effect…</option>
-              {(["Colour", "Stylize", "Sharpen", "Frame"] as const).map((g) => <optgroup key={g} label={g}>{EFFECTS.filter((x) => x.group === g && !(clip.effects ?? []).some((y) => y.type === x.type)).map((x) => <option key={x.type} value={x.type}>{x.label}</option>)}</optgroup>)}
+              {EFFECT_GROUPS.map((g) => <optgroup key={g} label={g}>{EFFECTS.filter((x) => x.group === g && !(clip.effects ?? []).some((y) => y.type === x.type)).map((x) => <option key={x.type} value={x.type}>{x.label}</option>)}</optgroup>)}
             </select>
           </>}
           {visual && <>
@@ -179,6 +180,26 @@ export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab,
             {asset?.analysis?.auto_grade && <button className="btn sm" style={{ marginTop: 8 }} disabled={ro} onClick={() => set({ color: sanitizeGrade(asset.analysis.auto_grade) }, "auto")}>Auto colour (measured)</button>}</>
             : <div className="dim" style={{ fontSize: 12 }}>Looks apply to video and image clips.</div>}
           {audio && <label className="check" style={{ marginTop: 10 }}><input type="checkbox" checked={!!clip.denoise} disabled={ro} onChange={(e) => set({ denoise: e.target.checked }, "dn")} />Audio noise reduction</label>}
+          {audio && <>
+            <div className="label" style={{ marginTop: 12 }}>Voice &amp; audio presets</div>
+            <div className="look-list afx-presets">{VOICE_PRESETS.map((p) => <button key={p.name} className="btn sm" disabled={ro} onClick={() => set({ audio_fx: p.fx.map(clampAudio) }, "vpreset")}>{p.name}</button>)}
+              <button className="btn sm ghost" disabled={ro || !(clip.audio_fx?.length)} onClick={() => set({ audio_fx: null }, "noafx")}>No audio FX</button></div>
+            <div className="label" style={{ marginTop: 10 }}>Audio effects (Fairlight)</div>
+            {[...(clip.audio_fx ?? [])].sort((x, y) => AUDIO_ORDER.indexOf(x.type) - AUDIO_ORDER.indexOf(y.type)).map((e) => { const m = audioMeta(e.type);
+              const put = (amount: number) => set({ audio_fx: (clip.audio_fx ?? []).map((x) => (x.type === e.type ? clampAudio({ type: e.type, amount }) : x)) }, `afx:${e.type}`);
+              return <div key={e.type} className="fx-row" title={m.hint}>
+                <span className="fx-name">{m.label}{m.exportOnly ? " *" : ""}</span>
+                {m.min !== m.max ? <><input type="range" min={m.min} max={m.max} step={m.step} value={e.amount} disabled={ro} aria-label={`${m.label} amount`} onChange={(ev) => put(+ev.target.value)} />
+                  <span className="mono fx-val">{m.unit ? `${e.amount}${m.unit}` : `${Math.round(e.amount * 100)}%`}</span></> : <span className="fx-val dim">on</span>}
+                <button className="btn icon ghost xs" aria-label={`Remove ${m.label}`} disabled={ro} onClick={() => set({ audio_fx: (clip.audio_fx ?? []).filter((x) => x.type !== e.type) }, `afxdel:${e.type}`)}>×</button>
+              </div>; })}
+            <select className="fx-add" value="" disabled={ro} aria-label="Add an audio effect" onChange={(ev) => { const t = ev.target.value as AudioFxType; if (!t) return;
+              set({ audio_fx: [...(clip.audio_fx ?? []), { type: t, amount: audioMeta(t).def }] }, `afxadd:${t}`); }}>
+              <option value="">+ Add audio effect…</option>
+              {AUDIO_GROUPS.map((g) => <optgroup key={g} label={g}>{AUDIO_FX.filter((x) => x.group === g && !(clip.audio_fx ?? []).some((y) => y.type === x.type)).map((x) => <option key={x.type} value={x.type}>{x.label}{x.exportOnly ? " (export)" : ""}</option>)}</optgroup>)}
+            </select>
+            {(clip.audio_fx ?? []).some((e) => audioMeta(e.type).exportOnly) && <div className="dim" style={{ fontSize: 11 }}>* heard in the export; the preview plays without it.</div>}
+          </>}
         </div>}
         {tab === "transition" && <div className="insp-sec">
           <Field label="Fade in" value={+(clip.fade_in / fps).toFixed(2)} min={0} max={+(len(clip) / fps).toFixed(2)} step={1 / fps} unit="s" disabled={ro}

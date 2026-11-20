@@ -120,3 +120,62 @@ def test_emboss_edges_sketch_scanlines(tmp_path):
     col = [sl.getpixel((W // 2, y))[0] for y in range(40, 48)]
     assert min(col) < 150 and max(col) > 185                                   # dark line every 4 px, rest untouched
     assert near(sl.getpixel((0, 41)), sl.getpixel((W // 2, 41)), 12)           # no vertical line at x = 0
+
+
+def _render_over(tmp_path, fg_draw, effects, bg=(255, 0, 255)):
+    """Keyed clip on V2 over a magenta V1 background; returns the composite frame."""
+    paths = {}
+    for name, col, draw in (("fg", (0, 200, 0), fg_draw), ("bg", bg, None)):
+        im = Image.new("RGB", (320, 180), col)
+        if draw:
+            draw(im)
+        p = str(tmp_path / f"{name}{uuid.uuid4().hex[:4]}.png")
+        im.save(p)
+        paths[name] = (uuid.uuid4(), p)
+    assets = {aid: AssetInfo(path=p, kind="image", has_audio=False, has_video=True, width=320, height=180) for aid, p in paths.values()}
+    clip = lambda cid, aid, fx=None: {"id": cid, "asset_id": str(aid), "start": 0, "in": 0, "out": 6, **({"effects": fx} if fx else {})}
+    tl = {"schema_version": 1, "fps": FPS, "width": W, "height": H, "tracks": [
+        {"id": "v2", "kind": "video", "name": "V2", "clips": [clip("f", paths["fg"][0], effects)]},
+        {"id": "v1", "kind": "video", "name": "V1", "clips": [clip("b", paths["bg"][0])]}]}
+    out = str(tmp_path / f"k{uuid.uuid4().hex[:6]}.mp4")
+    argv, _ = compile_ffmpeg(Timeline.model_validate(tl), assets, out, workdir=str(tmp_path))
+    r = subprocess.run(argv, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr[-2000:]
+    png = str(tmp_path / f"k{uuid.uuid4().hex[:6]}.png")
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", out, "-frames:v", "1", png], check=True)
+    return Image.open(png).convert("RGB")
+
+
+def test_green_screen_and_luma_key_show_the_track_below(tmp_path):
+    def person(im):   # a skin-coloured box in the middle of the green screen
+        for x in range(120, 200):
+            for y in range(50, 130):
+                im.putpixel((x, y), (205, 150, 120))
+    img = _render_over(tmp_path, person, [{"type": "greenkey", "amount": 4}])
+    assert near(img.getpixel((20, 20)), (255, 0, 255), 30)          # green removed → magenta background shows
+    assert near(img.getpixel((160, 90)), (205, 150, 120), 30)       # the person stays
+    def bright(im):
+        for x in range(120, 200):
+            for y in range(50, 130):
+                im.putpixel((x, y), (240, 240, 240))
+    img = _render_over(tmp_path, bright, [{"type": "lumakey", "amount": 0.3}])   # green (luma ≈ .56) stays, … so use dark bg
+    assert near(img.getpixel((160, 90)), (240, 240, 240), 30)
+
+
+def test_glow_halation_blurs_mosaic_falsecolor_cleanup_render(tmp_path):
+    def spot(im):
+        for x in range(150, 170):
+            for y in range(80, 100):
+                im.putpixel((x, y), (255, 255, 255))
+    g = _render(tmp_path, (20, 20, 20), [{"type": "glow", "amount": 1}], draw=spot)
+    assert g.getpixel((150 - 12, 90))[0] > 35                         # light spreads around the bright spot
+    h = _render(tmp_path, (20, 20, 20), [{"type": "halation", "amount": 1}], draw=spot)
+    px = h.getpixel((150 - 12, 90)); assert px[0] > px[2] + 10          # red-orange bloom
+    hb = _render(tmp_path, (20, 20, 20), [{"type": "hblur", "amount": 10}], draw=spot)
+    assert hb.getpixel((140, 90))[0] > 40 and hb.getpixel((160, 70))[0] < 40   # spread sideways, not up
+    vb = _render(tmp_path, (20, 20, 20), [{"type": "vblur", "amount": 10}], draw=spot)
+    assert vb.getpixel((160, 72))[0] > 40 and vb.getpixel((140, 90))[0] < 40
+    fc = _render(tmp_path, (128, 128, 128), [{"type": "falsecolor", "amount": 1}])
+    assert near(fc.getpixel((W // 2, H // 2)), (63, 174, 73), 30)      # mid grey → green on the false-colour scale
+    for fx in ({"type": "mosaic", "amount": 16}, {"type": "denoise", "amount": 1}, {"type": "deflicker", "amount": 1}):
+        assert _render(tmp_path, (90, 120, 150), [fx]).size == (W, H)

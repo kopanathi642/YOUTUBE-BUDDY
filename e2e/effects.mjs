@@ -55,7 +55,7 @@ await step("Style 'Noir' puts B&W + vignette on the clip and the preview draws t
 });
 
 await step("Add Sepia from the menu, change its strength, remove Vignette", async () => {
-  await page.selectOption(".fx-add", "sepia"); await page.waitForTimeout(200);
+  await page.selectOption("select[aria-label='Add a video effect']", "sepia"); await page.waitForTimeout(200);
   const slider = page.locator('input[aria-label="Sepia strength"]'); await slider.fill("0.4"); await page.waitForTimeout(200);
   const val = await page.locator(".fx-row:has-text('Sepia') .fx-val").innerText(); if (val !== "40%") throw new Error("value shows " + val);
   await page.click('button[aria-label="Remove Vignette"]'); await page.waitForTimeout(200);
@@ -63,7 +63,7 @@ await step("Add Sepia from the menu, change its strength, remove Vignette", asyn
 });
 
 await step("Cinema Bars + Film Grain draw overlays in the preview", async () => {
-  await page.selectOption(".fx-add", "letterbox"); await page.selectOption(".fx-add", "grain"); await page.waitForTimeout(300);
+  await page.selectOption("select[aria-label='Add a video effect']", "letterbox"); await page.selectOption("select[aria-label='Add a video effect']", "grain"); await page.waitForTimeout(300);
   if (!(await page.locator(".stage .fx-over .fx-grain").count())) throw new Error("no grain overlay");
 });
 
@@ -141,6 +141,54 @@ await step("Scroll (credits) animation on a title", async () => {
   await page.click(".anim-row button:has-text('Scroll (credits)')"); await page.waitForTimeout(200);
   await page.click(".ed-insp [role=tab]:has-text('Inspector')");
   if (!/y/.test(await page.locator(".kf-note").first().innerText())) throw new Error("no y animation");
+});
+
+await step("Batch 3: Green Screen, Glow, Mosaic on a clip; preview filter has the key matrix", async () => {
+  await page.keyboard.press("Escape");
+  await page.locator('[data-track="v1"] .clip').nth(1).click();
+  await page.click(".ed-insp [role=tab]:has-text('Effects')");
+  for (const t of ["greenkey", "glow", "mosaic", "denoise"]) { await page.selectOption("select[aria-label='Add a video effect']", t); await page.waitForTimeout(150); }
+  const names = await page.locator(".fx-row .fx-name").allInnerTexts();
+  for (const n of ["Green Screen", "Glow", "Mosaic Blur", "Video Denoise"]) if (!names.includes(n)) throw new Error("missing " + n + " in " + names.join(","));
+  const r = await page.locator('[data-track="v1"] .clip').nth(1).boundingBox(); const ruler = await page.locator(".tl-ruler").boundingBox();
+  await page.mouse.click(r.x + r.width / 2, ruler.y + 35); await page.waitForTimeout(300);
+  const defs = await page.evaluate(() => document.querySelector(".ed-viewer svg defs")?.innerHTML ?? "");
+  if (!/feMorphology/.test(defs) || !/mode="screen"/.test(defs)) throw new Error("preview filters missing (mosaic/glow)");
+  if (!(await page.locator(".stage-chips .chip:has-text('Clean-up in export')").count())) throw new Error("no 'in export' note for denoise");
+});
+
+await step("Fairlight audio: 'Clear Voice' preset + Echo on the music clip", async () => {
+  await page.locator('[data-track="a2"] .clip').first().click();
+  await page.click(".ed-insp [role=tab]:has-text('Effects')");
+  await page.click(".afx-presets button:has-text('Clear Voice')"); await page.waitForTimeout(200);
+  const sel = page.locator("select[aria-label*='audio' i]").first();
+  await sel.selectOption("echo"); await page.waitForTimeout(200);
+  const txt = await page.locator(".ed-insp").innerText();
+  for (const n of ["High-pass", "De-Hum", "Compressor", "Echo"]) if (!txt.includes(n)) throw new Error("missing " + n);
+});
+
+await step("Export renders with keying, glow, mosaic, denoise and audio effects (real FFmpeg)", async () => {
+  await page.waitForTimeout(3000);
+  const r = await page.evaluate(async (pid) => {
+    const H = { "x-requested-with": "creator-universe", "content-type": "application/json" };
+    const p = await (await fetch(`/api/v1/projects/${pid}`, { credentials: "include", headers: H })).json();
+    const seq = p.sequences[0];
+    const doc = await (await fetch(`/api/v1/sequences/${seq.id}`, { credentials: "include", headers: H })).json();
+    const v = doc.timeline.tracks.find((t) => t.id === "v1").clips.sort((a, b) => a.start - b.start)[1];
+    const m = doc.timeline.tracks.find((t) => t.id === "a2").clips[0];
+    const res = await fetch(`/api/v1/sequences/${seq.id}/exports`, { method: "POST", credentials: "include", headers: H, body: JSON.stringify({ preset: "draft", idempotency_key: crypto.randomUUID() }) });
+    return { v: (v.effects ?? []).map((e) => e.type), a: (m.audio_fx ?? []).map((e) => e.type), status: res.status, body: await res.json() };
+  }, PROJECT);
+  if (!r.v.includes("greenkey") || !r.a.includes("echo")) throw new Error("not saved: " + JSON.stringify([r.v, r.a]));
+  if (r.status !== 201) throw new Error("export refused: " + JSON.stringify(r.body));
+  for (let i = 0; i < 150; i++) {
+    const st = await page.evaluate(async (pid) => (await (await fetch(`/api/v1/projects/${pid}/exports`, { credentials: "include", headers: { "x-requested-with": "creator-universe" } })).json())[0], PROJECT);
+    const s = st.job?.status ?? st.status;
+    if (s === "succeeded") return;
+    if (s === "failed") throw new Error("render failed: " + JSON.stringify(st.job?.error ?? st));
+    await page.waitForTimeout(2000);
+  }
+  throw new Error("render still running after 5 min");
 });
 
 await page.click(".ed-insp [role=tab]:has-text('Effects')").catch(() => {});
