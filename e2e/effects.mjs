@@ -119,11 +119,11 @@ await step("Generators: make a Gradient in the media bin, it becomes a ready ima
   await page.waitForSelector(".ed-bin .bin-item.ready:has-text('Four Color Gradient')", { timeout: 60000 });
 });
 
-await step("33 transitions in groups; Barn door previews with a soft mask, Cover with a move", async () => {
+await step("34 transitions in groups; Barn door previews with a soft mask, Cover with a move", async () => {
   await page.keyboard.press("Escape");
   const second = page.locator('[data-track="v1"] .clip').nth(1); await second.click();
   await page.click(".ed-insp [role=tab]:has-text('Transition')");
-  const n = await page.locator(".tr-grid .tr-tile").count(); if (n !== 34) throw new Error(`${n} tiles (want 33 + Cut)`);
+  const n = await page.locator(".tr-grid .tr-tile").count(); if (n !== 35) throw new Error(`${n} tiles (want 34 + Cut)`);
   const groups = await page.locator(".tr-gl").allInnerTexts(); for (const g of ["Dissolve", "Wipe", "Iris", "Barn door", "Push & cover"]) if (!groups.includes(g)) throw new Error("missing group " + g);
   await page.click(".tr-tile:has-text('Barn door open (horizontal)')"); await page.waitForTimeout(200);
   const cut = await second.boundingBox(); const ruler = await page.locator(".tl-ruler").boundingBox();

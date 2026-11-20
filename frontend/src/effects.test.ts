@@ -23,7 +23,7 @@ describe("effects maths matches the server", () => {
   });
   it("every style uses valid effects", () => {
     for (const st of STYLES) for (const e of st.effects) expect(clampEffect(e)).toEqual(e);
-    expect(EFFECTS.length).toBe(26);
+    expect(EFFECTS.length).toBe(28);
   });
 });
 

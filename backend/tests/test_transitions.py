@@ -46,7 +46,7 @@ def test_links_need_touching_clips_and_are_capped():
     b = Clip(id="b", asset_id=uuid.uuid4(), start=20, out=8, transition_in={"type": "fade", "frames": 30})
     c = Clip(id="c", asset_id=uuid.uuid4(), start=40, out=20, transition_in={"type": "fade", "frames": 10})  # gap before it
     assert transition_links([a, b, c]) == {"b": (4, 4)}   # capped to the shorter clip (8 frames), split around the cut
-    assert len(TRANSITIONS) == 33
+    assert len(TRANSITIONS) == 34
 
 
 def test_dissolve_is_centred_on_the_cut_and_keeps_timing(tmp_path):

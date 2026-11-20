@@ -11,17 +11,19 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 EffectType = Literal["bw", "sepia", "hue", "invert", "posterize", "sharpen", "vignette", "grain", "rgbsplit", "letterbox", "flipv",
                      "emboss", "edges", "sketch", "scanlines", "glow", "halation", "hblur", "vblur", "mosaic", "falsecolor",
-                     "greenkey", "bluekey", "lumakey", "denoise", "deflicker"]
+                     "greenkey", "bluekey", "lumakey", "denoise", "deflicker", "boxblur", "contrastpop"]
 RANGES: dict[str, tuple[float, float]] = {
     "bw": (0, 1), "sepia": (0, 1), "hue": (-180, 180), "invert": (0, 1), "posterize": (2, 16), "sharpen": (0.1, 2),
     "vignette": (0.05, 1), "grain": (0.05, 1), "rgbsplit": (1, 40), "letterbox": (0.02, 0.25), "flipv": (1, 1),
     "emboss": (0.2, 2), "edges": (0.5, 3), "sketch": (0.5, 3), "scanlines": (0.1, 0.8),
+    "boxblur": (1, 30), "contrastpop": (0.1, 1.5),
     "glow": (0.1, 1), "halation": (0.1, 1), "hblur": (1, 60), "vblur": (1, 60), "mosaic": (4, 80), "falsecolor": (1, 1),
     "greenkey": (1, 12), "bluekey": (1, 12), "lumakey": (0.02, 0.6), "denoise": (0.2, 1), "deflicker": (1, 1),
 }
-ORDER = ["flipv", "denoise", "deflicker", "greenkey", "bluekey", "lumakey", "hblur", "vblur", "bw", "sepia", "hue", "invert", "posterize",
-         "sharpen", "emboss", "edges", "sketch", "falsecolor", "mosaic", "glow", "halation", "rgbsplit", "vignette", "grain", "scanlines", "letterbox"]
+ORDER = ["flipv", "denoise", "deflicker", "greenkey", "bluekey", "lumakey", "boxblur", "hblur", "vblur", "bw", "sepia", "hue", "invert", "posterize",
+         "sharpen", "contrastpop", "emboss", "edges", "sketch", "falsecolor", "mosaic", "glow", "halation", "rgbsplit", "vignette", "grain", "scanlines", "letterbox"]
 EXPORT_ONLY = {"denoise", "deflicker"}   # clean-up filters: the preview can't run them, the export does (the editor says so)
+POP_SIGMA = 10
 GLOW_SIGMA = 14          # sequence px, same as the preview
 LUMA_KEY_SOFT = 6
 # False colour (exposure) palette, 9 evenly spaced stops from black to white — same table as the preview
@@ -147,6 +149,14 @@ def effect_filters(effects: list[Effect] | None, tag: str = "e") -> tuple[list[s
             pic += _screen(f"{tag}g", "", a)
         elif e.type == "halation":   # red-orange bloom around highlights
             pic += _screen(f"{tag}h", ",colorchannelmixer=rr=1:gg=0.25:bb=0", a)
+        elif e.type == "boxblur":
+            r = int(round(a))
+            pic.append(f"avgblur=sizeX={r}:sizeY={r}")
+        elif e.type == "contrastpop":   # A·(1+a) − blur(A)·a, alpha kept
+            t = f"{tag}p"
+            ex = f"A*{_n(1 + a)}-B*{_n(a)}"
+            pic.append(f"format=gbrap,split[{t}a][{t}b];[{t}b]gblur=sigma={POP_SIGMA}[{t}c];"
+                       f"[{t}a][{t}c]blend=c0_expr='{ex}':c1_expr='{ex}':c2_expr='{ex}':c3_expr=A")
         elif e.type == "hblur":
             pic.append(f"gblur=sigma={_n(a)}:sigmaV=0")
         elif e.type == "vblur":

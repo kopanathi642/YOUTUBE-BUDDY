@@ -5,7 +5,7 @@ import { Clip, Track, end, len } from "./timeline";
 
 export type TransitionType = "fade" | "fadeblack" | "fadewhite" | "wipeleft" | "wiperight" | "wipeup" | "wipedown"
   | "slideleft" | "slideright" | "slideup" | "slidedown" | "circleopen"
-  | "smoothleft" | "smoothright" | "smoothup" | "smoothdown" | "horzopen" | "horzclose" | "vertopen" | "vertclose" | "circleclose" | "coverleft" | "coverright" | "coverup" | "coverdown" | "revealleft" | "revealright" | "revealup" | "revealdown" | "wipetl" | "wipetr" | "wipebl" | "wipebr";
+  | "radial" | "smoothleft" | "smoothright" | "smoothup" | "smoothdown" | "horzopen" | "horzclose" | "vertopen" | "vertclose" | "circleclose" | "coverleft" | "coverright" | "coverup" | "coverdown" | "revealleft" | "revealright" | "revealup" | "revealdown" | "wipetl" | "wipetr" | "wipebl" | "wipebr";
 export type Transition = { type: TransitionType; frames: number };
 
 export const TRANSITION_LIST: { type: TransitionType; label: string; group: string }[] = [
@@ -18,7 +18,7 @@ export const TRANSITION_LIST: { type: TransitionType; label: string; group: stri
   { type: "circleopen", label: "Iris open (circle)", group: "Iris" }, { type: "circleclose", label: "Iris close (circle)", group: "Iris" },
   { type: "smoothleft", label: "Smooth wipe left", group: "Wipe" }, { type: "smoothright", label: "Smooth wipe right", group: "Wipe" },
   { type: "smoothup", label: "Smooth wipe up", group: "Wipe" }, { type: "smoothdown", label: "Smooth wipe down", group: "Wipe" },
-  { type: "wipetl", label: "Corner wipe ↖", group: "Wipe" }, { type: "wipetr", label: "Corner wipe ↗", group: "Wipe" },
+  { type: "radial", label: "Clock wipe", group: "Wipe" }, { type: "wipetl", label: "Corner wipe ↖", group: "Wipe" }, { type: "wipetr", label: "Corner wipe ↗", group: "Wipe" },
   { type: "wipebl", label: "Corner wipe ↙", group: "Wipe" }, { type: "wipebr", label: "Corner wipe ↘", group: "Wipe" },
   { type: "horzopen", label: "Barn door open (horizontal)", group: "Barn door" }, { type: "horzclose", label: "Barn door close (horizontal)", group: "Barn door" },
   { type: "vertopen", label: "Barn door open (vertical)", group: "Barn door" }, { type: "vertclose", label: "Barn door close (vertical)", group: "Barn door" },
@@ -61,7 +61,7 @@ export function transitionState(track: Track, c: Clip, playhead: number, links =
 
 /** smoothstep, as in FFmpeg xfade */
 const S = (v: number) => (v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v));
-const N = 24;
+const N = 48;
 /** Mask image for the incoming clip: alpha(t) sampled along a gradient (t = 0…1). */
 const mask = (grad: string, alpha: (t: number) => number): CSSProperties => {
   const stops = Array.from({ length: N + 1 }, (_, i) => { const t = i / N; return `rgba(0,0,0,${alpha(t).toFixed(4)}) ${(t * 100).toFixed(2)}%`; }).join(", ");
@@ -101,6 +101,8 @@ function apply(st: TState, type: TransitionType, p: number, role: "in" | "out"):
     case "horzclose": return role === "in" ? { ...st, container: lin("to bottom", (v) => S(Math.abs(2 * v - 1) - 1 + 2 * p)) } : st;
     case "vertopen": return role === "in" ? { ...st, container: lin("to right", (u) => S(2 * p - Math.abs(2 * u - 1))) } : st;
     case "vertclose": return role === "in" ? { ...st, container: lin("to right", (u) => S(Math.abs(2 * u - 1) - 1 + 2 * p)) } : st;
+    // clock wipe: FFmpeg xfade radial, alpha = S(θ − (½ − p)·2.5π) with θ = atan2(x, y) from the centre; conic φ = π − θ
+    case "radial": return role === "in" ? { ...st, container: mask("conic-gradient(from 0deg at 50% 50%", (t) => S(Math.PI - t * 2 * Math.PI - (0.5 - p) * 2.5 * Math.PI)) } : st;
     // hard-edged moves (exact)
     case "coverleft": return role === "in" ? { ...st, container: { transform: `translateX(${pct(1 - p)})` } } : st;
     case "coverright": return role === "in" ? { ...st, container: { transform: `translateX(${pct(-(1 - p))})` } } : st;

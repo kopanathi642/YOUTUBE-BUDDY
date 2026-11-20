@@ -114,7 +114,7 @@ await step("Trim tool: hover shows Roll / Ripple / Slip / Slide; roll, ripple, s
 });
 
 await step("Edit overlay: all 7 edit types work from the program monitor", async () => {
-  const media = page.locator(".ed-bin [draggable=true]").first();
+  const media = page.locator(".ed-bin [draggable=true]").filter({ hasText: /Vlog|Talk/ }).first();   // a video (Fit to Fill refuses stills)
   if (!(await media.count())) throw new Error("no draggable media in the bin");
   for (const kind of ["Insert", "Place on Top", "Append at End", "Overwrite", "Replace", "Fit to Fill", "Ripple Overwrite"]) {
     const n0 = JSON.stringify(await clips("v1")) + JSON.stringify(await clips("v2")) + (await page.locator(".clip").count());

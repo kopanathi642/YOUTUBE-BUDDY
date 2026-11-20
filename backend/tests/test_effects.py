@@ -179,3 +179,17 @@ def test_glow_halation_blurs_mosaic_falsecolor_cleanup_render(tmp_path):
     assert near(fc.getpixel((W // 2, H // 2)), (63, 174, 73), 30)      # mid grey → green on the false-colour scale
     for fx in ({"type": "mosaic", "amount": 16}, {"type": "denoise", "amount": 1}, {"type": "deflicker", "amount": 1}):
         assert _render(tmp_path, (90, 120, 150), [fx]).size == (W, H)
+
+
+def test_box_blur_and_contrast_pop(tmp_path):
+    def half(im):
+        for x in range(160):
+            for y in range(180):
+                im.putpixel((x, y), (60, 60, 60))
+    base = (200, 200, 200)
+    flat = _render(tmp_path, base, [{"type": "contrastpop", "amount": 1}, {"type": "boxblur", "amount": 4}])
+    assert near(flat.getpixel((W // 2, H // 2)), base)                       # flat areas unchanged by both
+    pop = _render(tmp_path, base, [{"type": "contrastpop", "amount": 1}], draw=half)
+    assert pop.getpixel((166, 90))[0] > 215 and pop.getpixel((153, 90))[0] < 45   # bright side brighter, dark side darker at the edge
+    blur = _render(tmp_path, base, [{"type": "boxblur", "amount": 8}], draw=half)
+    assert 90 < blur.getpixel((160, 90))[0] < 170                             # the hard edge is softened

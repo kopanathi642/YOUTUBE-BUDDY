@@ -220,7 +220,7 @@ def _ease_at(kfs: list[Keyframe], t: int) -> str:
 TRANSITIONS = ("fade", "fadeblack", "fadewhite", "wipeleft", "wiperight", "wipeup", "wipedown",
                "slideleft", "slideright", "slideup", "slidedown", "circleopen",
                # Resolve-style additions (preview masks in frontend/src/transitions.ts measured against these xfade modes)
-               "smoothleft", "smoothright", "smoothup", "smoothdown", "horzopen", "horzclose", "vertopen", "vertclose", "circleclose", "coverleft", "coverright", "coverup", "coverdown", "revealleft", "revealright", "revealup", "revealdown", "wipetl", "wipetr", "wipebl", "wipebr")
+               "radial", "smoothleft", "smoothright", "smoothup", "smoothdown", "horzopen", "horzclose", "vertopen", "vertclose", "circleclose", "coverleft", "coverright", "coverup", "coverdown", "revealleft", "revealright", "revealup", "revealdown", "wipetl", "wipetr", "wipebl", "wipebr")
 
 
 class Transition(BaseModel):

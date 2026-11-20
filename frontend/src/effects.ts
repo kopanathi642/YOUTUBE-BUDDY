@@ -6,7 +6,7 @@ import type { Keyframes, Keyframe } from "./keyframes";
 
 export type EffectType = "bw" | "sepia" | "hue" | "invert" | "posterize" | "sharpen" | "vignette" | "grain" | "rgbsplit" | "letterbox" | "flipv"
   | "emboss" | "edges" | "sketch" | "scanlines" | "glow" | "halation" | "hblur" | "vblur" | "mosaic" | "falsecolor"
-  | "greenkey" | "bluekey" | "lumakey" | "denoise" | "deflicker";
+  | "greenkey" | "bluekey" | "lumakey" | "denoise" | "deflicker" | "boxblur" | "contrastpop";
 export type Effect = { type: EffectType; amount: number };
 export type EffectGroup = "Colour" | "Blur" | "Light" | "Stylize" | "Sharpen" | "Key" | "Restore" | "Frame";
 export const EFFECT_GROUPS: EffectGroup[] = ["Colour", "Blur", "Light", "Stylize", "Sharpen", "Key", "Restore", "Frame"];
@@ -28,6 +28,8 @@ export const EFFECTS: { type: EffectType; label: string; group: EffectGroup; min
   { type: "sketch", label: "Pencil Sketch", group: "Stylize", min: 0.5, max: 3, step: 0.1, def: 1.2, hint: "Dark pencil lines on white paper" },
   { type: "hblur", label: "Directional Blur ↔", group: "Blur", min: 1, max: 60, step: 1, def: 12, unit: " px", hint: "Motion-style blur, left–right" },
   { type: "vblur", label: "Directional Blur ↕", group: "Blur", min: 1, max: 60, step: 1, def: 12, unit: " px", hint: "Motion-style blur, up–down" },
+  { type: "boxblur", label: "Box Blur", group: "Blur", min: 1, max: 30, step: 1, def: 6, unit: " px", hint: "Even blur in every direction (background softening)" },
+  { type: "contrastpop", label: "Contrast Pop", group: "Sharpen", min: 0.1, max: 1.5, step: 0.05, def: 0.6, hint: "Local contrast: makes texture and detail pop without harsh edges" },
   { type: "mosaic", label: "Mosaic Blur", group: "Blur", min: 4, max: 80, step: 1, def: 18, unit: " px", hint: "Pixelate into blocks (hide faces, number plates)" },
   { type: "glow", label: "Glow", group: "Light", min: 0.1, max: 1, step: 0.05, def: 0.6, hint: "Soft light bloom over the whole picture" },
   { type: "halation", label: "Halation", group: "Light", min: 0.1, max: 1, step: 0.05, def: 0.6, hint: "Film-style red-orange glow around bright areas" },
@@ -42,10 +44,10 @@ export const EFFECTS: { type: EffectType; label: string; group: EffectGroup; min
 export const effectMeta = (t: EffectType) => EFFECTS.find((e) => e.type === t)!;
 export const clampEffect = (e: Effect): Effect => { const m = effectMeta(e.type); return { type: e.type, amount: +Math.min(m.max, Math.max(m.min, Math.round(e.amount / m.step) * m.step)).toFixed(4) }; };
 /** Effects in the order export applies them (the preview follows the same order). */
-export const EFFECT_ORDER: EffectType[] = ["flipv", "denoise", "deflicker", "greenkey", "bluekey", "lumakey", "hblur", "vblur", "bw", "sepia", "hue", "invert", "posterize",
-  "sharpen", "emboss", "edges", "sketch", "falsecolor", "mosaic", "glow", "halation", "rgbsplit", "vignette", "grain", "scanlines", "letterbox"];
+export const EFFECT_ORDER: EffectType[] = ["flipv", "denoise", "deflicker", "greenkey", "bluekey", "lumakey", "boxblur", "hblur", "vblur", "bw", "sepia", "hue", "invert", "posterize",
+  "sharpen", "contrastpop", "emboss", "edges", "sketch", "falsecolor", "mosaic", "glow", "halation", "rgbsplit", "vignette", "grain", "scanlines", "letterbox"];
 export const EXPORT_ONLY: EffectType[] = ["denoise", "deflicker"];
-export const GLOW_SIGMA = 14, LUMA_KEY_SOFT = 6;
+export const GLOW_SIGMA = 14, LUMA_KEY_SOFT = 6, POP_SIGMA = 10;
 export const FALSE_COLOUR = ["#2b0a3d", "#1f3a93", "#2f6fbf", "#6b6b6b", "#3fae49", "#9a9a9a", "#f28cb1", "#f5d431", "#e53935"];
 export const sortEffects = (fx: Effect[]) => [...fx].sort((a, b) => EFFECT_ORDER.indexOf(a.type) - EFFECT_ORDER.indexOf(b.type));
 
@@ -87,6 +89,11 @@ export function svgEffectsBody(effects: Effect[] | null | undefined, k: number):
     if (e.type === "greenkey") out.push(`<feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 ${f(a / 2)} ${f(-a)} ${f(a / 2)} 0 1"/>`);
     if (e.type === "bluekey") out.push(`<feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 ${f(a / 2)} ${f(a / 2)} ${f(-a)} 0 1"/>`);
     if (e.type === "lumakey") out.push(`<feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 ${f(0.213 * LUMA_KEY_SOFT)} ${f(0.715 * LUMA_KEY_SOFT)} ${f(0.072 * LUMA_KEY_SOFT)} 0 ${f(-LUMA_KEY_SOFT * a)}"/>`);
+    // box of (2r+1) px (FFmpeg avgblur) drawn as the Gaussian with the same spread, σ = √(r(r+1)/3)
+    if (e.type === "boxblur") out.push(`<feGaussianBlur stdDeviation="${f(Math.sqrt((a * (a + 1)) / 3) * k)}" edgeMode="duplicate"/>`);
+    // unsharp mask with a wide blur: out = A·(1+a) − blur(A)·a  (FFmpeg: split + gblur + blend expression)
+    if (e.type === "contrastpop") out.push(keep, `<feGaussianBlur in="${id}" stdDeviation="${f(POP_SIGMA * k)}" edgeMode="duplicate" result="${id}b"/>`,
+      `<feComposite in="${id}" in2="${id}b" operator="arithmetic" k2="${f(1 + a)}" k3="${f(-a)}"/>`, `<feComposite in2="${id}" operator="in"/>`);
     if (e.type === "hblur") out.push(`<feGaussianBlur stdDeviation="${f(a * k)} 0" edgeMode="duplicate"/>`);
     if (e.type === "vblur") out.push(`<feGaussianBlur stdDeviation="0 ${f(a * k)}" edgeMode="duplicate"/>`);
     if (e.type === "glow" || e.type === "halation") out.push(keep, `<feGaussianBlur in="${id}" stdDeviation="${f(GLOW_SIGMA * k)}" edgeMode="duplicate"/>`,
