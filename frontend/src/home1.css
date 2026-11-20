@@ -1355,8 +1355,8 @@
   .ch-cta-band-inner{padding:40px 24px}
   .ch-foot-inner{grid-template-columns:1fr}
   .ch-plans{grid-template-columns:1fr}
-  .ch-stats{grid-template-columns:1fr}
-  .ch-stat-item{border-right:0;border-bottom:1px solid rgba(255,255,255,0.06)}
+  .ch-stats{grid-template-columns:repeat(2,1fr)}
+  .ch-ws-audio{display:none}
 }
 @media(prefers-reduced-motion:reduce){
   .ch *,.ch *::before,.ch *::after{animation:none!important;transition:none!important}

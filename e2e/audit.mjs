@@ -56,9 +56,9 @@ const saved = () => page.waitForFunction(() => document.querySelector(".save-blo
 // ---------------- public pages
 await step("Landing page loads, nav anchors work, live tool count, real prices", async () => {
   await page.goto(B + "/"); await page.waitForSelector("text=WITHOUT LIMITS");
-  for (const a of ["#features", "#universes", "#pricing"]) await page.click(`.ch-links a[href="${a}"]`);
+  for (const a of ["#features", "#pricing"]) await page.click(`.ch-links a[href="${a}"]`);
   const live = (await (await page.request.get(B + "/api/v1/public/studios")).json()).live;
-  await page.waitForSelector(`text=${live} tools ready`);
+  await page.waitForSelector(`text=${live} AI tools ready`);
   await page.waitForSelector(".ch-plan .price");
 });
 await step("Sign-up validation shows errors", async () => {

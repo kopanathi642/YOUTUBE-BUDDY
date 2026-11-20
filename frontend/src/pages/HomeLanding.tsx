@@ -193,8 +193,8 @@ function Workspace({ live }: { live?: number }) {
       </div>
 
       {/* Bottom card: waveform */}
-      <div className="ch-ws-card" style={{
-        bottom: -18, left: -28,
+      <div className="ch-ws-card ch-ws-audio" style={{
+        top: 70, left: -70,
         width: 180,
         border: "1px solid rgba(0,240,255,0.15)",
         background: "rgba(4,3,13,0.85)",
@@ -206,6 +206,7 @@ function Workspace({ live }: { live?: number }) {
           {Array.from({length:16}, (_,i) => (
             <div key={i} style={{
               flex:1,
+              height:`${30 + ((i * 41) % 70)}%`,
               borderRadius:2,
               background:"linear-gradient(180deg,#00f0ff,#8b5cf6)",
               transformOrigin:"bottom",
@@ -232,7 +233,7 @@ const BENTO = [
     art:true,
   },
   {
-    id:"ai-video",
+    id:"ai-video", tall:true,
     icon: <Video size={22} color="#fff" strokeWidth={1.8} />,
     iconBg: "linear-gradient(135deg,#8b5cf6,#ec4899)",
     iconGlow: "0 0 24px rgba(139,92,246,0.5)",
@@ -250,7 +251,7 @@ const BENTO = [
     p:"Your best moments auto-detected and clipped into 9:16 vertical reels.",
   },
   {
-    id:"voice", tall:true,
+    id:"voice",
     icon: <Mic size={22} color="#fff" strokeWidth={1.8} />,
     iconBg: "linear-gradient(135deg,#ec4899,#8b5cf6)",
     iconGlow: "0 0 24px rgba(236,72,153,0.5)",
@@ -269,7 +270,7 @@ const BENTO = [
     p:"Silences, noise, colour, backgrounds — fixed in one click with AI precision.",
   },
   {
-    id:"translate",
+    id:"translate", span2:true,
     icon: <Languages size={22} color="#fff" strokeWidth={1.8} />,
     iconBg: "linear-gradient(135deg,#3b82f6,#06b6d4)",
     iconGlow: "0 0 24px rgba(59,130,246,0.5)",
@@ -286,6 +287,7 @@ function WaveBars({ n = 20, colors }: { n?: number; colors: [string, string] }) 
       {Array.from({ length: n }, (_, i) => (
         <div key={i} style={{
           flex: 1,
+          height: `${30 + ((i * 37) % 70)}%`,
           borderRadius: 3,
           background: `linear-gradient(180deg,${colors[0]},${colors[1]})`,
           transformOrigin: "bottom",
@@ -347,7 +349,7 @@ export default function HomeLanding() {
 
           <div className="ch-links">
             <a href="#features">Features</a>
-            <a href="#universes">Universes</a>
+            <a href="#features">Universes</a>
             <a href="#pricing">Pricing</a>
             <a href="#footer">About</a>
           </div>
@@ -425,8 +427,8 @@ export default function HomeLanding() {
             <span className="ch-stat-label">Languages</span>
           </div>
           <div className="ch-stat-item">
-            <span className="ch-stat-num">4K</span>
-            <span className="ch-stat-label">Export Quality</span>
+            <span className="ch-stat-num">1080p</span>
+            <span className="ch-stat-label">HD Export</span>
           </div>
           <div className="ch-stat-item">
             <span className="ch-stat-num">∞</span>
@@ -691,7 +693,7 @@ export default function HomeLanding() {
               Ready to create?
             </div>
             <h2>Your best videos start here.</h2>
-            <p>Join thousands of creators building extraordinary content with AI tools that actually work.</p>
+            <p>Join creators building extraordinary content with AI tools that actually work.</p>
             <div style={{ display:"flex", gap:14, justifyContent:"center", flexWrap:"wrap" }}>
               <Link to="/signup" className="ch-cta lg">Start for Free — No Card Needed</Link>
               <a href="#features" className="ch-cta-secondary">
@@ -739,7 +741,7 @@ export default function HomeLanding() {
               <b>Resources</b>
               <Link to="/signup">Create account</Link>
               <Link to="/signin">Sign in</Link>
-              <a href="#universes">Universes</a>
+              <a href="#features">Universes</a>
             </div>
 
             <div className="ch-foot-col">
