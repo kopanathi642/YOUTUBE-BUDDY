@@ -35,6 +35,15 @@ Evidence: `backend/tests/test_editor_flow.py` (pytest, real Postgres + S3 protoc
 | Editor | Resolve edit overlay on the program monitor: Insert, Overwrite, Replace, Fit to Fill (0.25×–4×), Place on Top, Append at End, Ripple Overwrite | WORKING | `src/editops.test.ts` + `e2e/resolve.mjs` |
 | Editor | Markers (M to add, click to jump, double-click to remove, Shift+↑/↓ to step); saved in the timeline, ignored by export | WORKING | `e2e/resolve.mjs` (survives reload) |
 | Editor | Dynamic Zoom (push in / pull out = Scale keyframes across the clip, same maths in preview and export) | WORKING | `e2e/resolve.mjs` |
+| Editor | Video effects (11): B&W, Sepia, Hue Shift, Invert, Posterize, Sharpen, Vignette, Film Grain, RGB Split, Cinema Bars, Flip Vertical — shared maths `src/effects.ts` ↔ `app/effects.py` | WORKING | `tests/test_effects.py` (pixel checks vs preview maths), `e2e/effects.mjs` |
+| Editor | Styles (10 one-click looks: VHS, Old Film, Noir, Cinematic, Comic, Glitch, Retro 80s, Polaroid, Dreamy, Negative) | WORKING | `e2e/effects.mjs` |
+| Editor | CapCut animations as keyframes: In / Out (zoom, slide ×4, spin, pop), Combo (shake, pulse, Ken Burns, scroll credits, crawl ticker) | WORKING | `src/effects.test.ts`, `e2e/effects.mjs` |
+| Editor | 22 text styles (outline, YouTube box, subtitle yellow, lower third, highlighter, breaking news …) | WORKING | `e2e/effects.mjs` |
+| Editor | 33 transitions (Resolve groups: Dissolve, Wipe incl. smooth + corner, Iris open/close, Barn door ×4, Slide, Push & cover / reveal) — preview masks measured against FFmpeg xfade (≤ 2 % mean difference) | WORKING | `tests/test_transitions.py` (all 33 render), `e2e/effects.mjs` |
+| Editor | Generators (Solid, Gradient, Four Color, Radial, Color Bars, SMPTE Bars, Grey Scale, Grid, Window matte, Comic Speed Lines, Paper) drawn as PNG at sequence size into the bin | WORKING | `tests/test_effects.py`, `e2e/effects.mjs` |
+| Editor | Planned (Resolve FX batch 3+): Box/Directional/Mosaic blur, Emboss, Edge Detect, Pencil Sketch, Scanlines, Stop Motion, Glow/Halation, Light leaks, False Color, Contrast Pop, Mirror, chroma/luma key; Fairlight audio FX (EQ, compressor, limiter, de-esser, de-hum, reverb, echo, chorus, flanger, pitch, stereo width, ducker, leveler) | PLANNED | |
+| Editor | Needs AI models (HP GPU): Defocus Background, Voice Isolation, Dialogue Separator, Music Remixer, Face Refinement, Beauty, UltraNR | PLANNED | |
+| Editor | Not possible in the web editor: Fusion page (node compositing, 3D/USD, particles, IntelliTrack) | NOT PLANNED | |
 | Editor | Not built yet (Resolve Edit page): Multicam, Smooth Cut (optical flow), face-recognition bins, multi-user collaboration, stacked timelines, separate source viewer with I/O marking, JKL shuttle | PLANNED | |
 | Editor | Lock / hide / mute tracks | WORKING | respected by preview **and** render |
 | Editor | Transform: position, scale, rotation, opacity; volume; fade in/out | WORKING | render pixel check in pytest; preview ↔ export position match verified visually |

@@ -196,8 +196,9 @@ export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab,
               {!prev ? <div className="dim" style={{ fontSize: 11.5 }}>Place this clip right against the previous clip on the same track (no gap) to add a transition.</div> : <>
                 <div className="tr-grid" role="radiogroup" aria-label="Transition type">
                   <button role="radio" aria-checked={!tr} className={`tr-tile ${!tr ? "on" : ""}`} disabled={ro} onClick={() => setTr(null)}><i className="tr-ico cut" />Cut</button>
-                  {TRANSITION_LIST.map((t) => <button key={t.type} role="radio" aria-checked={tr?.type === t.type} className={`tr-tile ${tr?.type === t.type ? "on" : ""}`} disabled={ro}
-                    title={t.group} onClick={() => setTr(t.type)}><i className={`tr-ico ${t.type}`} />{t.label}</button>)}
+                  {[...new Set(TRANSITION_LIST.map((t) => t.group))].map((g) => <div key={g} className="tr-group" role="group" aria-label={g}><div className="tr-gl">{g}</div>
+                    {TRANSITION_LIST.filter((t) => t.group === g).map((t) => <button key={t.type} role="radio" aria-checked={tr?.type === t.type} className={`tr-tile ${tr?.type === t.type ? "on" : ""}`} disabled={ro}
+                      title={`${g}: ${t.label}`} onClick={() => setTr(t.type)}><i className={`tr-ico ${t.type}`} />{t.label}</button>)}</div>)}
                 </div>
                 {tr && <Field label="Duration" value={+(tr.frames / fps).toFixed(2)} min={2 / fps} max={5} step={1 / fps} unit="s" disabled={ro}
                   onChange={(v) => setTr(tr.type, Math.max(2, Math.min(300, Math.round(v * fps))))} />}

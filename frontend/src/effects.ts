@@ -109,6 +109,7 @@ export const ANIMATIONS: { id: string; label: string; kind: AnimKind }[] = [
   { id: "zoomIn", label: "Zoom away", kind: "out" }, { id: "zoomOut", label: "Shrink", kind: "out" }, { id: "slideL", label: "Slide to left", kind: "out" },
   { id: "slideR", label: "Slide to right", kind: "out" }, { id: "slideU", label: "Slide up", kind: "out" }, { id: "slideD", label: "Slide down", kind: "out" },
   { id: "spin", label: "Spin out", kind: "out" }, { id: "pop", label: "Pop out", kind: "out" },
+  { id: "scroll", label: "Scroll (credits)", kind: "combo" }, { id: "crawl", label: "Crawl (ticker)", kind: "combo" },
   { id: "shake", label: "Shake", kind: "combo" }, { id: "pulse", label: "Pulse", kind: "combo" }, { id: "kenburns", label: "Ken Burns", kind: "combo" },
 ];
 
@@ -158,6 +159,8 @@ export function animationKeys(id: string, kind: AnimKind, c: Clip, len: number, 
     ks.push(kf(last, tf.scale, "linear"));
     return { scale: dedupe(ks) };
   }
+  if (id === "scroll") return { y: [kf(0, tf.y + H * 0.8, "linear"), kf(last, tf.y - H * 0.8, "linear")] };   // rolling credits: bottom → top
+  if (id === "crawl") return { x: [kf(0, tf.x + W * 0.9, "linear"), kf(last, tf.x - W * 0.9, "linear")] };    // ticker: right → left
   if (id === "kenburns") return { scale: [kf(0, tf.scale), kf(last, tf.scale * 1.15, "linear")], x: [kf(0, tf.x - W * 0.02), kf(last, tf.x + W * 0.02, "linear")] };
   return {};
 }

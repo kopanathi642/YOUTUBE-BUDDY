@@ -12,6 +12,7 @@ from ..config import get_settings
 from ..db import get_db
 from ..deps import load_asset, load_project, ser_asset
 from ..media import MediaRejected, classify
+from ..generators import GenIn, LABELS as GEN_LABELS, render as render_generator
 from ..models import Job, MediaAsset, MediaStatus, Role, User
 from ..security import audit, current_user, upload_limiter
 
@@ -265,3 +266,29 @@ def upload_lut(project_id: uuid.UUID, body: LutIn, request: Request, user: User 
     audit(db, request, "lut.upload", user=user, workspace_id=p.workspace_id, target_type="media", target_id=aid, size=size)
     db.commit()
     return ser_asset(a)
+
+
+@router.post("/projects/{project_id}/media/generate", status_code=201)
+def generate_media(project_id: uuid.UUID, body: GenIn, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Resolve-style generator: draw it as a PNG at the sequence size and add it to the bin as an image."""
+    import os
+    import tempfile
+    p = load_project(db, user, project_id, Role.editor)
+    upload_limiter.check(f"up:{user.id}")
+    aid = uuid.uuid4()
+    key = f"ws/{p.workspace_id}/proj/{p.id}/media/{aid}/original.png"
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "gen.png")
+        render_generator(body, path)
+        size = os.path.getsize(path)
+        storage.upload(path, key, "image/png")
+    a = MediaAsset(id=aid, workspace_id=p.workspace_id, project_id=p.id, uploaded_by=user.id, filename=f"{GEN_LABELS[body.type]}.png",
+                   kind="image", declared_content_type="image/png", size_bytes=size, storage_key=key, status=MediaStatus.processing,
+                   analysis={"generator": body.model_dump()})
+    db.add(a)
+    db.flush()
+    job = jobs.enqueue(db, workspace_id=p.workspace_id, project_id=p.id, created_by=user.id, kind="media.process",
+                       payload={"asset_id": str(aid)}, idempotency_key=f"media.process:{aid}")
+    audit(db, request, "media.generate", user=user, workspace_id=p.workspace_id, target_type="media", target_id=aid, generator=body.type)
+    db.commit()
+    return ser_asset(a, job)

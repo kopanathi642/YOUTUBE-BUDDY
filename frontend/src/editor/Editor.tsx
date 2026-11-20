@@ -542,7 +542,7 @@ export default function Editor() {
       <div className="ed2-body">
         <ToolSidebar caps={caps} onAction={action} readOnly={readOnly} hide={hide} />
         <Workspace layout={layout} setLayout={setLayout}
-          media={<MediaBin projectId={project.id} assets={assets} setAssets={setAssets} reload={loadMedia} readOnly={readOnly} onAdd={(a) => addAssetToTimeline(a)} fps={fps}
+          media={<MediaBin projectId={project.id} seqSize={{ w: tl.width, h: tl.height }} assets={assets} setAssets={setAssets} reload={loadMedia} readOnly={readOnly} onAdd={(a) => addAssetToTimeline(a)} fps={fps}
               uploadRef={uploadRef} onRecord={() => setRecording(true)} canLook={!!sel && sel.track.kind === "video" && !!selAsset?.has_video}
               onLook={(i) => sel && edit(updateClip(tl, sel.clip.id, { color: withLook(LOOKS[i].grade) }))}
               tabReq={binReq} hideStock={hide.has("stock")} onTemplate={(t: TitleTemplate) => {

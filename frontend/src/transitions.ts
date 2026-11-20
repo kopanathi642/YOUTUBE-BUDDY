@@ -4,7 +4,8 @@ import type { CSSProperties } from "react";
 import { Clip, Track, end, len } from "./timeline";
 
 export type TransitionType = "fade" | "fadeblack" | "fadewhite" | "wipeleft" | "wiperight" | "wipeup" | "wipedown"
-  | "slideleft" | "slideright" | "slideup" | "slidedown" | "circleopen";
+  | "slideleft" | "slideright" | "slideup" | "slidedown" | "circleopen"
+  | "smoothleft" | "smoothright" | "smoothup" | "smoothdown" | "horzopen" | "horzclose" | "vertopen" | "vertclose" | "circleclose" | "coverleft" | "coverright" | "coverup" | "coverdown" | "revealleft" | "revealright" | "revealup" | "revealdown" | "wipetl" | "wipetr" | "wipebl" | "wipebr";
 export type Transition = { type: TransitionType; frames: number };
 
 export const TRANSITION_LIST: { type: TransitionType; label: string; group: string }[] = [
@@ -14,7 +15,17 @@ export const TRANSITION_LIST: { type: TransitionType; label: string; group: stri
   { type: "wipeup", label: "Wipe up", group: "Wipe" }, { type: "wipedown", label: "Wipe down", group: "Wipe" },
   { type: "slideleft", label: "Slide left", group: "Slide" }, { type: "slideright", label: "Slide right", group: "Slide" },
   { type: "slideup", label: "Slide up", group: "Slide" }, { type: "slidedown", label: "Slide down", group: "Slide" },
-  { type: "circleopen", label: "Iris open", group: "Shape" },
+  { type: "circleopen", label: "Iris open (circle)", group: "Iris" }, { type: "circleclose", label: "Iris close (circle)", group: "Iris" },
+  { type: "smoothleft", label: "Smooth wipe left", group: "Wipe" }, { type: "smoothright", label: "Smooth wipe right", group: "Wipe" },
+  { type: "smoothup", label: "Smooth wipe up", group: "Wipe" }, { type: "smoothdown", label: "Smooth wipe down", group: "Wipe" },
+  { type: "wipetl", label: "Corner wipe ↖", group: "Wipe" }, { type: "wipetr", label: "Corner wipe ↗", group: "Wipe" },
+  { type: "wipebl", label: "Corner wipe ↙", group: "Wipe" }, { type: "wipebr", label: "Corner wipe ↘", group: "Wipe" },
+  { type: "horzopen", label: "Barn door open (horizontal)", group: "Barn door" }, { type: "horzclose", label: "Barn door close (horizontal)", group: "Barn door" },
+  { type: "vertopen", label: "Barn door open (vertical)", group: "Barn door" }, { type: "vertclose", label: "Barn door close (vertical)", group: "Barn door" },
+  { type: "coverleft", label: "Cover left", group: "Push & cover" }, { type: "coverright", label: "Cover right", group: "Push & cover" },
+  { type: "coverup", label: "Cover up", group: "Push & cover" }, { type: "coverdown", label: "Cover down", group: "Push & cover" },
+  { type: "revealleft", label: "Reveal left", group: "Push & cover" }, { type: "revealright", label: "Reveal right", group: "Push & cover" },
+  { type: "revealup", label: "Reveal up", group: "Push & cover" }, { type: "revealdown", label: "Reveal down", group: "Push & cover" },
 ];
 
 /** {incoming clip id: [frames before cut, frames after]} for clips sorted by start. */
@@ -48,6 +59,19 @@ export function transitionState(track: Track, c: Clip, playhead: number, links =
   return st;
 }
 
+/** smoothstep, as in FFmpeg xfade */
+const S = (v: number) => (v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v));
+const N = 24;
+/** Mask image for the incoming clip: alpha(t) sampled along a gradient (t = 0…1). */
+const mask = (grad: string, alpha: (t: number) => number): CSSProperties => {
+  const stops = Array.from({ length: N + 1 }, (_, i) => { const t = i / N; return `rgba(0,0,0,${alpha(t).toFixed(4)}) ${(t * 100).toFixed(2)}%`; }).join(", ");
+  const img = `${grad}, ${stops})`;
+  return { WebkitMaskImage: img, maskImage: img };
+};
+const lin = (dir: string, a: (t: number) => number) => mask(`linear-gradient(${dir}`, a);
+/** circle reaching the corners = FFmpeg's normalisation by the half diagonal */
+const rad = (a: (r: number) => number) => mask("radial-gradient(circle farthest-corner at 50% 50%", a);
+
 function apply(st: TState, type: TransitionType, p: number, role: "in" | "out"): TState {
   p = Math.min(1, Math.max(0, p));
   const pct = (v: number) => `${(v * 100).toFixed(3)}%`;
@@ -66,7 +90,30 @@ function apply(st: TState, type: TransitionType, p: number, role: "in" | "out"):
     case "slideright": return { ...st, container: { transform: `translateX(${pct(role === "in" ? -(1 - p) : p)})` } };
     case "slideup": return { ...st, container: { transform: `translateY(${pct(role === "in" ? 1 - p : -p)})` } };
     case "slidedown": return { ...st, container: { transform: `translateY(${pct(role === "in" ? -(1 - p) : p)})` } };
-    case "circleopen": return role === "in" ? { ...st, container: { clipPath: `circle(${pct(p * Math.SQRT1_2 * 1.0)} at 50% 50%)` } } : st;
+    // soft-edged shapes: alpha formulas measured against FFmpeg xfade frames (≤ 2 % mean difference)
+    case "circleopen": return role === "in" ? { ...st, container: rad((r) => 1 - S(r - Math.SQRT2 * (2 * p - 1))) } : st;
+    case "circleclose": return role === "in" ? { ...st, container: rad((r) => S(r + Math.SQRT2 * (2 * p - 1))) } : st;
+    case "smoothleft": return role === "in" ? { ...st, container: lin("to right", (u) => S(2 * p - 1 + u)) } : st;
+    case "smoothright": return role === "in" ? { ...st, container: lin("to right", (u) => S(2 * p - u)) } : st;
+    case "smoothup": return role === "in" ? { ...st, container: lin("to bottom", (v) => S(2 * p - 1 + v)) } : st;
+    case "smoothdown": return role === "in" ? { ...st, container: lin("to bottom", (v) => S(2 * p - v)) } : st;
+    case "horzopen": return role === "in" ? { ...st, container: lin("to bottom", (v) => S(2 * p - Math.abs(2 * v - 1))) } : st;
+    case "horzclose": return role === "in" ? { ...st, container: lin("to bottom", (v) => S(Math.abs(2 * v - 1) - 1 + 2 * p)) } : st;
+    case "vertopen": return role === "in" ? { ...st, container: lin("to right", (u) => S(2 * p - Math.abs(2 * u - 1))) } : st;
+    case "vertclose": return role === "in" ? { ...st, container: lin("to right", (u) => S(Math.abs(2 * u - 1) - 1 + 2 * p)) } : st;
+    // hard-edged moves (exact)
+    case "coverleft": return role === "in" ? { ...st, container: { transform: `translateX(${pct(1 - p)})` } } : st;
+    case "coverright": return role === "in" ? { ...st, container: { transform: `translateX(${pct(-(1 - p))})` } } : st;
+    case "coverup": return role === "in" ? { ...st, container: { transform: `translateY(${pct(1 - p)})` } } : st;
+    case "coverdown": return role === "in" ? { ...st, container: { transform: `translateY(${pct(-(1 - p))})` } } : st;
+    case "revealleft": return role === "in" ? { ...st, container: { clipPath: `inset(0 0 0 ${pct(1 - p)})` } } : { ...st, container: { transform: `translateX(${pct(-p)})` } };
+    case "revealright": return role === "in" ? { ...st, container: { clipPath: `inset(0 ${pct(1 - p)} 0 0)` } } : { ...st, container: { transform: `translateX(${pct(p)})` } };
+    case "revealup": return role === "in" ? { ...st, container: { clipPath: `inset(${pct(1 - p)} 0 0 0)` } } : { ...st, container: { transform: `translateY(${pct(-p)})` } };
+    case "revealdown": return role === "in" ? { ...st, container: { clipPath: `inset(0 0 ${pct(1 - p)} 0)` } } : { ...st, container: { transform: `translateY(${pct(p)})` } };
+    case "wipetl": { const q = pct(1 - p); return role === "in" ? { ...st, container: { clipPath: `polygon(${q} 0, 100% 0, 100% 100%, 0 100%, 0 ${q}, ${q} ${q})` } } : st; }
+    case "wipetr": { const q = pct(p), r = pct(1 - p); return role === "in" ? { ...st, container: { clipPath: `polygon(0 0, ${q} 0, ${q} ${r}, 100% ${r}, 100% 100%, 0 100%)` } } : st; }
+    case "wipebl": { const q = pct(1 - p), r = pct(p); return role === "in" ? { ...st, container: { clipPath: `polygon(0 0, 100% 0, 100% 100%, ${q} 100%, ${q} ${r}, 0 ${r})` } } : st; }
+    case "wipebr": { const q = pct(p); return role === "in" ? { ...st, container: { clipPath: `polygon(0 0, 100% 0, 100% ${q}, ${q} ${q}, ${q} 100%, 0 100%)` } } : st; }
   }
   return st;
 }

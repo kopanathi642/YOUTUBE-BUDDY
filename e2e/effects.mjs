@@ -110,6 +110,39 @@ await step("Effects survive reload, and the server exports the timeline with the
   throw new Error("render still running after 4 min " + jobId);
 });
 
+await step("Generators: make a Gradient in the media bin, it becomes a ready image", async () => {
+  const n0 = await page.locator(".ed-bin .bin-item").count();
+  await page.click(".ed-bin button:has-text('Generate')");
+  await page.click(".gen-tile:has-text('Four Color Gradient')");
+  await page.click(".gen-opts button:has-text('Add Four Color Gradient')");
+  await page.waitForFunction((n) => document.querySelectorAll(".ed-bin .bin-item").length > n, n0, { timeout: 20000 });
+  await page.waitForSelector(".ed-bin .bin-item.ready:has-text('Four Color Gradient')", { timeout: 60000 });
+});
+
+await step("33 transitions in groups; Barn door previews with a soft mask, Cover with a move", async () => {
+  await page.keyboard.press("Escape");
+  const second = page.locator('[data-track="v1"] .clip').nth(1); await second.click();
+  await page.click(".ed-insp [role=tab]:has-text('Transition')");
+  const n = await page.locator(".tr-grid .tr-tile").count(); if (n !== 34) throw new Error(`${n} tiles (want 33 + Cut)`);
+  const groups = await page.locator(".tr-gl").allInnerTexts(); for (const g of ["Dissolve", "Wipe", "Iris", "Barn door", "Push & cover"]) if (!groups.includes(g)) throw new Error("missing group " + g);
+  await page.click(".tr-tile:has-text('Barn door open (horizontal)')"); await page.waitForTimeout(200);
+  const cut = await second.boundingBox(); const ruler = await page.locator(".tl-ruler").boundingBox();
+  await page.mouse.click(cut.x + 1, ruler.y + 35); await page.waitForTimeout(300);
+  const m = await page.evaluate(() => [...document.querySelectorAll(".stage .tlayer")].map((e) => e.style.webkitMaskImage || e.style.maskImage).find(Boolean) ?? "");
+  if (!m.includes("linear-gradient")) throw new Error("no soft mask at the cut");
+  await page.click(".tr-tile:has-text('Cover left')"); await page.waitForTimeout(200);
+  const t = await page.evaluate(() => [...document.querySelectorAll(".stage .tlayer")].map((e) => e.style.transform).find(Boolean) ?? "");
+  if (!t.includes("translateX")) throw new Error("no cover move at the cut");
+});
+
+await step("Scroll (credits) animation on a title", async () => {
+  await page.locator(".clip.title").first().click();
+  await page.click(".ed-insp [role=tab]:has-text('Effects')");
+  await page.click(".anim-row button:has-text('Scroll (credits)')"); await page.waitForTimeout(200);
+  await page.click(".ed-insp [role=tab]:has-text('Inspector')");
+  if (!/y/.test(await page.locator(".kf-note").first().innerText())) throw new Error("no y animation");
+});
+
 await page.click(".ed-insp [role=tab]:has-text('Effects')").catch(() => {});
 await page.screenshot({ path: `${OUT}/effects-final.png` });
 console.log(`\n${pass}/${pass + fail} steps passed`, errors.length ? "\npage errors: " + errors.join(" | ") : "");

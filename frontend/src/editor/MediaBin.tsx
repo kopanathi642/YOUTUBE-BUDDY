@@ -7,16 +7,18 @@ import { useToast } from "../App";
 import { fmtEta, fmtRate, localPreview, uploadFile, UploadState } from "../upload";
 import TemplatesTab from "./Elements";
 import StockTab from "./StockTab";
+import Generators from "./Generators";
 import { TitleTemplate } from "../templates";
 
 const ACCEPT = ".mp4,.m4v,.mov,.webm,.mkv,.mp3,.wav,.m4a,.aac,.ogg,.flac,.png,.jpg,.jpeg,.webp";
 
 export type BinTab = "media" | "effects" | "templates" | "stock" | "ai";
-export default function MediaBin({ projectId, assets, setAssets, reload, readOnly, onAdd, uploadRef, onRecord, onLook, canLook, onTemplate, tabReq, hideStock }: {
+export default function MediaBin({ projectId, assets, setAssets, reload, readOnly, onAdd, uploadRef, onRecord, onLook, canLook, onTemplate, tabReq, hideStock, seqSize }: {
   projectId: string; assets: Asset[]; setAssets: (f: (a: Asset[]) => Asset[]) => void; reload: () => void; readOnly: boolean;
   onAdd: (a: Asset) => void; fps: number; uploadRef: MutableRefObject<((f: File[]) => void) | null>; onRecord: () => void;
-  onLook: (i: number) => void; canLook: boolean; onTemplate: (t: TitleTemplate) => void; tabReq?: { tab: BinTab; n: number } | null; hideStock?: boolean;
+  onLook: (i: number) => void; canLook: boolean; onTemplate: (t: TitleTemplate) => void; tabReq?: { tab: BinTab; n: number } | null; hideStock?: boolean; seqSize?: { w: number; h: number };
 }) {
+  const [gen, setGen] = useState(false);
   const [binTab, setBinTab] = useState<BinTab>("media");
   useEffect(() => { if (tabReq) setBinTab(tabReq.tab); }, [tabReq]);
   const toast = useToast();
@@ -94,11 +96,14 @@ export default function MediaBin({ projectId, assets, setAssets, reload, readOnl
         <div className="bin-grid">{LOOKS.map((l, i) => <button key={l.name} className="look" disabled={!canLook || readOnly} onClick={() => onLook(i)}><span className="look-ph" style={{ filter: `url(#look-${i})` }} /><span>{l.name}</span></button>)}</div>
       </div> : <>
       <div style={{ padding: 10, display: "grid", gap: 8 }}>
-        <div className="row">
+        <div className="row bin-actions">
           <button className="btn primary grow" onClick={() => input.current?.click()} disabled={readOnly}><Upload size={15} />Import Media</button>
           <button className="btn" onClick={onRecord} disabled={readOnly} title="Record camera or voice"><Video size={15} />Record</button>
+          <button className={`btn ${gen ? "toggled" : ""}`} onClick={() => setGen((x) => !x)} disabled={readOnly} aria-expanded={gen} title="Generators: solid colour, gradients, bars, grid, paper…"><Sparkles size={15} /><span className="bin-gen-l">Generate</span></button>
           <input ref={input} type="file" multiple accept={ACCEPT} hidden onChange={(e) => { if (e.target.files) start(e.target.files); e.target.value = ""; }} />
         </div>
+        {gen && <Generators projectId={projectId} size={seqSize ?? { w: 1920, h: 1080 }} readOnly={readOnly}
+          onCreated={(a) => { setAssets((xs) => [a, ...xs.filter((x) => x.id !== a.id)]); setTimeout(reload, 1500); setGen(false); }} />}
         <div className="row" style={{ position: "relative" }}>
           <Search size={14} className="dim" style={{ position: "absolute", left: 10 }} />
           <input className="input" style={{ height: 32, paddingLeft: 30, fontSize: 13 }} placeholder="Search media" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search media" />

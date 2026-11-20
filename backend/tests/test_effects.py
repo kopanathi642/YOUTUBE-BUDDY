@@ -88,3 +88,16 @@ def test_effect_validation():
             {"id": "c", "asset_id": str(uuid.uuid4()), "start": 0, "in": 0, "out": 5, "effects": [{"type": "bw", "amount": 1}, {"type": "bw", "amount": 0.5}]}]}]})
     geo, pic = effect_filters([Effect(type="flipv", amount=1), Effect(type="sepia", amount=1)])
     assert geo == ["vflip"] and pic[0].startswith("colorchannelmixer=")
+
+
+@pytest.mark.parametrize("kind", ["solid", "gradient", "fourcolor", "radial", "bars", "smpte", "greyscale", "grid", "window", "speedlines", "paper"])
+def test_generators_draw_at_sequence_size(tmp_path, kind):
+    from app.generators import GenIn, render
+    p = str(tmp_path / f"{kind}.png")
+    render(GenIn(type=kind, width=320, height=180, color="#ff0000", color2="#0000ff"), p)
+    im = Image.open(p).convert("RGB")
+    assert im.size == (320, 180)
+    if kind == "gradient":   # CSS angle 90° = to the right: colour 1 on the left, colour 2 on the right
+        assert near(im.getpixel((1, 90)), (255, 0, 0), 8) and near(im.getpixel((318, 90)), (0, 0, 255), 8)
+    if kind == "solid":
+        assert im.getpixel((160, 90)) == (255, 0, 0)

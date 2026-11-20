@@ -46,7 +46,7 @@ def test_links_need_touching_clips_and_are_capped():
     b = Clip(id="b", asset_id=uuid.uuid4(), start=20, out=8, transition_in={"type": "fade", "frames": 30})
     c = Clip(id="c", asset_id=uuid.uuid4(), start=40, out=20, transition_in={"type": "fade", "frames": 10})  # gap before it
     assert transition_links([a, b, c]) == {"b": (4, 4)}   # capped to the shorter clip (8 frames), split around the cut
-    assert len(TRANSITIONS) == 12
+    assert len(TRANSITIONS) == 33
 
 
 def test_dissolve_is_centred_on_the_cut_and_keeps_timing(tmp_path):
@@ -66,7 +66,7 @@ def test_wipe_moves_the_right_way(tmp_path):
     assert px(mid, 10, 72)[0] > 200 and px(mid, 240, 72)[2] > 200   # incoming clip enters from the right
 
 
-@pytest.mark.parametrize("kind", ["fadeblack", "slideup", "circleopen"])
+@pytest.mark.parametrize("kind", [t for t in TRANSITIONS if t not in ("fade", "wipeleft")])
 def test_other_transitions_render(tmp_path, kind):
     fr, _ = _render(tmp_path, kind, 12)
     assert px(fr[10], 128, 72)[0] > 200 and px(fr[50], 128, 72)[2] > 200   # red well before, blue well after
