@@ -35,7 +35,7 @@ export const EDITOR_TOOLS: { label: string; icon: any }[] = [
 ];
 
 export function UserMenu() {
-  const { me, setMe, workspace, setWorkspace } = useAuth();
+  const { me, workspace, setWorkspace } = useAuth();
   const [open, setOpen] = useState(false), [fb, setFb] = useState(false);
   const nav = useNavigate();
   const ref = useRef<HTMLDivElement>(null);
@@ -68,7 +68,7 @@ export function UserMenu() {
           <button role="menuitem" className="menu-item" onClick={() => { setOpen(false); nav("/channel"); }}><Youtube size={15} /> My channel</button>
             <button role="menuitem" className="menu-item" onClick={() => { setOpen(false); nav("/growth"); }}><Rocket size={15} /> Growth</button>
           <button role="menuitem" className="menu-item" onClick={() => { setOpen(false); nav("/settings#invite"); }}><Gift size={15} /> Invite &amp; earn</button>
-          <button role="menuitem" className="menu-item" onClick={async () => { await api("/auth/logout", { method: "POST" }); setMe(null); nav("/"); }}>
+          <button role="menuitem" className="menu-item" onClick={async () => { await api("/auth/logout", { method: "POST" }).catch(() => {}); window.location.assign("/"); }}>
             <LogOut size={15} /> Sign out
           </button>
         </div>

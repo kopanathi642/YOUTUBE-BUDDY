@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { api } from "../api";
 import { useAuth, useBrand } from "../App";
@@ -12,9 +11,8 @@ import AgentCard from "../components/AgentCard";
 import { useEffect } from "react";
 
 export default function Settings() {
-  const { me, workspace, setWorkspace, setMe } = useAuth();
+  const { me, workspace, setWorkspace } = useAuth();
   const brand = useBrand();
-  const nav = useNavigate();
   useEffect(() => { const h = location.hash; if (h.length > 1) setTimeout(() => document.getElementById(h.slice(1))?.scrollIntoView({ behavior: "smooth" }), 300); }, []);
   if (!me) return null;
   return (
@@ -27,7 +25,7 @@ export default function Settings() {
           <div className="gb-kv"><span>Email</span><b>{me.user.email}</b></div>
           <div className="gb-kv"><span>Sign-in</span><b>{[me.user.has_password !== false && "Password", me.user.google_linked && "Google"].filter(Boolean).join(" + ")}</b></div>
           <div className="gb-kv"><span>Email verified</span><b>{me.user.email_verified ? "Yes" : "Not yet (needs email service)"}</b></div>
-          <button className="btn" style={{ marginTop: 12 }} onClick={async () => { await api("/auth/logout", { method: "POST" }); setMe(null); nav("/"); }}><LogOut size={14} />Sign out</button>
+          <button className="btn" style={{ marginTop: 12 }} onClick={async () => { await api("/auth/logout", { method: "POST" }).catch(() => {}); window.location.assign("/"); }}><LogOut size={14} />Sign out</button>
         </section>
         <section className="card" style={{ padding: 18 }}>
           <b>Workspaces</b>
