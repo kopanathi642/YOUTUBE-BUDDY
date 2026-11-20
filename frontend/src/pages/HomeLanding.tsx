@@ -1,8 +1,7 @@
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import {
-  Play, Wand2, Mic, Languages,
-  Smartphone, Video, LayoutPanelTop,
+  Play,
   Facebook, Instagram, X as XIcon, Youtube,
   Zap, Layers, ArrowRight, CheckCircle2,
 } from "lucide-react";
@@ -15,6 +14,7 @@ import "@fontsource/inter/latin-700.css";
 import "@fontsource/space-grotesk/latin-500.css";
 import "@fontsource/space-grotesk/latin-700.css";
 import "../home1.css";
+import { AIChip3D, CameraLens, FilmReel3D, Globe3D, HoloMic3D, IdeWidgets, MagicWand3D, NeuralNodes, Sparks, Timeline3D } from "./home3d";
 
 /* Signed-out home — Premium dark SaaS redesign.
    All numbers from /public/studios and /public/plans — no fake data. */
@@ -89,6 +89,12 @@ function Workspace({ live }: { live?: number }) {
 
   return (
     <div className="ch-workspace ch-rise5" aria-hidden>
+      <NeuralNodes />
+      <CameraLens />
+      <Sparks />
+      <div className="ch-ws-pill ch3-gen" style={{ border: "1px solid rgba(236,72,153,0.3)", background: "rgba(20,5,20,0.75)", color: "#f9a8d4" }}>
+        <div className="ch-ws-pill-dot" style={{ background: "#ec4899", boxShadow: "0 0 8px #ec4899" }} />3D Gen · Creator
+      </div>
       {/* Main frame */}
       <div className="ch-ws-frame">
         {/* Top bar */}
@@ -224,7 +230,7 @@ function Workspace({ live }: { live?: number }) {
 const BENTO = [
   {
     id:"editor", span2:true,
-    icon: <LayoutPanelTop size={22} color="#fff" strokeWidth={1.8} />,
+    icon: <Timeline3D />,
     iconBg: "linear-gradient(135deg,#00b8d4,#8b5cf6)",
     iconGlow: "0 0 24px rgba(0,184,212,0.5)",
     tag:"Unlimited", tagColor:"rgba(0,240,255,0.15)", tagText:"#00f0ff",
@@ -234,7 +240,7 @@ const BENTO = [
   },
   {
     id:"ai-video", tall:true,
-    icon: <Video size={22} color="#fff" strokeWidth={1.8} />,
+    icon: <FilmReel3D />,
     iconBg: "linear-gradient(135deg,#8b5cf6,#ec4899)",
     iconGlow: "0 0 24px rgba(139,92,246,0.5)",
     tag:"Creator plan", tagColor:"rgba(139,92,246,0.15)", tagText:"#a78bfa",
@@ -243,7 +249,7 @@ const BENTO = [
   },
   {
     id:"shorts",
-    icon: <Smartphone size={22} color="#fff" strokeWidth={1.8} />,
+    icon: <AIChip3D />,
     iconBg: "linear-gradient(135deg,#f59e0b,#ec4899)",
     iconGlow: "0 0 24px rgba(245,158,11,0.5)",
     tag:"Ready", tagColor:"rgba(245,158,11,0.15)", tagText:"#f59e0b",
@@ -252,7 +258,7 @@ const BENTO = [
   },
   {
     id:"voice",
-    icon: <Mic size={22} color="#fff" strokeWidth={1.8} />,
+    icon: <HoloMic3D />,
     iconBg: "linear-gradient(135deg,#ec4899,#8b5cf6)",
     iconGlow: "0 0 24px rgba(236,72,153,0.5)",
     tag:"Ready", tagColor:"rgba(236,72,153,0.15)", tagText:"#f472b6",
@@ -262,7 +268,7 @@ const BENTO = [
   },
   {
     id:"magic",
-    icon: <Wand2 size={22} color="#fff" strokeWidth={1.8} />,
+    icon: <MagicWand3D />,
     iconBg: "linear-gradient(135deg,#10b981,#6366f1)",
     iconGlow: "0 0 24px rgba(16,185,129,0.5)",
     tag:"Ready", tagColor:"rgba(16,185,129,0.15)", tagText:"#34d399",
@@ -271,7 +277,7 @@ const BENTO = [
   },
   {
     id:"translate", span2:true,
-    icon: <Languages size={22} color="#fff" strokeWidth={1.8} />,
+    icon: <Globe3D />,
     iconBg: "linear-gradient(135deg,#3b82f6,#06b6d4)",
     iconGlow: "0 0 24px rgba(59,130,246,0.5)",
     tag:"Ready", tagColor:"rgba(59,130,246,0.15)", tagText:"#60a5fa",
@@ -464,6 +470,13 @@ export default function HomeLanding() {
               {card.art && (
                 <WaveBars n={28} colors={["#00f0ff","#8b5cf6"]} />
               )}
+              {card.id === "ai-video" && (
+                <div className="ch3-genart" aria-hidden>
+                  <span style={{ background: "linear-gradient(160deg,#1e3a8a,#7c3aed 55%,#ec4899)" }}><small>“Rainy Mumbai street at night”</small></span>
+                  <span style={{ background: "linear-gradient(160deg,#064e3b,#0891b2 50%,#fde68a)" }}><small>“Drone over tea gardens”</small></span>
+                  <span style={{ background: "linear-gradient(160deg,#431407,#ea580c 50%,#fef3c7)" }}><small>“Product spinning on a pedestal”</small></span>
+                </div>
+              )}
               {/* Wave art for voice card */}
               {card.waveArt && (
                 <WaveBars n={16} colors={["#ec4899","#8b5cf6"]} />
@@ -621,6 +634,8 @@ export default function HomeLanding() {
             </div>
           </div>
         </div>
+
+        <IdeWidgets />
 
         {/* Feature chips under IDE */}
         <div style={{ display:"flex", justifyContent:"center", gap:12, marginTop:28, flexWrap:"wrap" }}>
