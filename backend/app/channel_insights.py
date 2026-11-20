@@ -1,7 +1,7 @@
 """Channel insights for a connected YouTube channel: what works, and an honest, rule-based estimate for the next video.
 
 Data: YouTube Data API v3 with the user's own OAuth token (youtube.readonly) — channels (1 unit) + uploads playlist (1) + videos (1)
-= about 3 quota units per refresh. Nothing here is a trained model: every number is computed from the channel's own recent
+= about 3 quota units per 50 videos; the whole channel (up to 500 videos) is read, about 20 units per refresh. Nothing here is a trained model: every number is computed from the channel's own recent
 uploads and labelled as an estimate. With fewer than MIN_VIDEOS finished videos we say so instead of guessing.
 """
 from __future__ import annotations
@@ -44,19 +44,30 @@ def _duration_s(iso: str) -> int:
     return d * 86400 + h * 3600 + mi * 60 + s
 
 
-def fetch(token: str, max_videos: int = 50) -> dict:
+FULL_CHANNEL_MAX = 500   # whole channel, newest first; 10 pages of 50 = about 20 quota units per refresh
+
+
+def fetch(token: str, max_videos: int = FULL_CHANNEL_MAX) -> dict:
     ch = _get("/channels", token, part="snippet,statistics,contentDetails", mine="true").get("items") or []
     if not ch:
         raise youtube.YouTubeError("This Google account has no YouTube channel yet")
     c = ch[0]
     uploads = (c.get("contentDetails") or {}).get("relatedPlaylists", {}).get("uploads")
     ids: list[str] = []
-    if uploads:
-        pl = _get("/playlistItems", token, part="contentDetails", playlistId=uploads, maxResults=str(min(50, max_videos)))
-        ids = [i["contentDetails"]["videoId"] for i in pl.get("items") or [] if i.get("contentDetails", {}).get("videoId")]
+    if uploads:   # page through the uploads playlist (50 per page) until the whole channel or max_videos is read
+        page = None
+        while len(ids) < max_videos:
+            params = dict(part="contentDetails", playlistId=uploads, maxResults=str(min(50, max_videos - len(ids))))
+            if page:
+                params["pageToken"] = page
+            pl = _get("/playlistItems", token, **params)
+            ids += [i["contentDetails"]["videoId"] for i in pl.get("items") or [] if i.get("contentDetails", {}).get("videoId")]
+            page = pl.get("nextPageToken")
+            if not page:
+                break
     vids = []
-    if ids:
-        vd = _get("/videos", token, part="snippet,statistics,contentDetails", id=",".join(ids))
+    for k in range(0, len(ids), 50):   # the videos endpoint takes up to 50 ids per call
+        vd = _get("/videos", token, part="snippet,statistics,contentDetails", id=",".join(ids[k:k + 50]))
         for v in vd.get("items") or []:
             sn, st = v.get("snippet") or {}, v.get("statistics") or {}
             if sn.get("liveBroadcastContent") in ("live", "upcoming"):

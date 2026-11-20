@@ -88,3 +88,32 @@ def test_endpoint(make_client, google, monkeypatch):  # noqa: F811
     assert len(seen) == n
     other = make_client(); signup(other)
     assert other.get("/api/v1/youtube/insights").status_code == 409            # another user sees nothing
+
+
+def test_fetch_reads_the_whole_channel_page_by_page(monkeypatch):
+    """120 uploads come back in 3 playlist pages and 3 batches of video details — nothing is cut at 50."""
+    from app import channel_insights as ci
+    ids = [f"v{i:03d}" for i in range(120)]
+    calls = []
+
+    def fake_get(path, token, **p):
+        calls.append((path, p.get("pageToken"), p.get("id", "").count(",") + 1 if p.get("id") else 0))
+        if path == "/channels":
+            return {"items": [{"id": "UC1", "snippet": {"title": "Test"}, "statistics": {"viewCount": "9", "videoCount": "120"},
+                               "contentDetails": {"relatedPlaylists": {"uploads": "UU1"}}}]}
+        if path == "/playlistItems":
+            start = int(p.get("pageToken") or 0)
+            page = ids[start:start + int(p["maxResults"])]
+            nxt = start + len(page)
+            return {"items": [{"contentDetails": {"videoId": v}} for v in page], **({"nextPageToken": str(nxt)} if nxt < len(ids) else {})}
+        if path == "/videos":
+            return {"items": [{"id": v, "snippet": {"title": v, "publishedAt": "2026-01-01T10:00:00Z"}, "statistics": {"viewCount": "5"},
+                               "contentDetails": {"duration": "PT1M"}} for v in p["id"].split(",")]}
+        raise AssertionError(path)
+
+    monkeypatch.setattr(ci, "_get", fake_get)
+    data = ci.fetch("tok")
+    assert len(data["videos"]) == 120
+    assert [c[1] for c in calls if c[0] == "/playlistItems"] == [None, "50", "100"]
+    assert [c[2] for c in calls if c[0] == "/videos"] == [50, 50, 20]
+    assert len(ci.fetch("tok", max_videos=60)["videos"]) == 60
