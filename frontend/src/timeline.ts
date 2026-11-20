@@ -26,7 +26,9 @@ export type Clip = {
   color?: ColorGrade | null; denoise?: boolean; speed?: number; crop?: Crop | null; title?: Title | null; fx?: ClipFx | null;
 };
 export type Track = { id: string; kind: "video" | "audio"; name: string; muted: boolean; hidden: boolean; locked: boolean; clips: Clip[] };
-export type Timeline = { schema_version: 1; fps: number; width: number; height: number; tracks: Track[]; notes?: string;
+export type MarkerColor = "blue" | "cyan" | "green" | "yellow" | "red" | "pink" | "purple";
+export type Marker = { id: string; frame: number; name: string; color: MarkerColor };
+export type Timeline = { schema_version: 1; fps: number; width: number; height: number; tracks: Track[]; notes?: string; markers?: Marker[];
   composition?: import("./compose").Composition | null };
 
 export const DEFAULT_TRANSFORM: Transform = { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 };
@@ -48,7 +50,7 @@ export function fits(track: Track, start: number, length: number, ignoreId?: str
   return track.clips.every((c) => c.id === ignoreId || start >= end(c) || start + length <= c.start);
 }
 
-function mapClip(tl: Timeline, id: string, f: (c: Clip, t: Track) => Clip | Clip[] | null): Timeline {
+export function mapClip(tl: Timeline, id: string, f: (c: Clip, t: Track) => Clip | Clip[] | null): Timeline {
   return { ...tl, tracks: tl.tracks.map((t) => ({ ...t, clips: t.clips.flatMap((c) => (c.id === id ? f(c, t) ?? [] : [c])) })) };
 }
 

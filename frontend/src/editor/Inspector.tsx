@@ -111,6 +111,18 @@ export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab,
             {animProps.length > 0 && <div className="dim kf-note">◆ Animated: {animProps.join(", ")}. Changing a value adds a keyframe at the playhead.
               <button className="btn ghost sm" disabled={ro} onClick={() => { let kf = clip.keyframes; for (const p of animProps) kf = clearProp(kf, p); set({ keyframes: kf }, "kf:clear"); }}>Remove animation</button></div>}
             {animProps.length === 0 && <div className="dim kf-note">Tip: click ◆ next to a property to start animating it from the playhead.</div>}
+            <div className="dz-row" role="group" aria-label="Dynamic zoom">
+              <span title="Resolve-style Dynamic Zoom: a smooth scale move over the whole clip (adds Scale keyframes you can edit)">Dynamic zoom</span>
+              {([["in", "Push in", 1, 1.15], ["out", "Pull out", 1.15, 1]] as const).map(([k, label, f0, f1]) => (
+                <button key={k} className="btn sm" disabled={ro || len(clip) < 2} onClick={() => {
+                  const s0 = clip.transform.scale;
+                  let kf = clearProp(clip.keyframes, "scale");
+                  kf = setKey(kf, "scale", 0, Math.round(s0 * f0 * 1e4) / 1e4, "ease");
+                  kf = setKey(kf, "scale", len(clip) - 1, Math.round(s0 * f1 * 1e4) / 1e4, "linear");
+                  set({ keyframes: kf }, `dz:${k}`);
+                }}>{label}</button>
+              ))}
+            </div>
             <button className="btn sm ghost" disabled={ro} onClick={() => set({ transform: { ...DEFAULT_TRANSFORM }, keyframes: null }, "reset")}><RotateCcw size={12} />Reset transform</button>
           </details>}
           {audio && <details open className="insp-sec"><summary>Audio</summary>

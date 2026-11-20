@@ -7,6 +7,8 @@ import { tfAt } from "../keyframes";
 import { TState, transitionLinks, transitionState } from "../transitions";
 import { isNeutral, svgFilterBody } from "../grade";
 import { ratioOf } from "../compose";
+import EditOverlay from "./EditOverlay";
+import type { EditType } from "../editops";
 
 export type Sampler = (w: number) => HTMLCanvasElement | null;
 
@@ -32,11 +34,11 @@ export function fxStyle(c: Clip, k: number, scaleNow: number): { wrap: React.CSS
 type Layer = { clip: Clip; trackHidden: boolean; trackMuted: boolean; kind: "video" | "audio"; asset: Asset; z: number; ts?: TState };
 const TITLE_ASSET = { kind: "title", width: 0, height: 0, has_audio: false } as unknown as Asset;
 
-export default function Viewer({ tl, assets, playhead, setPlayhead, playing, setPlaying, total, samplerRef, sequences, currentSeqId, onSwitchSeq, onNewSeq, onSnapshot, autoAdjust, analysed }: {
+export default function Viewer({ tl, assets, playhead, setPlayhead, playing, setPlaying, total, samplerRef, sequences, currentSeqId, onSwitchSeq, onNewSeq, onSnapshot, autoAdjust, analysed, onEditDrop }: {
   tl: Timeline; assets: Map<string | null, Asset>; playhead: number; setPlayhead: (f: number | ((f: number) => number)) => void;
   playing: boolean; setPlaying: (p: boolean | ((p: boolean) => boolean)) => void; total: number;
   samplerRef: MutableRefObject<Sampler | null>; sequences: SequenceDoc[]; currentSeqId: string;
-  onSwitchSeq: (id: string) => void; onNewSeq: () => void; onSnapshot: () => void; autoAdjust: boolean; analysed: boolean;
+  onSwitchSeq: (id: string) => void; onNewSeq: () => void; onSnapshot: () => void; autoAdjust: boolean; analysed: boolean; onEditDrop?: (type: EditType, assetId: string) => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const stageWrap = useRef<HTMLDivElement>(null);
@@ -214,6 +216,7 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
         <button className="btn icon ghost" aria-label="Fullscreen" onClick={() => stageWrap.current?.requestFullscreen?.()}><Maximize size={15} /></button>
       </div>
       <div className="viewer-box" ref={box} style={zoom100 ? { overflow: "auto", placeItems: "start" } : undefined}>
+        {onEditDrop && <EditOverlay onEdit={onEditDrop} />}
         <div ref={stageWrap} className="stage-wrap">
           <div className="stage" style={{ width: view.w, height: view.h }}>
             {layers.filter((L) => L.kind === "video").sort((a, b) => a.z - b.z).map((L) => {

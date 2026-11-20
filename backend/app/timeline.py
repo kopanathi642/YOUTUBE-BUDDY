@@ -332,6 +332,15 @@ class Track(BaseModel):
         return self
 
 
+class Marker(BaseModel):
+    """Timeline marker (Resolve/Premiere style). Editing aid only: export ignores it."""
+    model_config = ConfigDict(extra="forbid")
+    id: str = Field(min_length=1, max_length=64)
+    frame: int = Field(ge=0)
+    name: str = Field("", max_length=200)
+    color: Literal["blue", "cyan", "green", "yellow", "red", "pink", "purple"] = "blue"
+
+
 class Timeline(BaseModel):
     model_config = ConfigDict(extra="forbid")
     schema_version: Literal[1] = SCHEMA_VERSION
@@ -340,6 +349,7 @@ class Timeline(BaseModel):
     height: int = Field(ge=144, le=3840)
     tracks: list[Track] = Field(max_length=24)
     notes: str = Field("", max_length=10000)
+    markers: list[Marker] = Field(default_factory=list, max_length=500)
     composition: dict | None = None   # Shorts studio layout this timeline was built from (layers, normalized positions)
 
     @model_validator(mode="after")

@@ -6,6 +6,7 @@ import { useToast } from "../App";
 import { Brand, UserMenu } from "../components/Shell";
 import { useHistory } from "./useHistory";
 import { Timeline, Clip, duration, splitAllAt, splitAt, deleteClip, findClip, insertClip, insertTitle, updateClip, end, fits, freeSlot, addTrack, uid, DEFAULT_TRANSFORM } from "../timeline";
+import { EDIT_TYPES, EditType, insert, overwrite, replace, fitToFill, placeOnTop, append, rippleOverwrite } from "../editops";
 import { CaptionsModal, TTSModal, VoiceCatalog } from "./AiTools";
 import { HighlightsModal, ThumbnailModal, Moment } from "./Creator";
 import ObjectRemoveModal from "./ObjectRemove";
@@ -326,6 +327,53 @@ export default function Editor() {
     if (edit(next)) setSelected(r.id);
   }, [tl, fps, playhead, edit, toast, autoAdjust]);
 
+  /** Resolve's seven edit types, from the edit overlay on the program monitor. */
+  const editDrop = useCallback((type: EditType, assetId: string) => {
+    const a = assetMap.get(assetId);
+    if (!tl || !a) return;
+    if (a.status !== "ready") { toast("That file is still processing"); return; }
+    const kind = a.kind === "audio" ? "audio" : "video";
+    const frames = a.kind === "image" ? 5 * fps : assetFrames(a, fps);
+    let clip: Clip = { id: "tmp", asset_id: a.id, start: 0, in: 0, out: frames, volume: 1, fade_in: 0, fade_out: 0, transform: { ...DEFAULT_TRANSFORM } };
+    if (autoAdjust) {
+      if (a.analysis?.auto_grade && kind === "video") clip = { ...clip, color: sanitizeGrade(a.analysis.auto_grade) };
+      const g = loudnessGain(a); if (g) clip = { ...clip, volume: g };
+    }
+    const sel = selected ? findClip(tl, selected) : null;
+    const track = (sel && sel.track.kind === kind && !sel.track.locked ? sel.track : null)
+      ?? (kind === "video" ? [...tl.tracks].reverse().find((t) => t.kind === "video" && !t.locked) : tl.tracks.find((t) => t.kind === "audio" && !t.locked));
+    if (!track && type !== "top") { toast(`No unlocked ${kind} track`); return; }
+    const under = track ? track.clips.find((c) => playhead >= c.start && playhead < end(c)) : undefined;
+    const target = sel && sel.track.id === track?.id ? sel.clip : under;
+    const label = EDIT_TYPES.find((t) => t.id === type)!.label;
+    let r: { tl: Timeline; id: string } | null = null;
+    switch (type) {
+      case "insert": r = insert(tl, track!.id, clip, playhead); break;
+      case "overwrite": r = overwrite(tl, track!.id, clip, playhead); break;
+      case "append": r = append(tl, track!.id, clip); break;
+      case "top": if (kind === "audio") { toast("Place on Top is for video and images"); return; } r = placeOnTop(tl, clip, playhead); break;
+      case "replace": case "rippleOverwrite":
+        if (!target) { toast(`${label}: select a clip on the timeline (or put the playhead on one) first`); return; }
+        r = type === "replace" ? replace(tl, target.id, clip) : rippleOverwrite(tl, target.id, clip); break;
+      case "fit": {
+        let a0: number, b0: number;
+        if (target) { a0 = target.start; b0 = end(target); }
+        else {
+          a0 = Math.max(0, ...track!.clips.filter((c) => end(c) <= playhead).map(end));
+          const nexts = track!.clips.filter((c) => c.start > playhead).map((c) => c.start);
+          if (!nexts.length) { toast("Fit to Fill: put the playhead in a gap between clips, or on a clip to fill"); return; }
+          b0 = Math.min(...nexts);
+        }
+        if (a.kind === "image") { toast("Fit to Fill needs a video or audio clip"); return; }
+        const f = fitToFill(tl, track!.id, clip, a0, b0);
+        if (!f) { toast("Fit to Fill would need a speed outside 25%–400%"); return; }
+        r = f; toast(`Fit to Fill at ${Math.round(f.speed * 100)}% speed`); break;
+      }
+    }
+    if (!r) { toast(`${label}: the track is locked or there is no room`); return; }
+    if (edit(r.tl)) { setSelected(r.id); if (type !== "fit") toast(`${label}: ${a.filename}`); }
+  }, [tl, assetMap, fps, playhead, selected, edit, toast, autoAdjust]);
+
   // ---------- sequences, reframe, snapshot
   async function switchSequence(id: string) {
     if (id === seq?.id) return;
@@ -506,7 +554,7 @@ export default function Editor() {
           viewer={<Viewer tl={tl} assets={assetMap} playhead={playhead} setPlayhead={setPlayhead} playing={playing} setPlaying={setPlaying} total={total}
               samplerRef={samplerRef} sequences={sequences} currentSeqId={seq.id} onSwitchSeq={switchSequence} autoAdjust={autoAdjust} analysed={analysed}
               onNewSeq={() => createSequence({ name: `Sequence ${sequences.length + 1}`, format: tl.width >= tl.height ? "landscape" : "vertical" }, "New empty sequence created")}
-              onSnapshot={snapshot} />}
+              onSnapshot={snapshot} onEditDrop={readOnly ? undefined : editDrop} />}
           timeline={<TimelinePanel tl={tl} assets={assetMap} edit={edit} playhead={playhead} setPlayhead={(f) => { setPlaying(false); setPlayhead(f); }}
               selected={selected} setSelected={setSelected} snapOn={snapOn} setSnapOn={setSnapOn} readOnly={readOnly}
               onDropAsset={(id, trackId, at) => { const a = assetMap.get(id); if (a) addAssetToTimeline(a, trackId, at); }}

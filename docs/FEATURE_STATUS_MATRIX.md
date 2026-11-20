@@ -30,6 +30,12 @@ Evidence: `backend/tests/test_editor_flow.py` (pytest, real Postgres + S3 protoc
 | Media | Malware scanning (ClamAV), URL import | NOT_IMPLEMENTED | |
 | Editor | Multitrack timeline (video + audio tracks, add tracks) | WORKING | |
 | Editor | Move (incl. between tracks), trim both edges, split at playhead, delete, ripple delete, snapping | WORKING | vitest + browser E2E |
+| Editor | Premiere-style timeline: tools panel (Selection V, Trim T, Razor C, Hand H), blue timecode header, full-timecode ruler, lock·V1·eye·M headers, fx badges, zoom/scroll bar with handles, audio meters from the real waveform at the playhead | WORKING | `e2e/resolve.mjs`, `e2e/audit.mjs` |
+| Editor | Resolve smart Trim tool: Roll (on a cut), Ripple (free edge), Slip (top half), Slide (bottom half) | WORKING | `src/editops.test.ts` + `e2e/resolve.mjs` |
+| Editor | Resolve edit overlay on the program monitor: Insert, Overwrite, Replace, Fit to Fill (0.25×–4×), Place on Top, Append at End, Ripple Overwrite | WORKING | `src/editops.test.ts` + `e2e/resolve.mjs` |
+| Editor | Markers (M to add, click to jump, double-click to remove, Shift+↑/↓ to step); saved in the timeline, ignored by export | WORKING | `e2e/resolve.mjs` (survives reload) |
+| Editor | Dynamic Zoom (push in / pull out = Scale keyframes across the clip, same maths in preview and export) | WORKING | `e2e/resolve.mjs` |
+| Editor | Not built yet (Resolve Edit page): Multicam, Smooth Cut (optical flow), face-recognition bins, multi-user collaboration, stacked timelines, separate source viewer with I/O marking, JKL shuttle | PLANNED | |
 | Editor | Lock / hide / mute tracks | WORKING | respected by preview **and** render |
 | Editor | Transform: position, scale, rotation, opacity; volume; fade in/out | WORKING | render pixel check in pytest; preview ↔ export position match verified visually |
 | Editor | Undo / redo, keyboard shortcuts | WORKING | |

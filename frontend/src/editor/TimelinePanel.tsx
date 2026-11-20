@@ -1,8 +1,9 @@
 import { PointerEvent as RPE, useEffect, useMemo, useRef, useState } from "react";
-import { MousePointer2, Scissors, Trash2, Magnet, Lock, Unlock, Eye, EyeOff, Plus, ZoomIn, ZoomOut, ArrowLeftToLine, Hand, SquareSplitHorizontal, Maximize2 } from "lucide-react";
+import { MousePointer2, Scissors, Trash2, Magnet, Lock, Unlock, Eye, EyeOff, Plus, ZoomIn, ZoomOut, ArrowLeftToLine, Hand, SquareSplitHorizontal, Maximize2, UnfoldHorizontal, Flag } from "lucide-react";
 import { Asset } from "../api";
 import { Timeline, Track, Clip, end, len, moveClip, trimStart, trimEnd, snap, snapPoints, splitAt, splitAllAt, deleteClip, updateTrack, addTrack, duration, framesToTimecode, DEFAULT_TRANSFORM } from "../timeline";
 import { keyTimes } from "../keyframes";
+import { roll, rippleTrimEnd, rippleTrimStart, slip, slide, neighbours, addMarker, removeMarker, markerNear, MARKER_HEX } from "../editops";
 import { assetFrames } from "./Editor";
 
 /* Premiere-style timeline: tools panel on the left, big blue timecode over the track headers, full-timecode ruler,
@@ -13,12 +14,23 @@ const HEAD_W = 196;
 const ROW_H = { video: 34, audio: 34 };
 const rowHeight = (t: Track, badge: string) => (badge === "V1" ? 64 : t.kind === "audio" && (badge === "A1" || badge === "A2") ? 48 : ROW_H[t.kind]);
 
-type Tool = "select" | "razor" | "hand";
-type Drag = { mode: "move" | "trimL" | "trimR" | "scrub" | "pan"; id?: string; x0: number; origStart: number; origEnd: number; base: Timeline; moved: boolean };
+type Tool = "select" | "trim" | "razor" | "hand";
+type TrimKind = "roll" | "rippleL" | "rippleR" | "slip" | "slide";
+const TRIM_LABEL: Record<TrimKind, string> = { roll: "Roll", rippleL: "Ripple", rippleR: "Ripple", slip: "Slip", slide: "Slide" };
+type Drag = { mode: "move" | "trimL" | "trimR" | "scrub" | "pan" | "smart"; trim?: TrimKind; other?: string; id?: string; x0: number; origStart: number; origEnd: number; base: Timeline; moved: boolean };
 
 /** Does the clip carry anything Premiere would show a lit "fx" badge for? */
 const hasFx = (c: Clip) => !!(c.color || c.fx || c.denoise || c.crop || c.transition_in || keyTimes(c).length > 0 || (c.speed ?? 1) !== 1 ||
   (["x", "y", "scale", "rotation", "opacity"] as const).some((k) => c.transform && c.transform[k] !== DEFAULT_TRANSFORM[k]));
+
+/** Resolve's smart trim: what the Trim tool does depends on where on the clip you press. */
+function trimZone(tl: Timeline, c: Clip, el: HTMLElement, clientX: number, clientY: number): { kind: TrimKind; other?: string } {
+  const r = el.getBoundingClientRect(), edge = Math.min(10, r.width / 4);
+  const { prev, next } = neighbours(tl, c.id);
+  if (clientX - r.left <= edge) return prev ? { kind: "roll", other: prev.id } : { kind: "rippleL" };
+  if (r.right - clientX <= edge) return next ? { kind: "roll", other: next.id } : { kind: "rippleR" };
+  return clientY - r.top < r.height / 2 ? { kind: "slip" } : { kind: "slide" };
+}
 
 export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead, selected, setSelected, snapOn, setSnapOn, readOnly, onDropAsset, timecode }: {
   tl: Timeline; assets: Map<string | null, Asset>; edit: (t: Timeline | null, coalesce?: string) => boolean; playhead: number; setPlayhead: (f: number) => void;
@@ -29,6 +41,7 @@ export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead,
   const [tool, setTool] = useState<Tool>("select");
   const [draft, setDraft] = useState<Timeline | null>(null);
   const [razorX, setRazorX] = useState<number | null>(null);
+  const [trimHint, setTrimHint] = useState<{ label: string; x: number; y: number } | null>(null);
   const [view2, setView2] = useState({ left: 0, width: 800 }); // scroller position, for the zoom bar
   const drag = useRef<Drag | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
@@ -61,13 +74,15 @@ export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead,
   }, [pps]);
 
   // V = selection, C = razor, H = hand, = / - zoom, \\ zoom to fit (Premiere's keys). S / N / Delete stay with the editor.
-  const keys = useRef<{ zoom: (f: number) => void; fit: () => void }>({ zoom: () => {}, fit: () => {} });
+  const keys = useRef<{ zoom: (f: number) => void; fit: () => void; marker: () => void; jump: (d: 1 | -1) => void }>({ zoom: () => {}, fit: () => {}, marker: () => {}, jump: () => {} });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
       if (e.ctrlKey || e.metaKey || e.altKey || el.closest("input, textarea, select, [contenteditable=true]")) return;
-      const t = ({ v: "select", c: "razor", h: "hand" } as Record<string, Tool>)[e.key.toLowerCase()];
+      const t = ({ v: "select", t: "trim", c: "razor", h: "hand" } as Record<string, Tool>)[e.key.toLowerCase()];
       if (t) setTool(t);
+      else if (e.key === "m" || e.key === "M") keys.current.marker();
+      else if (e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) { e.preventDefault(); keys.current.jump(e.key === "ArrowDown" ? 1 : -1); }
       else if (e.key === "=" || e.key === "+") keys.current.zoom(1.4);
       else if (e.key === "-" || e.key === "_") keys.current.zoom(1 / 1.4);
       else if (e.key === "\\") keys.current.fit();
@@ -90,6 +105,15 @@ export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead,
     if (e.button !== 0) return;
     e.stopPropagation();
     if (tool === "hand" && mode !== "scrub") { startPan(e); return; }
+    if (tool === "trim" && clip && mode !== "scrub") {
+      if (readOnly) return;
+      const el = (e.currentTarget as HTMLElement).closest(".clip") as HTMLElement;
+      const z = trimZone(tl, clip, el, e.clientX, e.clientY);
+      setSelected(clip.id);
+      drag.current = { mode: "smart", trim: z.kind, other: z.other, id: clip.id, x0: e.clientX, origStart: clip.start, origEnd: end(clip), base: tl, moved: false };
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      return;
+    }
     if (tool === "razor" && clip && mode === "move") {
       if (readOnly) return;
       const lane = (e.currentTarget as HTMLElement).closest(".tl-lane")!.getBoundingClientRect();
@@ -119,6 +143,22 @@ export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead,
     const df = Math.round((e.clientX - d.x0) / ppf);
     if (!d.moved && Math.abs(e.clientX - d.x0) < 3) return;
     d.moved = true;
+    if (d.mode === "smart") {
+      const srcMax = (c: Clip) => (c.title ? Number.POSITIVE_INFINITY : assetFrames(assets.get(c.asset_id), fps));
+      const id = d.id!, c = d.base.tracks.flatMap((t) => t.clips).find((x) => x.id === id)!;
+      let r: Timeline | null = null;
+      if (d.trim === "roll") {
+        const leftIsMe = d.other && end(c) !== c.start && d.base.tracks.some((t) => t.clips.some((x) => x.id === d.other && x.start === end(c)));
+        const cut = (leftIsMe ? d.origEnd : d.origStart) + df;
+        r = leftIsMe ? roll(d.base, id, d.other!, cut, srcMax) : roll(d.base, d.other!, id, cut, srcMax);
+      } else if (d.trim === "rippleR") r = rippleTrimEnd(d.base, id, d.origEnd + df, srcMax);
+      else if (d.trim === "rippleL") r = rippleTrimStart(d.base, id, df);
+      else if (d.trim === "slip") r = slip(d.base, id, -df, srcMax);
+      else r = slide(d.base, id, Math.max(0, d.origStart + df), srcMax);
+      if (r) setDraft(r);
+      setTrimHint({ label: `${TRIM_LABEL[d.trim!]} ${df > 0 ? "+" : ""}${df}f`, x: e.clientX, y: e.clientY });
+      return;
+    }
     const pts = snapOn ? snapPoints(d.base, d.id!, playhead) : [];
     const thr = 8 / ppf;
     let next: Timeline | null = null;
@@ -145,8 +185,9 @@ export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead,
   function up() {
     const d = drag.current;
     drag.current = null;
-    if (d && (d.mode === "move" || d.mode === "trimL" || d.mode === "trimR") && d.moved && draft) edit(draft);
+    if (d && (d.mode === "move" || d.mode === "trimL" || d.mode === "trimR" || d.mode === "smart") && d.moved && draft) edit(draft);
     setDraft(null);
+    setTrimHint(null);
   }
 
   /** Zoom around the playhead (or a given frame) so the spot you're working on stays put. */
@@ -160,7 +201,8 @@ export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead,
   const zoom = (f: number) => zoomTo(pps * f);
   const fit = () => { const s = scroller.current; if (!s) return; setPps(clampPps((s.clientWidth - HEAD_W - 40) / Math.max(1, total / fps))); requestAnimationFrame(() => { if (scroller.current) scroller.current.scrollLeft = 0; }); };
 
-  keys.current = { zoom, fit };
+  const marker = () => { if (!readOnly) edit(addMarker(tl, playhead)); };
+  keys.current = { zoom, fit, marker, jump: (d) => { const m = markerNear(tl, playhead, d); if (m) setPlayhead(m.frame); } };
 
   const ticks = useMemo(() => {
     const steps = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
@@ -191,6 +233,7 @@ export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead,
       <div className="tl-body">
         <div className="tl-tools" role="toolbar" aria-label="Tools" aria-orientation="vertical">
           <button className={`btn icon ghost ${tool === "select" ? "on" : ""}`} aria-pressed={tool === "select"} aria-label="Selection tool" title="Selection tool (V): select, move and trim clips" onClick={() => setTool("select")}><MousePointer2 size={16} /></button>
+          <button className={`btn icon ghost ${tool === "trim" ? "on" : ""}`} aria-pressed={tool === "trim"} aria-label="Trim tool" title="Trim tool (T): on a cut = Roll, on a clip edge = Ripple, top half of a clip = Slip, bottom half = Slide" onClick={() => setTool("trim")} disabled={readOnly}><UnfoldHorizontal size={16} /></button>
           <button className={`btn icon ghost ${tool === "razor" ? "on" : ""}`} aria-pressed={tool === "razor"} aria-label="Razor tool" title="Razor tool (C): click a clip to cut it there" onClick={() => setTool("razor")} disabled={readOnly}><Scissors size={16} /></button>
           <button className={`btn icon ghost ${tool === "hand" ? "on" : ""}`} aria-pressed={tool === "hand"} aria-label="Hand tool" title="Hand tool (H): drag to scroll the timeline" onClick={() => setTool("hand")}><Hand size={16} /></button>
           <span className="pr-tsep" />
@@ -201,14 +244,22 @@ export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead,
         <div className="pr-mid">
           <div className={`tl-scroll tool-${tool}`} ref={scroller}
             onWheel={(e) => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); zoom(e.deltaY < 0 ? 1.15 : 1 / 1.15); } }}
-            onPointerMove={(e) => { if (tool !== "razor") return; const r = scroller.current!.getBoundingClientRect(); const x = e.clientX - r.left + scroller.current!.scrollLeft - HEAD_W; setRazorX(x >= 0 ? x : null); }}
-            onPointerLeave={() => setRazorX(null)}>
+            onPointerMove={(e) => {
+              if (tool === "trim" && !drag.current) {
+                const el = (e.target as HTMLElement).closest(".clip") as HTMLElement | null;
+                const c = el && view.tracks.flatMap((t) => t.clips).find((x) => el.closest("[data-track]") && x.id === el.dataset.clip);
+                setTrimHint(c && el ? { label: TRIM_LABEL[trimZone(view, c, el, e.clientX, e.clientY).kind], x: e.clientX, y: e.clientY } : null);
+                return;
+              }
+              if (tool !== "razor") return; const r = scroller.current!.getBoundingClientRect(); const x = e.clientX - r.left + scroller.current!.scrollLeft - HEAD_W; setRazorX(x >= 0 ? x : null); }}
+            onPointerLeave={() => { setRazorX(null); if (!drag.current) setTrimHint(null); }}>
             <div className="tl-content" style={{ width: contentW + HEAD_W }}>
               <div className="tl-row tl-ruler-row">
                 <div className="tl-head tl-corner">
                   <span className="pr-tc mono" title="Playhead position">{framesToTimecode(playhead, fps)}</span>
                   <span className="pr-hicons">
                     <button className={`pr-hbtn ${snapOn ? "on" : ""}`} aria-pressed={snapOn} aria-label="Snapping" title="Snap in timeline (N)" onClick={() => setSnapOn((x) => !x)}><Magnet size={14} /></button>
+                    <button className="pr-hbtn" aria-label="Add marker" title="Add a marker at the playhead (M). Shift+↑/↓ jumps between markers" onClick={marker} disabled={readOnly}><Flag size={13} /></button>
                     <button className="pr-hbtn" aria-label="Zoom to fit" title="Zoom to fit the whole sequence (\\)" onClick={fit}><Maximize2 size={13} /></button>
                   </span>
                 </div>
@@ -216,6 +267,11 @@ export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead,
                   style={{ width: contentW, ["--minor" as string]: `${(ticks.stepS * pps) / 5}px`, ["--major" as string]: `${ticks.stepS * pps}px` }}>
                   {ticks.out.map((s) => (
                     <div key={s} className="tick" style={{ left: s * pps }}><span>{framesToTimecode(s * fps, fps)}</span></div>
+                  ))}
+                  {(view.markers ?? []).map((m) => (
+                    <button key={m.id} className="pr-marker" style={{ left: m.frame * ppf, ["--mc" as string]: MARKER_HEX[m.color] }} aria-label={`${m.name} at ${framesToTimecode(m.frame, fps)}`}
+                      title={`${m.name} · ${framesToTimecode(m.frame, fps)} — click to jump, double-click to remove`}
+                      onPointerDown={(e) => e.stopPropagation()} onClick={() => setPlayhead(m.frame)} onDoubleClick={() => { if (!readOnly) edit(removeMarker(tl, m.id)); }} />
                   ))}
                   {total > 0 && <div className="pr-seqbar" style={{ width: total * ppf }} title="Sequence length" />}
                 </div>
@@ -230,6 +286,7 @@ export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead,
                   onDrop={(id, x, rectLeft) => onDropAsset(id, t.id, xToFrame(x, rectLeft))} />
               ))}
               <div className="playhead" style={{ left: HEAD_W + playhead * ppf }} aria-hidden><i /></div>
+              {(view.markers ?? []).map((m) => <div key={m.id} className="pr-mline" style={{ left: HEAD_W + m.frame * ppf, ["--mc" as string]: MARKER_HEX[m.color] }} aria-hidden />)}
               {tool === "razor" && razorX !== null && <div className="pr-razor" style={{ left: HEAD_W + razorX }} aria-hidden />}
             </div>
           </div>
@@ -238,6 +295,7 @@ export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead,
             onZoom={(np, leftPx) => { const p = clampPps(np); setPps(p); requestAnimationFrame(() => { if (scroller.current) scroller.current.scrollLeft = leftPx * (p / pps); }); }} />
         </div>
         <AudioMeters tl={view} assets={assets} playhead={playhead} />
+        {trimHint && <div className="pr-trimhint" style={{ left: trimHint.x + 14, top: trimHint.y + 16 }} aria-live="polite">{trimHint.label}</div>}
       </div>
     </section>
   );
@@ -361,7 +419,7 @@ function TrackRow({ badge, t, tl, view, ppf, contentW, assets, selected, readOnl
           const missing = !c.title && (!a || a.status !== "ready");
           const thumb = t.kind === "video" && a?.thumbnail_url ? a.thumbnail_url : a?.kind === "image" && a.proxy_url ? a.proxy_url : null;
           return (
-            <div key={c.id} className={`clip ${t.kind} ${c.title ? "title" : a?.kind ?? ""} ${selected === c.id ? "sel" : ""} ${missing ? "missing" : ""} ${t.hidden || t.muted ? "off" : ""}`}
+            <div key={c.id} data-clip={c.id} className={`clip ${t.kind} ${c.title ? "title" : a?.kind ?? ""} ${selected === c.id ? "sel" : ""} ${missing ? "missing" : ""} ${t.hidden || t.muted ? "off" : ""}`}
               style={{ left: c.start * ppf, width: w }}
               onPointerDown={(e) => down(e, "move", c)} onPointerMove={move} onPointerUp={up} role="button" tabIndex={0}
               aria-label={`${c.title ? "Title: " + c.title.text : a?.filename ?? "Missing media"} clip, ${framesToTimecode(len(c), view.fps)}`}
