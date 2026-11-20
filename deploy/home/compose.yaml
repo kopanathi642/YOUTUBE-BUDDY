@@ -55,7 +55,7 @@ services:
     volumes: [media:/data]
 
   web:
-    build: { context: ../.., dockerfile: ${WEB_DOCKERFILE:-Dockerfile} }
+    build: { context: ../.., dockerfile: "${WEB_DOCKERFILE:-Dockerfile}" }
     image: youtubebuddy-app
     restart: unless-stopped
     env_file: [{ path: .env, required: false }]   # secrets + optional keys (Pexels, Pixabay, Google OAuth, ...)
