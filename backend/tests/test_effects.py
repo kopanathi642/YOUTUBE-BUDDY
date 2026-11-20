@@ -101,3 +101,22 @@ def test_generators_draw_at_sequence_size(tmp_path, kind):
         assert near(im.getpixel((1, 90)), (255, 0, 0), 8) and near(im.getpixel((318, 90)), (0, 0, 255), 8)
     if kind == "solid":
         assert im.getpixel((160, 90)) == (255, 0, 0)
+
+
+def test_emboss_edges_sketch_scanlines(tmp_path):
+    def half(im):   # left half dark grey, right half light grey: one vertical edge in the middle
+        for x in range(160):
+            for y in range(180):
+                im.putpixel((x, y), (60, 60, 60))
+    base = (200, 200, 200)
+    flat = _render(tmp_path, base, [{"type": "emboss", "amount": 1}])          # kernel sums to 1: flat areas keep their colour
+    assert near(flat.getpixel((W // 2, H // 2)), base)
+    e = _render(tmp_path, base, [{"type": "edges", "amount": 1}], draw=half)
+    assert max(e.getpixel((40, 90))) < 30 and max(e.getpixel((280, 90))) < 30   # flat → black
+    assert max(e.getpixel((160, 90))) > 120 or max(e.getpixel((159, 90))) > 120  # the edge lights up
+    s = _render(tmp_path, base, [{"type": "sketch", "amount": 1}], draw=half)
+    assert min(s.getpixel((40, 90))) > 225 and min(s.getpixel((280, 90))) > 225  # paper white
+    sl = _render(tmp_path, (200, 200, 200), [{"type": "scanlines", "amount": 0.5}])
+    col = [sl.getpixel((W // 2, y))[0] for y in range(40, 48)]
+    assert min(col) < 150 and max(col) > 185                                   # dark line every 4 px, rest untouched
+    assert near(sl.getpixel((0, 41)), sl.getpixel((W // 2, 41)), 12)           # no vertical line at x = 0

@@ -4,7 +4,8 @@
 import type { Clip, ColorGrade, Timeline, Title } from "./timeline";
 import type { Keyframes, Keyframe } from "./keyframes";
 
-export type EffectType = "bw" | "sepia" | "hue" | "invert" | "posterize" | "sharpen" | "vignette" | "grain" | "rgbsplit" | "letterbox" | "flipv";
+export type EffectType = "bw" | "sepia" | "hue" | "invert" | "posterize" | "sharpen" | "vignette" | "grain" | "rgbsplit" | "letterbox" | "flipv"
+  | "emboss" | "edges" | "sketch" | "scanlines";
 export type Effect = { type: EffectType; amount: number };
 
 export const EFFECTS: { type: EffectType; label: string; group: "Colour" | "Stylize" | "Sharpen" | "Frame"; min: number; max: number; step: number; def: number; unit?: string; hint: string }[] = [
@@ -19,11 +20,15 @@ export const EFFECTS: { type: EffectType; label: string; group: "Colour" | "Styl
   { type: "sharpen", label: "Sharpen", group: "Sharpen", min: 0.1, max: 2, step: 0.1, def: 0.6, hint: "Crisper edges" },
   { type: "letterbox", label: "Cinema Bars", group: "Frame", min: 0.02, max: 0.25, step: 0.01, def: 0.12, hint: "Black bars top and bottom (0.12 ≈ 2.35:1 on 16:9)" },
   { type: "flipv", label: "Flip Vertical", group: "Frame", min: 1, max: 1, step: 1, def: 1, hint: "Upside down" },
+  { type: "emboss", label: "Emboss", group: "Stylize", min: 0.2, max: 2, step: 0.1, def: 1, hint: "Raised, stamped-metal look" },
+  { type: "edges", label: "Edge Detect", group: "Stylize", min: 0.5, max: 3, step: 0.1, def: 1, hint: "Only the outlines, glowing on black" },
+  { type: "sketch", label: "Pencil Sketch", group: "Stylize", min: 0.5, max: 3, step: 0.1, def: 1.2, hint: "Dark pencil lines on white paper" },
+  { type: "scanlines", label: "Scanlines", group: "Stylize", min: 0.1, max: 0.8, step: 0.05, def: 0.35, hint: "Old CRT TV lines (every 4 px)" },
 ];
 export const effectMeta = (t: EffectType) => EFFECTS.find((e) => e.type === t)!;
 export const clampEffect = (e: Effect): Effect => { const m = effectMeta(e.type); return { type: e.type, amount: +Math.min(m.max, Math.max(m.min, Math.round(e.amount / m.step) * m.step)).toFixed(4) }; };
 /** Effects in the order export applies them (the preview follows the same order). */
-export const EFFECT_ORDER: EffectType[] = ["flipv", "bw", "sepia", "hue", "invert", "posterize", "sharpen", "rgbsplit", "vignette", "grain", "letterbox"];
+export const EFFECT_ORDER: EffectType[] = ["flipv", "bw", "sepia", "hue", "invert", "posterize", "sharpen", "emboss", "edges", "sketch", "rgbsplit", "vignette", "grain", "scanlines", "letterbox"];
 export const sortEffects = (fx: Effect[]) => [...fx].sort((a, b) => EFFECT_ORDER.indexOf(a.type) - EFFECT_ORDER.indexOf(b.type));
 
 // ---------- colour maths (W3C Filter Effects; same numbers in backend/app/effects.py)
@@ -43,6 +48,9 @@ export const hueM = (deg: number): M3 => {
 };
 /** Sharpen kernel (3x3, sums to 1). */
 export const sharpenK = (a: number) => [0, -a, 0, -a, 1 + 4 * a, -a, 0, -a, 0];
+/** Emboss (3x3, sums to 1 so flat areas keep their colour) and Laplacian edge kernels; sketch = grey → edges → invert. */
+export const embossK = (a: number) => [-2 * a, -a, 0, -a, 1, a, 0, a, 2 * a];
+export const edgeK = (a: number) => [-a, -a, -a, -a, 8 * a, -a, -a, -a, -a];
 /** Vignette darkening at normalised distance d (0 centre … 1 corner): FFmpeg's vignette curve, cos(angle·d)^4. */
 export const vignetteFactor = (a: number, d: number) => { const c = Math.cos(a * (Math.PI / 2) * Math.min(1, d)); return c * c * c * c; };
 /** sRGB picture gets these posterize levels: x → floor(x·n)/(n−1). */
@@ -62,6 +70,11 @@ export function svgEffectsBody(effects: Effect[] | null | undefined, k: number):
     if (e.type === "invert") out.push(`<feComponentTransfer>${["R", "G", "B"].map((c) => `<feFunc${c} type="linear" slope="${f(1 - 2 * a)}" intercept="${f(a)}"/>`).join("")}</feComponentTransfer>`);
     if (e.type === "posterize") out.push(`<feComponentTransfer>${["R", "G", "B"].map((c) => `<feFunc${c} type="discrete" tableValues="${posterTable(Math.round(a))}"/>`).join("")}</feComponentTransfer>`);
     if (e.type === "sharpen") out.push(`<feConvolveMatrix order="3" kernelMatrix="${sharpenK(a).map(f).join(" ")}" divisor="1" edgeMode="duplicate" preserveAlpha="true"/>`);
+    if (e.type === "emboss") out.push(`<feConvolveMatrix order="3" kernelMatrix="${embossK(a).map(f).join(" ")}" divisor="1" edgeMode="duplicate" preserveAlpha="true"/>`);
+    if (e.type === "edges") out.push(`<feConvolveMatrix order="3" kernelMatrix="${edgeK(a).map(f).join(" ")}" divisor="1" edgeMode="duplicate" preserveAlpha="true"/>`);
+    if (e.type === "sketch") out.push(`<feColorMatrix type="matrix" values="${m4(saturateM(0).map(f))}"/>`,
+      `<feConvolveMatrix order="3" kernelMatrix="${edgeK(a).map(f).join(" ")}" divisor="1" edgeMode="duplicate" preserveAlpha="true"/>`,
+      `<feComponentTransfer>${["R", "G", "B"].map((c) => `<feFunc${c} type="linear" slope="-1" intercept="1"/>`).join("")}</feComponentTransfer>`);
     if (e.type === "rgbsplit") {
       const p = f(a * k);
       out.push(`<feColorMatrix result="src" type="identity"/>`,
@@ -78,10 +91,10 @@ export function svgEffectsBody(effects: Effect[] | null | undefined, k: number):
 /** Overlays drawn on top of the picture (not filtered): vignette, grain, cinema bars. */
 export function overlayEffects(effects: Effect[] | null | undefined) {
   const fx = effects ?? [];
-  const v = fx.find((e) => e.type === "vignette"), g = fx.find((e) => e.type === "grain"), lb = fx.find((e) => e.type === "letterbox");
+  const v = fx.find((e) => e.type === "vignette"), g = fx.find((e) => e.type === "grain"), lb = fx.find((e) => e.type === "letterbox"), sl = fx.find((e) => e.type === "scanlines");
   const vignette = v ? `radial-gradient(circle farthest-corner at 50% 50%, ${Array.from({ length: 13 }, (_, i) => {
     const d = i / 12; return `rgba(0,0,0,${f(1 - vignetteFactor(v.amount, d))}) ${f(d * 100)}%`; }).join(", ")})` : null;
-  return { vignette, grain: g ? g.amount : 0, bars: lb ? lb.amount : 0 };
+  return { vignette, grain: g ? g.amount : 0, bars: lb ? lb.amount : 0, scan: sl ? sl.amount : 0 };
 }
 export const flippedV = (effects: Effect[] | null | undefined) => !!effects?.some((e) => e.type === "flipv");
 
@@ -98,6 +111,9 @@ export const STYLES: Style[] = [
   { name: "Polaroid", effects: [{ type: "sepia", amount: 0.25 }, { type: "vignette", amount: 0.4 }], grade: { lift: [0.06, 0.05, 0.04], contrast: 0.9, saturation: 0.85 } },
   { name: "Dreamy", effects: [{ type: "vignette", amount: 0.25 }], grade: { lift: [0.05, 0.03, 0.06], gain: [1.05, 1.0, 1.04], contrast: 0.85, saturation: 1.1 } },
   { name: "Negative", effects: [{ type: "invert", amount: 1 }] },
+  { name: "Retro TV", effects: [{ type: "scanlines", amount: 0.4 }, { type: "rgbsplit", amount: 2 }, { type: "vignette", amount: 0.45 }], grade: { saturation: 0.85, contrast: 1.1 } },
+  { name: "Sketchbook", effects: [{ type: "sketch", amount: 1.2 }] },
+  { name: "Neon Edges", effects: [{ type: "edges", amount: 1.5 }], grade: { saturation: 1.6 } },
 ];
 
 // ---------- animations (CapCut In / Out / Combo), written as keyframes so preview and export use the same maths

@@ -244,9 +244,10 @@ export default function Viewer({ tl, assets, playhead, setPlayhead, playing, set
               const wrap: React.CSSProperties = { width: g.w, height: g.h, left: g.cx - g.w / 2, top: g.cy - g.h / 2, zIndex: L.z,
                 transform: `rotate(${tf.rotation}deg)${L.clip.fx?.flip_h ? " scaleX(-1)" : ""}${flippedV(L.clip.effects) ? " scaleY(-1)" : ""}`, opacity, filter: filt || undefined, ...fxs.wrap };
               const ov = overlayEffects(L.clip.effects);
-              const over = (ov.vignette || ov.grain || ov.bars) ? <div className="layer fx-over" aria-hidden style={{ width: g.w, height: g.h, left: g.cx - g.w / 2, top: g.cy - g.h / 2, zIndex: L.z,
+              const over = (ov.vignette || ov.grain || ov.bars || ov.scan) ? <div className="layer fx-over" aria-hidden style={{ width: g.w, height: g.h, left: g.cx - g.w / 2, top: g.cy - g.h / 2, zIndex: L.z,
                 transform: `rotate(${tf.rotation}deg)`, opacity, borderRadius: fxs.wrap.borderRadius, overflow: "hidden", position: "absolute", pointerEvents: "none" }}>
                 {ov.vignette && <i style={{ position: "absolute", inset: 0, background: ov.vignette }} />}
+                {ov.scan > 0 && <i style={{ position: "absolute", inset: 0, background: `repeating-linear-gradient(to bottom, transparent 0 ${3 * k}px, rgba(0,0,0,${ov.scan}) ${3 * k}px ${4 * k}px)` }} />}
                 {ov.grain > 0 && <i className="fx-grain" style={{ opacity: Math.min(0.85, ov.grain * 0.9) }} />}
                 {ov.bars > 0 && <><i style={{ position: "absolute", left: 0, right: 0, top: 0, height: `${ov.bars * 100}%`, background: "#000" }} /><i style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: `${ov.bars * 100}%`, background: "#000" }} /></>}
               </div> : null;

@@ -9,12 +9,14 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-EffectType = Literal["bw", "sepia", "hue", "invert", "posterize", "sharpen", "vignette", "grain", "rgbsplit", "letterbox", "flipv"]
+EffectType = Literal["bw", "sepia", "hue", "invert", "posterize", "sharpen", "vignette", "grain", "rgbsplit", "letterbox", "flipv",
+                     "emboss", "edges", "sketch", "scanlines"]
 RANGES: dict[str, tuple[float, float]] = {
     "bw": (0, 1), "sepia": (0, 1), "hue": (-180, 180), "invert": (0, 1), "posterize": (2, 16), "sharpen": (0.1, 2),
     "vignette": (0.05, 1), "grain": (0.05, 1), "rgbsplit": (1, 40), "letterbox": (0.02, 0.25), "flipv": (1, 1),
+    "emboss": (0.2, 2), "edges": (0.5, 3), "sketch": (0.5, 3), "scanlines": (0.1, 0.8),
 }
-ORDER = ["flipv", "bw", "sepia", "hue", "invert", "posterize", "sharpen", "rgbsplit", "vignette", "grain", "letterbox"]
+ORDER = ["flipv", "bw", "sepia", "hue", "invert", "posterize", "sharpen", "emboss", "edges", "sketch", "rgbsplit", "vignette", "grain", "scanlines", "letterbox"]
 
 
 class Effect(BaseModel):
@@ -69,6 +71,20 @@ def _mixer(m: list[float]) -> str:
     return "colorchannelmixer=" + ":".join(f"{k}={_n(max(-2.0, min(2.0, v)))}" for k, v in zip(keys, m))
 
 
+def _conv(k: list[float]) -> list[str]:
+    """3x3 kernel on R, G and B (same numbers as the preview's feConvolveMatrix)."""
+    m = " ".join(str(int(round(v * 1000))) for v in k)
+    return ["format=gbrp", "convolution=" + ":".join(f"{p}m='{m}':{p}rdiv=0.001" for p in range(3))]
+
+
+def emboss_k(a: float) -> list[float]:
+    return [-2 * a, -a, 0, -a, 1, a, 0, a, 2 * a]
+
+
+def edge_k(a: float) -> list[float]:
+    return [-a, -a, -a, -a, 8 * a, -a, -a, -a, -a]
+
+
 def effect_filters(effects: list[Effect] | None) -> tuple[list[str], list[str]]:
     """(geometry filters to run with the flips, picture filters to run after colour grade and blur)."""
     geo: list[str] = []
@@ -91,10 +107,15 @@ def effect_filters(effects: list[Effect] | None) -> tuple[list[str], list[str]]:
             ex = f"floor(val*{n}/(maxval+1))*maxval/{n - 1}"
             pic.append(f"lutrgb=r='{ex}':g='{ex}':b='{ex}'")
         elif e.type == "sharpen":
-            k = [0, -a, 0, -a, 1 + 4 * a, -a, 0, -a, 0]
-            m = " ".join(str(int(round(v * 1000))) for v in k)
-            planes = ":".join(f"{p}m='{m}':{p}rdiv=0.001" for p in range(3))
-            pic += ["format=gbrp", f"convolution={planes}"]
+            pic += _conv([0, -a, 0, -a, 1 + 4 * a, -a, 0, -a, 0])
+        elif e.type == "emboss":
+            pic += _conv(emboss_k(a))
+        elif e.type == "edges":
+            pic += _conv(edge_k(a))
+        elif e.type == "sketch":
+            pic += [_mixer(saturate_m(0)), *_conv(edge_k(a)), "lutrgb=r='maxval-val':g='maxval-val':b='maxval-val'"]
+        elif e.type == "scanlines":   # a dark 1 px line every 4 px, like the preview's repeating gradient
+            pic.append(f"drawgrid=w=iw*2:h=4:x=iw:y=3:t=1:color=black@{_n(a)}")
         elif e.type == "rgbsplit":
             p = int(round(a))
             pic += ["format=gbrp", f"rgbashift=rh={-p}:bh={p}:edge=smear"]
