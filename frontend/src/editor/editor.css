@@ -675,3 +675,31 @@ body.ws-dragging iframe, body.ws-dragging video { pointer-events: none; }
 .ed-timeline .playhead i { background: #fff; width: 14px; left: -7px; height: 18px; clip-path: none; border-radius: 4px 4px 7px 7px; box-shadow: 0 0 6px rgba(255,255,255,.6); }
 .ed2 .ed-timeline .playhead { background: transparent; }
 .ed-timeline .clip.image:not(.title) { background-color: #d99a2b !important; }
+
+/* Canva-style frames */
+.fr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.fr-tile { display: grid; gap: 3px; padding: 5px; background: rgba(255,255,255,.03); border: 1px solid var(--line); border-radius: 9px; font-size: 10.5px; color: var(--text-2); cursor: pointer; }
+.fr-tile:hover:not(:disabled) { border-color: #a78bfa; box-shadow: 0 0 0 1px #a78bfa; }
+.fr-prev { display: block; aspect-ratio: 16 / 9; border-radius: 6px; overflow: hidden; background: linear-gradient(135deg, #3b4b7a, #7a3b6b); }
+.fr-prev svg { width: 100%; height: 100%; display: block; }
+
+/* Find AI */
+.find-ai { position: relative; flex: 1 1 260px; max-width: 420px; min-width: 180px; }
+.find-box { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 10px; border: 1px solid rgba(167,139,250,.45);
+  background: rgba(255,255,255,.04); color: var(--text-2); }
+.find-box:focus-within { border-color: #a78bfa; box-shadow: 0 0 0 3px rgba(167,139,250,.25); }
+.find-box input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 13px; outline: none; }
+.find-box kbd { font-size: 10px; padding: 2px 5px; border-radius: 4px; border: 1px solid var(--line); color: var(--text-3, #888); }
+.find-pop { position: absolute; z-index: 60; top: 40px; left: 0; width: min(520px, 90vw); max-height: 70vh; overflow: auto; padding: 6px;
+  border-radius: 12px; border: 1px solid rgba(167,139,250,.45); background: #15131f; box-shadow: 0 24px 60px rgba(0,0,0,.55); }
+.find-head { display: flex; align-items: center; gap: 6px; padding: 8px 10px 6px; font-size: 12px; color: #c4b5fd; font-weight: 600; }
+.find-gl { padding: 8px 10px 4px; font-size: 11px; color: var(--text-3, #8b8b9a); font-weight: 600; }
+.find-row { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--text); cursor: pointer; }
+.find-row.hi { background: rgba(139,92,246,.2); }
+.find-row.off { opacity: .5; cursor: not-allowed; }
+.find-l { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.find-l b { font-size: 13px; font-weight: 600; }
+.find-l small { font-size: 11.5px; color: var(--text-2); }
+.find-empty { padding: 14px 10px; font-size: 13px; color: var(--text-2); }
+.find-foot { margin-top: 4px; padding: 8px 10px 4px; border-top: 1px solid var(--line); font-size: 11px; color: var(--text-3, #8b8b9a); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

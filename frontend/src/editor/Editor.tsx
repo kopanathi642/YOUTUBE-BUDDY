@@ -12,6 +12,7 @@ import ObjectRemoveModal from "./ObjectRemove";
 import DubStudio from "./DubStudio";
 import HistoryPanel from "./HistoryPanel";
 import { LOOKS, svgFilterBody, withLook, sanitizeGrade } from "../grade";
+import FindAI, { Suggestion } from "./FindAI";
 import { buildPlan, applyCuts, silenceCuts, applySceneSplits, sceneSplits, loudnessGain } from "../smart";
 import MediaBin, { BinTab } from "./MediaBin";
 import FocusMusic from "./FocusMusic";
@@ -434,6 +435,17 @@ export default function Editor() {
 
   const sel = selected ? findClip(tl, selected) : null;
   const selAsset = sel ? assetMap.get(sel.clip.asset_id) : undefined;
+  /* Find AI suggestions: real checks on this timeline (silences, colour, levels, noise), then format and selection tips. */
+  const findSuggestions: Suggestion[] = (() => {
+    const out: Suggestion[] = buildPlan(tl, assetMap).slice(0, 4).map((o) => ({ key: o.id, label: o.label, detail: o.detail, run: () => { edit(o.apply(tl)); toast(o.label + " — done · Ctrl+Z to undo"); } }));
+    const vids = tl.tracks.filter((t) => t.kind === "video").flatMap((t) => t.clips);
+    if (vids.length && tl.width > tl.height) out.push({ key: "short", label: "Make a Short (9:16) from this video", detail: "Centred on the face, as a new sequence", run: () => action("short916") });
+    if (vids.length && !vids.some((c) => c.title)) out.push({ key: "title", label: "Add a title", detail: "Big text at the playhead", run: () => action("motion") });
+    if (selAsset?.kind === "video") out.push({ key: "look", label: "Give this clip a Cinematic look", detail: "Colour preset · change it in Colour", run: () => edit(updateClip(tl, sel!.clip.id, { color: withLook(LOOKS[0].grade) })) });
+    if (vids.length) out.push({ key: "caps", label: "Add captions", detail: "Subtitles from your speech", run: () => action("subtitle") });
+    if (!vids.length) out.push({ key: "media", label: "Add your first video", detail: "Import or drag files into Media", run: () => action("media") });
+    return out.slice(0, 7);
+  })();
   const onTl = new Set(tl.tracks.flatMap((t) => t.clips.map((c) => c.asset_id)).filter((id): id is string => !!id)); // titles have no media
   const analysed = [...onTl].every((id) => { const a = assetMap.get(id); return a && a.status === "ready" && (a.kind === "image" || a.analysis); });
   const NAV: [string, any, string | null][] = [["Fusion (Nodes)", Workflow, "fusion"], ["Color", Palette, "color"], ["Audio", AudioLines, "loudness-nav"], ["VFX", Activity, "fusion"], ["Motion", Type, "motion"], ["Graphics", ImageIcon, "media"], ["Design", ImageIcon, "design"], ["AI Studio", Sparkles, "magic"], ["Templates", LayoutTemplate, "templates"]];
@@ -455,6 +467,11 @@ export default function Editor() {
             ? <a key={l} role="button" tabIndex={0} title={l} aria-label={l} onClick={() => act === "loudness-nav" ? (focus("inspector"), setInspTab("inspector")) : action(act)}><I size={17} />{l}</a>
             : <span key={l} title={l === "YouTube" ? "Planned — needs Google API verification" : "Planned — not available yet"}><I size={17} />{l}</span>)}
         </nav>
+        <FindAI action={action} hasSel={!!sel} isVideoSel={selAsset?.kind === "video"} hide={hide}
+          onLook={(i) => sel && edit(updateClip(tl, sel.clip.id, { color: withLook(LOOKS[i].grade) }))}
+          onTransitions={() => { focus("inspector"); setInspTab("transition"); }}
+          onTool={(id) => navigate(`/ai-generator/tool/${id}?project=${projectId}${selAsset?.kind === "video" ? `&media=${selAsset.id}` : ""}`)}
+          suggestions={findSuggestions} />
         <div className="grow" />
         <ProjectName project={project} onRename={(n) => setProject({ ...project, name: n })} readOnly={readOnly} />
         <div className="row" style={{ gap: 2 }}>
