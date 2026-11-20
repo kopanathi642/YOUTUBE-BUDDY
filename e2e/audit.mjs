@@ -139,7 +139,7 @@ await step("Undo / redo buttons and keyboard", async () => {
 await step("Timeline: split (S), select, ripple delete, snapping toggle, zoom", async () => {
   await scrubTo(4); await page.keyboard.press("s"); await w(200);
   const n = (await tl()).length; if (n < 6) throw new Error("split did not create clips: " + n);
-  await page.keyboard.press("Control+z"); await page.click(".tl-toolbar button:has-text('Snap')"); await page.click(".tl-toolbar button:has-text('Snap')");
+  await page.keyboard.press("Control+z"); await page.click(".tl-tools button[aria-label='Snapping']"); await page.click(".tl-tools button[aria-label='Snapping']");
   await page.click("button[aria-label='Zoom in']"); await page.click("button[aria-label='Zoom out']");
 });
 await step("Timeline: track lock / hide / mute / add tracks", async () => {
