@@ -11,3 +11,5 @@ backend/tests/fixtures/
 # home server secrets
 deploy/home/cloudflared/*.pem
 deploy/home/cloudflared/*.json
+
+frontend/prebuilt-dist/
