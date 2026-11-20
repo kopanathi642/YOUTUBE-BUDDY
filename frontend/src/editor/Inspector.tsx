@@ -6,6 +6,7 @@ import { LOOKS, withLook, sanitizeGrade } from "../grade";
 import { Ease, KfProp, clearProp, isAnimated, keyTimes, removeKey, setKey, tfAt } from "../keyframes";
 import { AUDIO_FX, AUDIO_GROUPS, AUDIO_ORDER, AudioFxType, VOICE_PRESETS, audioMeta, clampAudio } from "../audiofx";
 import { EFFECTS, EFFECT_GROUPS, STYLES, ANIMATIONS, TEXT_STYLES, Effect, EffectType, animationKeys, applyAnimation, clampEffect, effectMeta, sortEffects } from "../effects";
+import PresetBar from "./Presets";
 import { TRANSITION_LIST, TransitionType, nextTouching, previousTouching, transitionLinks } from "../transitions";
 
 /** Free typing; applied (and clamped) on Enter or blur. Esc reverts. */
@@ -100,6 +101,7 @@ export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab,
           {track.locked && <span className="badge warn">Track locked</span>}</div>
         {tab === "inspector" && <>
           {visual && <details open className="insp-sec"><summary>Transform</summary>
+            <PresetBar kind="transform" clip={clip} apply={set} disabled={ro} />
             <Field kf={<KfBtns p="x" />} label="Position X" value={cur.x} min={-tl.width} max={tl.width} step={1} disabled={ro} onChange={(v) => setT({ x: v }, "x")} onReset={() => setT({ x: 0 }, "x0")} />
             <Field kf={<KfBtns p="y" />} label="Position Y" value={cur.y} min={-tl.height} max={tl.height} step={1} disabled={ro} onChange={(v) => setT({ y: v }, "y")} onReset={() => setT({ y: 0 }, "y0")} />
             <Field kf={<KfBtns p="scale" />} label="Scale" value={Math.round(cur.scale * 100)} min={5} max={400} step={1} unit="%" disabled={ro} onChange={(v) => setT({ scale: v / 100 }, "scale")} onReset={() => setT({ scale: 1 }, "s0")} />
@@ -146,6 +148,7 @@ export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab,
           </details>}
         </>}
         {tab === "effects" && <div className="insp-sec">
+          {visual && !isTitle && <PresetBar kind="video" clip={clip} apply={set} disabled={ro} />}
           {visual && !isTitle && <>
             <div className="label">Styles (one click: colour + effects)</div>
             <div className="look-list fx-styles">{STYLES.map((st) => <button key={st.name} className="btn sm" disabled={ro}
@@ -182,6 +185,7 @@ export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab,
           {audio && <label className="check" style={{ marginTop: 10 }}><input type="checkbox" checked={!!clip.denoise} disabled={ro} onChange={(e) => set({ denoise: e.target.checked }, "dn")} />Audio noise reduction</label>}
           {audio && <>
             <div className="label" style={{ marginTop: 12 }}>Voice &amp; audio presets</div>
+            <PresetBar kind="audio" clip={clip} apply={set} disabled={ro} />
             <div className="look-list afx-presets">{VOICE_PRESETS.map((p) => <button key={p.name} className="btn sm" disabled={ro} onClick={() => set({ audio_fx: p.fx.map(clampAudio) }, "vpreset")}>{p.name}</button>)}
               <button className="btn sm ghost" disabled={ro || !(clip.audio_fx?.length)} onClick={() => set({ audio_fx: null }, "noafx")}>No audio FX</button></div>
             <div className="label" style={{ marginTop: 10 }}>Audio effects (Fairlight)</div>
@@ -202,6 +206,7 @@ export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab,
           </>}
         </div>}
         {tab === "transition" && <div className="insp-sec">
+          <PresetBar kind="transition" clip={clip} apply={set} disabled={ro} />
           <Field label="Fade in" value={+(clip.fade_in / fps).toFixed(2)} min={0} max={+(len(clip) / fps).toFixed(2)} step={1 / fps} unit="s" disabled={ro}
             onChange={(v) => { const f = Math.round(v * fps); if (f + clip.fade_out <= len(clip)) set({ fade_in: f }, "fi"); }} />
           <Field label="Fade out" value={+(clip.fade_out / fps).toFixed(2)} min={0} max={+(len(clip) / fps).toFixed(2)} step={1 / fps} unit="s" disabled={ro}

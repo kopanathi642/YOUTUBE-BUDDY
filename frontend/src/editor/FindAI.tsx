@@ -49,6 +49,8 @@ const SYN: Record<string, string> = {
 };
 
 function score(item: FindItem, q: string): number {
+  const exact = q.trim().match(/^"(.+)"$/);   // "…" = exact text match on the name only (Resolve 21.1 style)
+  if (exact) return item.label.toLowerCase().includes(exact[1].toLowerCase()) ? 10 : 0;
   const hay = (item.label + " " + item.words + " " + item.group).toLowerCase();
   const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
   let s = 0;
@@ -76,6 +78,8 @@ export default function FindAI({ action, hasSel, isVideoSel, onLook, onTransitio
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(0);
   const box = useRef<HTMLDivElement>(null);
+  const act = useRef(action);
+  act.current = action;   // chained commands must use the editor's latest state, not the one from when the list was built
   const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -92,7 +96,7 @@ export default function FindAI({ action, hasSel, isVideoSel, onLook, onTransitio
     const needSel = hasSel ? undefined : "Select a clip on the timeline first";
     const needVideo = isVideoSel ? undefined : "Select a video clip first";
     const a = (id: string, label: string, group: string, icon: any, hint?: string, disabled?: string): FindItem =>
-      ({ key: id, label, group, icon, hint, disabled, words: SYN[id] ?? "", run: () => action(id) });
+      ({ key: id, label, group, icon, hint, disabled, words: SYN[id] ?? "", run: () => act.current(id) });
     const list: FindItem[] = [
       a("magic", "AI Magic — clean up my video in one click", "Fix & clean up", Sparkles, "Review every change before it's applied"),
       a("silence", "Remove silences", "Fix & clean up", AudioLines),
@@ -137,10 +141,26 @@ export default function FindAI({ action, hasSel, isVideoSel, onLook, onTransitio
     return list;
   }, [action, hasSel, isVideoSel, onLook, onTransitions, onTool, hide]);
 
+  /** "remove silences and add captions, then export" → the best tool for each part, run one after another. */
+  const command = useMemo<FindItem | null>(() => {
+    const parts = q.split(/\s*(?:,|;|&|\+|\band\b|\bthen\b|\baur\b|\bphir\b)\s*/i).map((x) => x.trim()).filter((x) => x.length > 2);
+    if (parts.length < 2) return null;
+    const steps: FindItem[] = [];
+    for (const part of parts) {
+      const best = items.filter((i) => !i.disabled && i.group !== "AI Generator").map((i) => [i, score(i, part)] as const).filter(([, s]) => s > 0).sort((x, y) => y[1] - x[1])[0];
+      if (best && !steps.includes(best[0])) steps.push(best[0]);
+    }
+    if (steps.length < 2) return null;
+    return { key: "cmd", group: "Suggested", icon: Bot, words: "", label: "Do all: " + steps.map((x) => x.label.replace(/ —.*$/, "")).join(" → "),
+      hint: `${steps.length} steps, one after another (each one can be undone with Ctrl+Z)`,
+      run: () => steps.forEach((st, n) => setTimeout(() => st.run(), n * 900)) };
+  }, [q, items]);
+
   const results = useMemo(() => {
     if (!q.trim()) return suggestions.map<FindItem>((s) => ({ key: "sg-" + s.key, label: s.label, hint: s.detail, group: "Suggested", icon: Sparkles, words: "", run: s.run }));
-    return items.map((i) => [i, score(i, q)] as const).filter(([, s]) => s > 0).sort((x, y) => y[1] - x[1]).slice(0, 14).map(([i]) => i);
-  }, [q, items, suggestions]);
+    const found = items.map((i) => [i, score(i, q)] as const).filter(([, s]) => s > 0).sort((x, y) => y[1] - x[1]).slice(0, 14).map(([i]) => i);
+    return command ? [command, ...found] : found;
+  }, [q, items, suggestions, command]);
   useEffect(() => setHi(0), [q]);
 
   const grouped = useMemo(() => {
@@ -174,7 +194,7 @@ export default function FindAI({ action, hasSel, isVideoSel, onLook, onTransitio
       {open && (
         <div className="find-pop" id="find-list" role="listbox" aria-label="Find results">
           {!q.trim() && <div className="find-head"><Sparkles size={14} />Suggested for your video{suggestions.length === 0 && " — nothing to fix right now. Try typing what you want to do."}</div>}
-          {q.trim() && flat.length === 0 && <div className="find-empty">No match for “{q}”. Try words like <b>captions</b>, <b>shaky</b>, <b>vertical</b>, <b>noise</b> or <b>frame</b>.</div>}
+          {q.trim() && flat.length === 0 && <div className="find-empty">No match for {q.trim().startsWith('"') ? q : `“${q}”`}. Try words like <b>captions</b>, <b>shaky</b>, <b>vertical</b>, <b>noise</b> or <b>frame</b>.</div>}
           {grouped.map(([g, list]) => (
             <div key={g} className="find-group">
               {q.trim() && <div className="find-gl">{g}</div>}
@@ -187,7 +207,7 @@ export default function FindAI({ action, hasSel, isVideoSel, onLook, onTransitio
                 </button>); })}
             </div>
           ))}
-          <div className="find-foot">↑ ↓ to move · Enter to use · type in plain words, e.g. “remove shaky”, “hindi captions”, “make vertical”</div>
+          <div className="find-foot">↑ ↓ to move · Enter to use · plain words (“remove shaky”, “hindi captions”) · several at once (“remove silences and add captions”) · “quotes” for exact name</div>
         </div>
       )}
     </div>

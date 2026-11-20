@@ -1,5 +1,5 @@
 import { PointerEvent as RPE, useEffect, useMemo, useRef, useState } from "react";
-import { MousePointer2, Scissors, Trash2, Magnet, Lock, Unlock, Eye, EyeOff, Plus, ZoomIn, ZoomOut, ArrowLeftToLine, Hand, SquareSplitHorizontal, Maximize2, UnfoldHorizontal, Flag } from "lucide-react";
+import { MousePointer2, Scissors, Trash2, Magnet, Lock, Unlock, Eye, EyeOff, Plus, ZoomIn, ZoomOut, ArrowLeftToLine, Hand, SquareSplitHorizontal, Maximize2, UnfoldHorizontal, Flag, FileDown } from "lucide-react";
 import { Asset } from "../api";
 import { Timeline, Track, Clip, end, len, moveClip, trimStart, trimEnd, snap, snapPoints, splitAt, splitAllAt, deleteClip, updateTrack, addTrack, duration, framesToTimecode, DEFAULT_TRANSFORM } from "../timeline";
 import { keyTimes } from "../keyframes";
@@ -22,6 +22,31 @@ type Drag = { mode: "move" | "trimL" | "trimR" | "scrub" | "pan" | "smart"; trim
 /** Does the clip carry anything Premiere would show a lit "fx" badge for? */
 const hasFx = (c: Clip) => !!(c.color || c.fx || c.denoise || c.crop || c.transition_in || keyTimes(c).length > 0 || (c.speed ?? 1) !== 1 ||
   (["x", "y", "scale", "rotation", "opacity"] as const).some((k) => c.transform && c.transform[k] !== DEFAULT_TRANSFORM[k]));
+
+/** Duration without leading zero hours/minutes: 05:12 (s:frames), 1:05:12, 1:02:05:12. */
+export function shortTc(frames: number, fps: number) {
+  const tc = framesToTimecode(frames, fps).split(":");
+  while (tc.length > 2 && tc[0] === "00") tc.shift();
+  return tc.map((x, i) => (i === 0 ? String(+x) : x)).join(":");
+}
+
+/** Resolve 21.1 "export markers": a CSV file plus a printable list (the browser's print dialog saves it as PDF). */
+export function exportMarkers(tl: Timeline) {
+  const ms = tl.markers ?? [];
+  if (!ms.length) return;
+  const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const csv = ["#,Timecode,Name,Colour", ...ms.map((m, i) => [i + 1, framesToTimecode(m.frame, tl.fps), esc(m.name), m.color].join(","))].join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv" }));
+  a.download = "markers.csv"; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  const w = window.open("", "_blank");
+  if (!w) return;
+  const h = (v: string) => v.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]!));
+  w.document.write(`<!doctype html><meta charset="utf-8"><title>Markers</title><style>body{font:14px system-ui;margin:32px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:6px 10px;text-align:left}i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}</style>
+    <h2>Markers</h2><table><tr><th>#</th><th>Timecode</th><th>Name</th><th>Colour</th></tr>${ms.map((m, i) => `<tr><td>${i + 1}</td><td>${framesToTimecode(m.frame, tl.fps)}</td><td>${h(m.name)}</td><td><i style="background:${MARKER_HEX[m.color]}"></i>${m.color}</td></tr>`).join("")}</table>
+    <script>setTimeout(()=>print(),300)<\/script>`);
+  w.document.close();
+}
 
 /** Resolve's smart trim: what the Trim tool does depends on where on the clip you press. */
 function trimZone(tl: Timeline, c: Clip, el: HTMLElement, clientX: number, clientY: number): { kind: TrimKind; other?: string } {
@@ -259,6 +284,7 @@ export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead,
                   <span className="pr-tc mono" title="Playhead position">{framesToTimecode(playhead, fps)}</span>
                   <span className="pr-hicons">
                     <button className={`pr-hbtn ${snapOn ? "on" : ""}`} aria-pressed={snapOn} aria-label="Snapping" title="Snap in timeline (N)" onClick={() => setSnapOn((x) => !x)}><Magnet size={14} /></button>
+                    {(view.markers?.length ?? 0) > 0 && <button className="pr-hbtn" aria-label="Export markers" title="Export the marker list (CSV for spreadsheets, or print / save as PDF)" onClick={() => exportMarkers(view)}><FileDown size={13} /></button>}
                     <button className="pr-hbtn" aria-label="Add marker" title="Add a marker at the playhead (M). Shift+↑/↓ jumps between markers" onClick={marker} disabled={readOnly}><Flag size={13} /></button>
                     <button className="pr-hbtn" aria-label="Zoom to fit" title="Zoom to fit the whole sequence (\\)" onClick={fit}><Maximize2 size={13} /></button>
                   </span>
@@ -428,6 +454,7 @@ function TrackRow({ badge, t, tl, view, ppf, contentW, assets, selected, readOnl
               <span className="pr-cbar">
                 {hasFx(c) && <b className="pr-fx" title="Effects applied">fx</b>}
                 <span className="clip-label">{c.title ? c.title.text : missing ? "⚠ Missing media" : a!.filename}{(c.speed ?? 1) !== 1 ? ` [${Math.round((c.speed ?? 1) * 100)}%]` : ""}</span>
+                {w > 96 && <span className="pr-cdur" title="Clip duration">{shortTc(len(c), view.fps)}</span>}
               </span>
               {thumb && h >= 44 && <span className="pr-thumbs" style={{ backgroundImage: `url(${thumb})` }} aria-hidden />}
               {a?.waveform_url && t.kind === "audio" && <Wave url={a.waveform_url} assetId={a.id} inS={c.in / view.fps} outS={c.out / view.fps} width={w} />}
