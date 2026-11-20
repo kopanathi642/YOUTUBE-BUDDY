@@ -1,5 +1,5 @@
 import { PointerEvent as RPE, useEffect, useMemo, useRef, useState } from "react";
-import { Scissors, Trash2, Magnet, Lock, Unlock, Eye, EyeOff, Volume2, VolumeX, Plus, ZoomIn, ZoomOut, ArrowLeftToLine } from "lucide-react";
+import { MousePointer2, Scissors, Trash2, Magnet, Lock, Unlock, Eye, EyeOff, Volume2, VolumeX, Plus, ZoomIn, ZoomOut, ArrowLeftToLine } from "lucide-react";
 import { Asset } from "../api";
 import { Timeline, Track, Clip, end, len, moveClip, trimStart, trimEnd, snap, snapPoints, splitAllAt, deleteClip, updateTrack, addTrack, duration, framesToTimecode } from "../timeline";
 import { keyTimes } from "../keyframes";
@@ -106,19 +106,25 @@ export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead,
   return (
     <section className="ed-timeline panel" aria-label="Timeline">
       <div className="tl-toolbar">
-        <button className="btn sm ghost" onClick={() => edit(splitAllAt(tl, playhead))} disabled={readOnly} title="Split clips at playhead (S)"><Scissors size={14} />Split</button>
-        <button className="btn sm ghost" onClick={() => { if (selected && edit(deleteClip(tl, selected))) setSelected(null); }} disabled={!selected || readOnly} title="Delete (Del)"><Trash2 size={14} />Delete</button>
-        <button className="btn sm ghost" onClick={() => { if (selected && edit(deleteClip(tl, selected, true))) setSelected(null); }} disabled={!selected || readOnly} title="Ripple delete (Shift+Del)"><ArrowLeftToLine size={14} />Ripple delete</button>
-        <span className="tl-sep" />
-        <button className={`btn sm ghost ${snapOn ? "toggled" : ""}`} aria-pressed={snapOn} onClick={() => setSnapOn((s) => !s)} title="Snapping (N)"><Magnet size={14} />Snap</button>
-        <button className="btn sm ghost" onClick={() => edit(addTrack(tl, "video"))} disabled={readOnly || tl.tracks.length >= 24}><Plus size={14} />Video track</button>
-        <button className="btn sm ghost" onClick={() => edit(addTrack(tl, "audio"))} disabled={readOnly || tl.tracks.length >= 24}><Plus size={14} />Audio track</button>
+        <span className="tl-tc mono" title="Playhead position">{framesToTimecode(playhead, fps)}</span>
+        <span className="tl-seqtab" title="Current sequence">Timeline</span>
         <div className="grow" />
-        {timecode && <><span className="mono" style={{ fontSize: 12.5, color: "var(--cyan)" }}>{timecode}</span><span className="tl-sep" /></>}
-        <button className="btn icon ghost" aria-label="Zoom out" onClick={() => zoom(1 / 1.4)}><ZoomOut size={15} /></button>
+        <button className="btn sm ghost" onClick={() => edit(addTrack(tl, "video"))} disabled={readOnly || tl.tracks.length >= 24} title="Add a video track"><Plus size={14} />Video track</button>
+        <button className="btn sm ghost" onClick={() => edit(addTrack(tl, "audio"))} disabled={readOnly || tl.tracks.length >= 24} title="Add an audio track"><Plus size={14} />Audio track</button>
+        <span className="tl-sep" />
+        {timecode && <><span className="mono tl-dur" title="Sequence length">{timecode}</span><span className="tl-sep" /></>}
+        <button className="btn icon ghost" aria-label="Zoom out" title="Zoom out (Ctrl + scroll)" onClick={() => zoom(1 / 1.4)}><ZoomOut size={15} /></button>
         <input type="range" min={0} max={100} value={Math.round((Math.log(pps / 4) / Math.log(150)) * 100)} aria-label="Timeline zoom"
           onChange={(e) => setPps(4 * Math.pow(150, +e.target.value / 100))} style={{ width: 110 }} />
-        <button className="btn icon ghost" aria-label="Zoom in" onClick={() => zoom(1.4)}><ZoomIn size={15} /></button>
+        <button className="btn icon ghost" aria-label="Zoom in" title="Zoom in (Ctrl + scroll)" onClick={() => zoom(1.4)}><ZoomIn size={15} /></button>
+      </div>
+      <div className="tl-body">
+      <div className="tl-tools" role="toolbar" aria-label="Timeline tools" aria-orientation="vertical">
+        <button className="btn icon ghost on" aria-label="Selection tool" title="Selection (default): click a clip to select, drag to move or trim"><MousePointer2 size={16} /></button>
+        <button className="btn icon ghost" aria-label="Split at playhead" title="Razor: split clips at the playhead (S)" onClick={() => edit(splitAllAt(tl, playhead))} disabled={readOnly}><Scissors size={16} /></button>
+        <button className="btn icon ghost" aria-label="Delete clip" title="Delete the selected clip (Del)" onClick={() => { if (selected && edit(deleteClip(tl, selected))) setSelected(null); }} disabled={!selected || readOnly}><Trash2 size={16} /></button>
+        <button className="btn icon ghost" aria-label="Ripple delete" title="Ripple delete: remove and close the gap (Shift+Del)" onClick={() => { if (selected && edit(deleteClip(tl, selected, true))) setSelected(null); }} disabled={!selected || readOnly}><ArrowLeftToLine size={16} /></button>
+        <button className={`btn icon ghost ${snapOn ? "toggled on" : ""}`} aria-pressed={snapOn} aria-label="Snapping" title="Snapping (N)" onClick={() => setSnapOn((x) => !x)}><Magnet size={16} /></button>
       </div>
       <div className="tl-scroll" ref={scroller} onWheel={(e) => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); zoom(e.deltaY < 0 ? 1.15 : 1 / 1.15); } }}>
         <div className="tl-content" style={{ width: contentW + HEAD_W }}>
@@ -138,6 +144,7 @@ export default function TimelinePanel({ tl, assets, edit, playhead, setPlayhead,
           ))}
           <div className="playhead" style={{ left: HEAD_W + playhead * ppf }} aria-hidden><i /></div>
         </div>
+      </div>
       </div>
     </section>
   );
