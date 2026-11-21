@@ -51,6 +51,7 @@ export default function Channel() {
   const toast = useToast();
   const [st, setSt] = useState<YtStatus | null | undefined>(undefined);
   const [d, setD] = useState<Insights | null>(null), [err, setErr] = useState(""), [busy, setBusy] = useState(false);
+  const [connErr, setConnErr] = useState("");
   const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata"; } catch { return "Asia/Kolkata"; } })();
   const load = useCallback(async (refresh = false) => {
     setBusy(true); setErr("");
@@ -59,7 +60,7 @@ export default function Channel() {
   }, [tz]);
   useEffect(() => {
     const r = new URLSearchParams(location.search).get("youtube");
-    if (r && MSG[r]) { toast(MSG[r]); history.replaceState(null, "", location.pathname); }
+    if (r && MSG[r]) { const why = new URLSearchParams(location.search).get("why"); const m = MSG[r] + (why ? `: ${why}` : ""); toast(m); if (r !== "connected" && r !== "denied") setConnErr(m); history.replaceState(null, "", location.pathname); }
     ytStatus(!!r).then((s) => { setSt(s); if (s?.connected) load(); });
   }, [load]); // eslint-disable-line react-hooks/exhaustive-deps
   async function connect() {
@@ -84,6 +85,7 @@ export default function Channel() {
         <h2>Connect your YouTube channel</h2>
         <p className="dim">We read your own channel's public numbers (views, likes, comments, upload times) to show what works and estimate your next video's views.
           The same connection lets you publish exports straight to YouTube. We store an encrypted access key — never your password — and you can disconnect any time in Settings.</p>
+        {connErr && <p className="ch-connerr" role="alert">{connErr}</p>}
         <button className="btn primary" onClick={connect} disabled={busy}><Link2 size={15} />Connect with Google</button>
       </div>}
 

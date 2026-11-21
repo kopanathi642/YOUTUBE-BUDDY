@@ -82,11 +82,19 @@ def decrypt(blob: str) -> str:
 
 def _check(r: httpx.Response, what: str) -> dict:
     if r.status_code >= 400:
+        reasons: list[str] = []
         try:
             err = r.json().get("error")
             msg = err.get("message") if isinstance(err, dict) else (r.json().get("error_description") or err)
+            if isinstance(err, dict):
+                reasons = [str(e.get("reason", "")) for e in err.get("errors") or [] if isinstance(e, dict)]
         except Exception:
             msg = r.text[:200]
+        if what == "channel lookup" and ("youtubeSignupRequired" in reasons or "channelNotFound" in reasons):
+            # Google answers 401 when the signed-in account has no YouTube channel (or the channel lives on a Brand Account)
+            raise NoChannel("This Google account has no YouTube channel yet — create one on youtube.com first")
+        if r.status_code == 403 and ("accessNotConfigured" in reasons or "has not been used in project" in str(msg)):
+            raise YouTubeError("The YouTube Data API is switched off for this app's Google Cloud project — the site owner needs to enable it")
         if r.status_code in (400, 401) and what == "refresh":
             raise YouTubeError("YouTube access was revoked or expired — please reconnect YouTube in Settings")
         if r.status_code == 403 and "quota" in str(msg).lower():

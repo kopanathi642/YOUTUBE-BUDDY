@@ -34,6 +34,9 @@ class Fake(BaseHTTPRequestHandler):
             if f["grant_type"] == ["authorization_code"]:
                 if f["code"] == ["boxes-unticked"]:   # Google's consent screen: Continue pressed without ticking the YouTube boxes
                     return self._json(200, {"access_token": "at0", "refresh_token": "rt-x", "scope": "openid"})
+                if f["code"] in (["no-channel"], ["api-off"]):   # tokens that make the channel lookup fail like Google does
+                    return self._json(200, {"access_token": "at-" + f["code"][0], "refresh_token": "rt-y",
+                                            "scope": "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.upload"})
                 assert f["code"] == ["good-code"]
                 return self._json(200, {"access_token": "at1", "refresh_token": "rt-secret",
                                         "scope": "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.upload"})
@@ -50,6 +53,11 @@ class Fake(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if urlparse(self.path).path == "/channels":
+            if self.headers["authorization"] == "Bearer at-no-channel":   # account without a YouTube channel: Google answers 401
+                return self._json(401, {"error": {"code": 401, "message": "Unauthorized", "errors": [{"reason": "youtubeSignupRequired"}]}})
+            if self.headers["authorization"] == "Bearer at-api-off":
+                return self._json(403, {"error": {"code": 403, "message": "YouTube Data API v3 has not been used in project 1 before or it is disabled.",
+                                                  "errors": [{"reason": "accessNotConfigured"}]}})
             return self._json(200, {"items": [{"id": "UC123", "snippet": {"title": "Bhargav Vlogs"}}]})
 
     def do_PUT(self):
@@ -113,6 +121,13 @@ def test_connect_publish_disconnect(make_client, google, fixtures_media):
     # boxes left unticked on Google's screen -> a clear message, nothing stored
     rp = c.get("/api/v1/youtube/callback", params={"code": "boxes-unticked", "state": q["state"][0]}, follow_redirects=False)
     assert rp.headers["location"].endswith("youtube=missing_scopes"), rp.headers["location"]
+    assert not c.get("/api/v1/youtube/status").json()["connected"]
+    # account without a channel -> the no_channel message, not a generic failure
+    rn = c.get("/api/v1/youtube/callback", params={"code": "no-channel", "state": q["state"][0]}, follow_redirects=False)
+    assert rn.headers["location"].endswith("youtube=no_channel"), rn.headers["location"]
+    # any other Google failure -> 'failed' plus Google's reason for the page to show
+    ra = c.get("/api/v1/youtube/callback", params={"code": "api-off", "state": q["state"][0]}, follow_redirects=False)
+    assert "youtube=failed&why=" in ra.headers["location"] and "Data%20API" in ra.headers["location"], ra.headers["location"]
     assert not c.get("/api/v1/youtube/status").json()["connected"]
     r3 = c.get("/api/v1/youtube/callback", params={"code": "good-code", "state": q["state"][0]}, follow_redirects=False)
     assert r3.headers["location"].endswith("youtube=connected"), r3.headers["location"]

@@ -16,7 +16,7 @@ export default function YouTubeCard({ admin }: { admin: boolean }) {
   useEffect(() => {
     load();
     const r = new URLSearchParams(location.search).get("youtube");
-    if (r && MSG[r]) { toast(MSG[r]); history.replaceState(null, "", location.pathname); }
+    if (r && MSG[r]) { const why = new URLSearchParams(location.search).get("why"); toast(MSG[r] + (why ? `: ${why}` : "")); history.replaceState(null, "", location.pathname); }
   }, [load]); // eslint-disable-line react-hooks/exhaustive-deps
   async function connect() {
     setBusy(true);

@@ -1,5 +1,7 @@
 """Connect a YouTube channel (OAuth, youtube.upload scope) and publish finished exports to it."""
+import logging
 import secrets
+from urllib.parse import quote
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -14,6 +16,8 @@ from ..db import get_db
 from ..deps import load_project, ser_job
 from ..models import Export, Job, Role, User, YouTubeConnection
 from ..security import audit, current_user
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(tags=["youtube"])
 STATE_COOKIE = "yt_oauth_state"
@@ -44,9 +48,10 @@ def connect(back: str = "settings", user: User = Depends(current_user)):
 @router.get("/youtube/callback")
 def callback(request: Request, code: str | None = None, state: str | None = None, error: str | None = None,
              user: User = Depends(current_user), db: Session = Depends(get_db)):
-    def back(result: str):
+    def back(result: str, why: str = ""):
         page = "channel" if request.cookies.get(BACK_COOKIE) == "channel" else "settings"
-        r = RedirectResponse(f"/{page}?youtube={result}", status_code=303)
+        extra = f"&why={quote(why[:180])}" if why else ""
+        r = RedirectResponse(f"/{page}?youtube={result}{extra}", status_code=303)
         r.delete_cookie(STATE_COOKIE, path="/api/v1/youtube")
         r.delete_cookie(BACK_COOKIE, path="/api/v1/youtube")
         return r
@@ -65,8 +70,9 @@ def callback(request: Request, code: str | None = None, state: str | None = None
         ch = youtube.my_channel(tok["access_token"])
     except youtube.NoChannel:
         return back("no_channel")
-    except youtube.YouTubeError:
-        return back("failed")
+    except youtube.YouTubeError as e:
+        log.warning("youtube connect failed for user %s: %s", user.id, e)   # Google's own message; never contains tokens or secrets
+        return back("failed", str(e))
     c = db.scalar(select(YouTubeConnection).where(YouTubeConnection.user_id == user.id))
     if c is None:
         c = YouTubeConnection(user_id=user.id, refresh_token_enc="")
