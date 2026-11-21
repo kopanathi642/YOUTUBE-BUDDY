@@ -21,7 +21,9 @@ export type Insights = {
   tips?: string[]; ideas?: string[];
 };
 const MSG: Record<string, string> = { connected: "YouTube channel connected", denied: "YouTube connection was cancelled", bad_state: "That sign-in link expired — try again",
-  no_refresh: "Google didn't grant offline access — remove the app at myaccount.google.com/permissions and connect again", failed: "Couldn't connect YouTube — try again" };
+  no_refresh: "Google didn't grant offline access — remove the app at myaccount.google.com/permissions and connect again", failed: "Couldn't connect YouTube — try again",
+  missing_scopes: "Almost there: on Google's permission screen, tick both YouTube boxes (or “Select all”) before pressing Continue",
+  no_channel: "That Google account has no YouTube channel yet. Create one at youtube.com, or connect the account that owns your channel" };
 
 export const num = (n: number | null | undefined) => n == null ? "—" : n >= 1e7 ? `${(n / 1e7).toFixed(1)} Cr` : n >= 1e5 ? `${(n / 1e5).toFixed(1)} L` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}K` : String(Math.round(n));
 const dur = (s: number) => s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;

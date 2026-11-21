@@ -32,8 +32,11 @@ class Fake(BaseHTTPRequestHandler):
         if u.path == "/token":
             f = parse_qs(body.decode())
             if f["grant_type"] == ["authorization_code"]:
+                if f["code"] == ["boxes-unticked"]:   # Google's consent screen: Continue pressed without ticking the YouTube boxes
+                    return self._json(200, {"access_token": "at0", "refresh_token": "rt-x", "scope": "openid"})
                 assert f["code"] == ["good-code"]
-                return self._json(200, {"access_token": "at1", "refresh_token": "rt-secret"})
+                return self._json(200, {"access_token": "at1", "refresh_token": "rt-secret",
+                                        "scope": "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.upload"})
             assert f["refresh_token"] == ["rt-secret"]
             return self._json(200, {"access_token": "at2"})
         if u.path == "/revoke":
@@ -107,6 +110,10 @@ def test_connect_publish_disconnect(make_client, google, fixtures_media):
     r2 = c.get("/api/v1/youtube/callback", params={"code": "good-code", "state": "forged"}, follow_redirects=False)
     assert r2.headers["location"].endswith("youtube=bad_state")
     c.cookies.set("yt_oauth_state", r.cookies.get("yt_oauth_state"), path="/api/v1/youtube")
+    # boxes left unticked on Google's screen -> a clear message, nothing stored
+    rp = c.get("/api/v1/youtube/callback", params={"code": "boxes-unticked", "state": q["state"][0]}, follow_redirects=False)
+    assert rp.headers["location"].endswith("youtube=missing_scopes"), rp.headers["location"]
+    assert not c.get("/api/v1/youtube/status").json()["connected"]
     r3 = c.get("/api/v1/youtube/callback", params={"code": "good-code", "state": q["state"][0]}, follow_redirects=False)
     assert r3.headers["location"].endswith("youtube=connected"), r3.headers["location"]
     s = c.get("/api/v1/youtube/status").json()

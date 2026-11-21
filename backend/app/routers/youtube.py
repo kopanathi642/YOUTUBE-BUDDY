@@ -57,9 +57,14 @@ def callback(request: Request, code: str | None = None, state: str | None = None
         return back("denied")
     try:
         tok = youtube.exchange_code(code)
+        granted = set((tok.get("scope") or "").split())
+        if tok.get("scope") is not None and not set(youtube.SCOPES.split()) <= granted:
+            return back("missing_scopes")   # Google's consent screen has unticked boxes; Continue without ticking them grants nothing
         if not tok.get("refresh_token"):
             return back("no_refresh")
         ch = youtube.my_channel(tok["access_token"])
+    except youtube.NoChannel:
+        return back("no_channel")
     except youtube.YouTubeError:
         return back("failed")
     c = db.scalar(select(YouTubeConnection).where(YouTubeConnection.user_id == user.id))

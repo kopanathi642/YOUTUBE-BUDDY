@@ -30,6 +30,10 @@ class YouTubeError(Exception):
     pass
 
 
+class NoChannel(YouTubeError):
+    """The Google account signed in fine but has no YouTube channel."""
+
+
 def _fernet() -> Fernet | None:
     s = get_settings()
     if s.token_encryption_key:
@@ -109,7 +113,7 @@ def my_channel(token: str) -> dict:
                          headers={"Authorization": f"Bearer {token}"}, timeout=20), "channel lookup")
     items = d.get("items") or []
     if not items:
-        raise YouTubeError("This Google account has no YouTube channel yet — create one on youtube.com first")
+        raise NoChannel("This Google account has no YouTube channel yet — create one on youtube.com first")
     return {"id": items[0]["id"], "title": items[0]["snippet"]["title"]}
 
 
