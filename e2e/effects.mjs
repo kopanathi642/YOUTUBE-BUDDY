@@ -161,7 +161,7 @@ await step("Fairlight audio: 'Clear Voice' preset + Echo on the music clip", asy
   await page.locator('[data-track="a2"] .clip').first().click();
   await page.click(".ed-insp [role=tab]:has-text('Effects')");
   await page.click(".afx-presets button:has-text('Clear Voice')"); await page.waitForTimeout(200);
-  const sel = page.locator("select[aria-label*='audio' i]").first();
+  const sel = page.locator("select[aria-label='Add an audio effect']");
   await sel.selectOption("echo"); await page.waitForTimeout(200);
   const txt = await page.locator(".ed-insp").innerText();
   for (const n of ["High-pass", "De-Hum", "Compressor", "Echo"]) if (!txt.includes(n)) throw new Error("missing " + n);
