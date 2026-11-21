@@ -93,6 +93,8 @@ def _check(r: httpx.Response, what: str) -> dict:
         if what == "channel lookup" and ("youtubeSignupRequired" in reasons or "channelNotFound" in reasons):
             # Google answers 401 when the signed-in account has no YouTube channel (or the channel lives on a Brand Account)
             raise NoChannel("This Google account has no YouTube channel yet — create one on youtube.com first")
+        if what == "channel lookup" and r.status_code == 403 and "suspended" in str(msg).lower():
+            raise YouTubeError("YouTube says this Google account's YouTube is suspended or turned off. Connect with the Google account that owns your channel instead")
         if r.status_code == 403 and ("accessNotConfigured" in reasons or "has not been used in project" in str(msg)):
             raise YouTubeError("The YouTube Data API is switched off for this app's Google Cloud project — the site owner needs to enable it")
         if r.status_code in (400, 401) and what == "refresh":
