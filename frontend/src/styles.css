@@ -251,3 +251,6 @@ footer.land-foot { border-top: 1px solid var(--line); padding: 24px 32px; color:
 .ch-vt { font-size: 13px; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 @media (max-width: 560px) { .ch-bar { grid-template-columns: 84px 1fr 70px; } .ch-stat { align-items: flex-start; } .ch-vids { grid-template-columns: 1fr 1fr; gap: 10px; } .ch-head { gap: 12px; } }
 .spin { animation: spin 1s linear infinite; }
+.ch-linkform { display: flex; gap: 8px; width: 100%; max-width: 480px; flex-wrap: wrap; }
+.ch-linkform input { flex: 1 1 220px; min-width: 0; }
+.ch-or { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line, rgba(255,255,255,.1)); display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 13px; width: 100%; }

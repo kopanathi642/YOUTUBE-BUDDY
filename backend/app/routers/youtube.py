@@ -98,6 +98,17 @@ def disconnect(request: Request, user: User = Depends(current_user), db: Session
         db.commit()
 
 
+@router.get("/youtube/public-insights")
+def public_insights(channel: str, tz: str = "Asia/Kolkata", refresh: bool = False, user: User = Depends(current_user)):
+    """Channel analysis from a pasted channel link: public numbers only, no Google sign-in (so no 'unverified app' screen)."""
+    if len(tz) > 64:
+        tz = "Asia/Kolkata"
+    try:
+        return channel_insights.public_insights(channel, tz, refresh)
+    except youtube.YouTubeError as e:
+        raise HTTPException(422, str(e))
+
+
 @router.get("/youtube/insights")
 def insights(tz: str = "Asia/Kolkata", refresh: bool = False, user: User = Depends(current_user), db: Session = Depends(get_db)):
     """What works on the user's own channel and an estimate for the next video (rule-based, from their recent uploads)."""

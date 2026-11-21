@@ -6,6 +6,7 @@ uploads and labelled as an estimate. With fewer than MIN_VIDEOS finished videos 
 """
 from __future__ import annotations
 
+import os
 import re
 import statistics
 import threading
@@ -32,7 +33,10 @@ _lock = threading.Lock()
 
 
 def _get(path: str, token: str, **params) -> dict:
-    r = httpx.get(youtube.API_URL() + path, params=params, headers={"Authorization": f"Bearer {token}"}, timeout=20)
+    if token.startswith("key:"):   # public data with the server's free API key (no Google sign-in)
+        r = httpx.get(youtube.API_URL() + path, params={**params, "key": token[4:]}, timeout=20)
+    else:
+        r = httpx.get(youtube.API_URL() + path, params=params, headers={"Authorization": f"Bearer {token}"}, timeout=20)
     return youtube._check(r, "channel read")
 
 
@@ -47,8 +51,9 @@ def _duration_s(iso: str) -> int:
 FULL_CHANNEL_MAX = 500   # whole channel, newest first; 10 pages of 50 = about 20 quota units per refresh
 
 
-def fetch(token: str, max_videos: int = FULL_CHANNEL_MAX) -> dict:
-    ch = _get("/channels", token, part="snippet,statistics,contentDetails", mine="true").get("items") or []
+def fetch(token: str, max_videos: int = FULL_CHANNEL_MAX, channel_id: str | None = None) -> dict:
+    who = {"id": channel_id} if channel_id else {"mine": "true"}
+    ch = _get("/channels", token, part="snippet,statistics,contentDetails", **who).get("items") or []
     if not ch:
         raise youtube.YouTubeError("This Google account has no YouTube channel yet")
     c = ch[0]
@@ -124,9 +129,10 @@ def analyze(data: dict, tz: str = "Asia/Kolkata", now: datetime | None = None) -
             continue
         age = max((now - pub).total_seconds() / 86400, 0.0)
         local = pub.astimezone(zone)
-        vids.append({**v, "age_days": round(age, 1), "weekday": local.weekday(), "hour": local.hour,
-                     "format": "short" if 0 < v["duration_s"] <= SHORT_MAX_S else "long",
-                     "engagement": round(100 * (v["likes"] + v["comments"]) / v["views"], 2) if v["views"] else 0.0})
+        dur = v.get("duration_s")
+        fmt = "video" if dur is None else ("short" if 0 < dur <= SHORT_MAX_S else "long")   # the public feed has no durations
+        vids.append({**v, "age_days": round(age, 1), "weekday": local.weekday(), "hour": local.hour, "format": fmt,
+                     "engagement": round(100 * ((v.get("likes") or 0) + (v.get("comments") or 0)) / v["views"], 2) if v["views"] else 0.0})
     vids.sort(key=lambda v: v["published_at"], reverse=True)
     mature = [v for v in vids if v["age_days"] >= MATURE_DAYS]
     out = {"channel": data["channel"], "timezone": tz, "analysed_videos": len(vids), "mature_videos": len(mature),
@@ -158,8 +164,9 @@ def analyze(data: dict, tz: str = "Asia/Kolkata", now: datetime | None = None) -
 
     out["by_weekday"] = groups(lambda v: v["weekday"], lambda k: WEEKDAYS[k])
     out["by_time"] = groups(lambda v: v["hour"] // 3, lambda k: f"{k * 3:02d}:00–{k * 3 + 3:02d}:00")
-    out["by_length"] = groups(lambda v: _len_bucket(v["duration_s"]), lambda k: k)
-    out["by_format"] = groups(lambda v: v["format"], lambda k: {"short": "Shorts", "long": "Long videos"}[k])
+    has_dur = all(v.get("duration_s") is not None for v in mature)
+    out["by_length"] = groups(lambda v: _len_bucket(v["duration_s"]), lambda k: k) if has_dur else []
+    out["by_format"] = groups(lambda v: v["format"], lambda k: {"short": "Shorts", "long": "Long videos"}[k]) if has_dur else []
 
     wv = defaultdict(list)
     for v in mature:
@@ -176,7 +183,7 @@ def analyze(data: dict, tz: str = "Asia/Kolkata", now: datetime | None = None) -
     # next-video estimate: the format the channel posts most recently, from the last 15 mature videos of that format
     fmt = vids[0]["format"]
     same = [v["views"] for v in mature if v["format"] == fmt][:15] or views[:15]
-    pred = {"format": {"short": "Short", "long": "Long video"}[fmt], "based_on": len(same),
+    pred = {"format": {"short": "Short", "long": "Long video", "video": "Video"}[fmt], "based_on": len(same),
             "low": round(_q(same, .25)), "typical": round(statistics.median(same)), "high": round(_q(same, .75)),
             "window_days": 30, "confidence": "low" if len(same) < 8 else ("medium" if len(same) < 15 else "fair")}
     trend = None
@@ -230,3 +237,75 @@ def insights(user_id: str, refresh_token: str, tz: str, refresh: bool = False) -
 def forget(user_id: str) -> None:
     with _lock:
         _cache.pop(user_id, None)
+
+
+# ---------------------------------------------------------------- public analysis by channel link (no Google sign-in)
+PAGE = lambda: os.environ.get("YT_PAGE_URL", "https://www.youtube.com")   # noqa: E731
+FEED_MAX = 15   # YouTube's public feed lists the latest 15 uploads
+
+
+def resolve_channel(ref: str) -> str:
+    """Channel ID from what a creator can easily copy: a channel link, an @handle (or its link), or the UC… ID itself."""
+    ref = (ref or "").strip()[:300]
+    m = re.search(r"(UC[0-9A-Za-z_-]{22})", ref)
+    if m:
+        return m.group(1)
+    h = re.search(r"@([A-Za-z0-9._-]{3,30})", ref)
+    c = re.search(r"youtube\.com/(c|user)/([A-Za-z0-9._-]{1,100})", ref)
+    if not h and not c:
+        if re.fullmatch(r"[A-Za-z0-9._-]{3,30}", ref):
+            h = re.match(r"(.*)", ref)   # a bare handle without the @
+        else:
+            raise youtube.YouTubeError("Paste your channel link (like youtube.com/@yourname) or your @handle")
+    path = f"/@{h.group(1)}" if h else f"/{c.group(1)}/{c.group(2)}"
+    key = os.environ.get("YOUTUBE_API_KEY")
+    if h and key:
+        d = _get("/channels", "key:" + key, part="id", forHandle="@" + h.group(1))
+        if d.get("items"):
+            return d["items"][0]["id"]
+        raise youtube.YouTubeError(f"No YouTube channel found for @{h.group(1)}")
+    try:   # no key: read the channel page itself, which names its channel ID
+        r = httpx.get(PAGE() + path, headers={"User-Agent": "Mozilla/5.0", "Accept-Language": "en"}, timeout=20, follow_redirects=True)
+    except httpx.HTTPError as e:
+        raise youtube.YouTubeError(f"YouTube could not be reached ({type(e).__name__})")
+    if r.status_code == 404:
+        raise youtube.YouTubeError(f"No YouTube channel found at youtube.com{path}")
+    m = re.search(r'"(?:externalId|channelId)":"(UC[0-9A-Za-z_-]{22})"', r.text) or re.search(r"/channel/(UC[0-9A-Za-z_-]{22})", r.text)
+    if not m:
+        raise youtube.YouTubeError("Couldn't find that channel — paste the link from your channel page")
+    return m.group(1)
+
+
+def _from_feed(channel_id: str) -> dict:
+    from .growth_engine import GrowthError, fetch_feed
+    try:
+        f = fetch_feed(channel_id)
+    except GrowthError as e:
+        raise youtube.YouTubeError(str(e))
+    vids = [{"id": v["id"], "title": v["title"], "published_at": v["published_at"].isoformat(),
+             "thumbnail": f"https://i.ytimg.com/vi/{v['id']}/mqdefault.jpg", "duration_s": None,
+             "views": v["views"], "likes": v["likes"] or 0, "comments": None} for v in f["videos"]]
+    return {"channel": {"id": channel_id, "title": f["title"], "thumbnail": None, "subscribers": None, "views": None, "videos": None},
+            "videos": vids, "limited": True}
+
+
+def public_insights(ref: str, tz: str, refresh: bool = False) -> dict:
+    """What works on any channel, from public numbers only. Full channel with YOUTUBE_API_KEY, else the latest 15 uploads."""
+    cid = resolve_channel(ref)
+    ck = "pub:" + cid
+    with _lock:
+        hit = _cache.get(ck)
+    if hit and time.time() - hit[0] < (60 if refresh else CACHE_S):
+        data = hit[1]
+    else:
+        key = os.environ.get("YOUTUBE_API_KEY")
+        data = fetch("key:" + key, channel_id=cid) if key else _from_feed(cid)
+        with _lock:
+            _cache[ck] = (time.time(), data)
+    res = analyze(data, tz)
+    res["source"] = "public"
+    if data.get("limited"):
+        res["method"] = (f"Computed from your latest {len(data['videos'])} public uploads (YouTube's public feed shows the newest {FEED_MAX}). "
+                         + res["method"].split(". ", 1)[1])
+    res["fetched_at"] = datetime.fromtimestamp((_cache.get(ck) or (time.time(),))[0], timezone.utc).isoformat()
+    return res

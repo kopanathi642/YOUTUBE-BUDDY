@@ -8,9 +8,10 @@ import { ytStatus } from "../components/ChannelButton";
 import type { YtStatus } from "../components/YouTubeCard";
 
 type Row = { label: string; videos: number; median_views: number; vs_channel: number | null };
-type Vid = { id: string; title: string; published_at: string; thumbnail: string | null; duration_s: number; views: number; likes: number; comments: number; engagement: number; format: string; age_days: number };
+type Vid = { id: string; title: string; published_at: string; thumbnail: string | null; duration_s: number | null; views: number; likes: number; comments: number; engagement: number; format: string; age_days: number };
 export type Insights = {
-  channel: { id: string; title: string; thumbnail: string | null; subscribers: number | null; views: number; videos: number };
+  source?: "public";
+  channel: { id: string; title: string; thumbnail: string | null; subscribers: number | null; views: number | null; videos: number | null };
   timezone: string; analysed_videos: number; mature_videos: number; enough_data: boolean; message?: string; method: string; fetched_at: string;
   recent: Vid[];
   summary?: { median_views: number; p25_views: number; p75_views: number; median_engagement: number; upload_every_days: number | null };
@@ -26,7 +27,7 @@ const MSG: Record<string, string> = { connected: "YouTube channel connected", de
   no_channel: "That Google account has no YouTube channel yet. Create one at youtube.com, or connect the account that owns your channel" };
 
 export const num = (n: number | null | undefined) => n == null ? "—" : n >= 1e7 ? `${(n / 1e7).toFixed(1)} Cr` : n >= 1e5 ? `${(n / 1e5).toFixed(1)} L` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}K` : String(Math.round(n));
-const dur = (s: number) => s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+const dur = (s: number | null) => s == null ? "" : s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
 function Bars({ title, icon, rows }: { title: string; icon: React.ReactNode; rows?: Row[] }) {
   if (!rows?.length) return null;
@@ -51,8 +52,19 @@ export default function Channel() {
   const toast = useToast();
   const [st, setSt] = useState<YtStatus | null | undefined>(undefined);
   const [d, setD] = useState<Insights | null>(null), [err, setErr] = useState(""), [busy, setBusy] = useState(false);
-  const [connErr, setConnErr] = useState("");
   const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata"; } catch { return "Asia/Kolkata"; } })();
+  const [connErr, setConnErr] = useState("");
+  const REF_KEY = "cu-channel-ref";
+  const [ref, setRef] = useState(() => { try { return localStorage.getItem(REF_KEY) ?? ""; } catch { return ""; } });
+  const [pub, setPub] = useState(false);
+  const loadPublic = useCallback(async (channel: string, refresh = false) => {
+    if (!channel.trim()) return;
+    setBusy(true); setErr("");
+    try {
+      setD(await api<Insights>(`/youtube/public-insights?channel=${encodeURIComponent(channel.trim())}&tz=${encodeURIComponent(tz)}${refresh ? "&refresh=true" : ""}`));
+      setPub(true); try { localStorage.setItem(REF_KEY, channel.trim()); } catch { /* storage off */ }
+    } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
+  }, [tz]);
   const load = useCallback(async (refresh = false) => {
     setBusy(true); setErr("");
     try { setD(await api<Insights>(`/youtube/insights?tz=${encodeURIComponent(tz)}${refresh ? "&refresh=true" : ""}`)); }
@@ -61,7 +73,7 @@ export default function Channel() {
   useEffect(() => {
     const r = new URLSearchParams(location.search).get("youtube");
     if (r && MSG[r]) { const why = new URLSearchParams(location.search).get("why"); const m = MSG[r] + (why ? `: ${why}` : ""); toast(m); if (r !== "connected" && r !== "denied") setConnErr(m); history.replaceState(null, "", location.pathname); }
-    ytStatus(!!r).then((s) => { setSt(s); if (s?.connected) load(); });
+    ytStatus(!!r).then((s) => { setSt(s); if (s?.connected) load(); else if (ref) loadPublic(ref); });
   }, [load]); // eslint-disable-line react-hooks/exhaustive-deps
   async function connect() {
     setBusy(true);
@@ -73,20 +85,27 @@ export default function Channel() {
     <UniverseShell u={null}>
       <div className="page-h"><div><h1 className="row" style={{ gap: 10 }}><Youtube size={26} color="#ff3b3b" />My channel</h1>
         <div className="muted">Understand what works on your channel and what to expect from your next video.</div></div>
-        {st?.connected && <button className="btn" onClick={() => load(true)} disabled={busy}><RefreshCw size={14} className={busy ? "spin" : ""} />Refresh</button>}
+        {(st?.connected || pub) && <button className="btn" onClick={() => st?.connected ? load(true) : loadPublic(ref, true)} disabled={busy}><RefreshCw size={14} className={busy ? "spin" : ""} />Refresh</button>}
       </div>
 
       {st === undefined && <div className="spinner" />}
       {st === null && <div className="card empty">Couldn't check your YouTube connection. Try again in a moment.</div>}
-      {st && !st.configured && <div className="card ch-card"><b>YouTube isn't set up on this server yet.</b>
+      {st && !st.configured && me?.is_platform_admin && <div className="card ch-card"><b>Google connect (for publishing) isn't set up on this server yet.</b>
         <div className="dim" style={{ marginTop: 6, fontSize: 13 }}>{me?.is_platform_admin ? <>Add {st.missing.join(", ")} to the server's environment (see docs/GO_LIVE_GOOGLE.md). Authorised redirect URI: <span className="mono">{st.redirect_uri}</span></> : "It will appear here as soon as it's available."}</div></div>}
-      {st?.configured && !st.connected && <div className="card ch-connect">
+      {st !== undefined && !st?.connected && !(pub && d) && <div className="card ch-connect">
         <Youtube size={44} color="#ff3b3b" />
-        <h2>Connect your YouTube channel</h2>
-        <p className="dim">We read your own channel's public numbers (views, likes, comments, upload times) to show what works and estimate your next video's views.
-          The same connection lets you publish exports straight to YouTube. We store an encrypted access key — never your password — and you can disconnect any time in Settings.</p>
-        {connErr && <p className="ch-connerr" role="alert">{connErr}</p>}
-        <button className="btn primary" onClick={connect} disabled={busy}><Link2 size={15} />Connect with Google</button>
+        <h2>Analyse your YouTube channel</h2>
+        <p className="dim">Paste your channel link or @handle. We read its public numbers (views, likes, upload times) to show what works and estimate your next video's views.
+          No Google sign-in needed.</p>
+        <form className="ch-linkform" onSubmit={(e) => { e.preventDefault(); loadPublic(ref); }}>
+          <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="youtube.com/@yourchannel" aria-label="Your channel link or @handle" maxLength={300} />
+          <button className="btn primary" disabled={busy || !ref.trim()}>{busy ? <RefreshCw size={15} className="spin" /> : <TrendingUp size={15} />}Analyse</button>
+        </form>
+        {st?.configured && <div className="ch-or">
+          <span className="dim">Want to publish videos to YouTube straight from your exports?</span>
+          {connErr && <p className="ch-connerr" role="alert">{connErr}</p>}
+          <button className="btn sm" onClick={connect} disabled={busy}><Link2 size={14} />Connect with Google</button>
+        </div>}
       </div>}
 
       {err && <div className="card empty" role="alert">{err}</div>}
@@ -96,9 +115,11 @@ export default function Channel() {
           {d.channel.thumbnail ? <img src={d.channel.thumbnail} alt="" className="ch-avatar" referrerPolicy="no-referrer" /> : <Youtube size={40} color="#ff3b3b" />}
           <div className="grow"><h2 style={{ margin: 0 }}>{d.channel.title}</h2>
             <a className="dim" style={{ fontSize: 12 }} href={`https://www.youtube.com/channel/${d.channel.id}`} target="_blank" rel="noreferrer noopener">Open on YouTube ↗</a></div>
-          <div className="ch-stat"><b>{d.channel.subscribers == null ? "hidden" : num(d.channel.subscribers)}</b><span>subscribers</span></div>
-          <div className="ch-stat"><b>{num(d.channel.views)}</b><span>total views</span></div>
-          <div className="ch-stat"><b>{num(d.channel.videos)}</b><span>videos</span></div>
+          {d.source !== "public" || d.channel.views != null ? <>
+            <div className="ch-stat"><b>{d.channel.subscribers == null ? "hidden" : num(d.channel.subscribers)}</b><span>subscribers</span></div>
+            <div className="ch-stat"><b>{num(d.channel.views)}</b><span>total views</span></div>
+            <div className="ch-stat"><b>{num(d.channel.videos)}</b><span>videos</span></div></> : null}
+          {pub && !st?.connected && <button className="btn sm ghost" onClick={() => { setD(null); setPub(false); }}>Change channel</button>}
         </section>
 
         {!d.enough_data ? <div className="card ch-card"><Info size={16} /> {d.message}</div> : <>
@@ -144,7 +165,7 @@ export default function Channel() {
           <div className="row ch-h"><Youtube size={16} color="#ff3b3b" /><b>Recent uploads</b></div>
           <div className="ch-vids">{d.recent.map((v) => (
             <a key={v.id} className="ch-vid" href={`https://youtu.be/${v.id}`} target="_blank" rel="noreferrer noopener">
-              <div className="ch-thumb">{v.thumbnail && <img src={v.thumbnail} alt="" loading="lazy" referrerPolicy="no-referrer" />}<span>{v.format === "short" ? "Short" : dur(v.duration_s)}</span></div>
+              <div className="ch-thumb">{v.thumbnail && <img src={v.thumbnail} alt="" loading="lazy" referrerPolicy="no-referrer" />}{v.format !== "video" && <span>{v.format === "short" ? "Short" : dur(v.duration_s)}</span>}</div>
               <div className="ch-vt">{v.title}</div>
               <div className="dim" style={{ fontSize: 11.5 }}>{num(v.views)} views · {v.age_days < 1 ? "today" : `${Math.round(v.age_days)} d ago`}{v.age_days < 3 && " · still counting"}</div>
             </a>))}

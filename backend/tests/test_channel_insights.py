@@ -117,3 +117,70 @@ def test_fetch_reads_the_whole_channel_page_by_page(monkeypatch):
     assert [c[1] for c in calls if c[0] == "/playlistItems"] == [None, "50", "100"]
     assert [c[2] for c in calls if c[0] == "/videos"] == [50, 50, 20]
     assert len(ci.fetch("tok", max_videos=60)["videos"]) == 60
+
+
+# ---- analysis by channel link: no Google sign-in, public numbers only
+def _feed_videos(n=10):
+    return [{"id": f"f{i}", "title": ("Goa travel vlog " if i % 3 == 0 else "Daily routine ") + str(i),
+             "published_at": datetime.now(timezone.utc) - timedelta(days=4 + 7 * i), "views": 9000 if i % 3 == 0 else 3000,
+             "likes": 100, "description": ""} for i in range(n)]
+
+
+def test_resolve_channel_from_links_and_handles(monkeypatch):
+    cid = "UC" + "a" * 22
+    assert ci.resolve_channel(f"https://www.youtube.com/channel/{cid}?si=x") == cid
+    pages = []
+
+    class R:
+        status_code = 200
+        text = '<html>…"externalId":"' + cid + '"…</html>'
+
+    def fake_get(url, **kw):
+        pages.append(url)
+        return R()
+    monkeypatch.delenv("YOUTUBE_API_KEY", raising=False)
+    monkeypatch.setattr(ci.httpx, "get", fake_get)
+    for ref in ["@AnimalKids", "https://youtube.com/@AnimalKids", "AnimalKids", "https://www.youtube.com/c/AnimalKids"]:
+        assert ci.resolve_channel(ref) == cid
+    assert pages[0].endswith("/@AnimalKids") and pages[-1].endswith("/c/AnimalKids")
+    import pytest
+    from app import youtube
+    with pytest.raises(youtube.YouTubeError):
+        ci.resolve_channel("not a channel at all!!")
+
+
+def test_public_insights_from_feed_without_key(make_client, monkeypatch):
+    from app import growth_engine as ge
+    cid = "UC" + "b" * 22
+    monkeypatch.delenv("YOUTUBE_API_KEY", raising=False)
+    monkeypatch.setattr(ge, "fetch_feed", lambda c: {"title": "Animal Kids", "videos": _feed_videos()})
+    ci._cache.clear()
+    c = make_client(); signup(c)
+    r = c.get("/api/v1/youtube/public-insights", params={"channel": f"youtube.com/channel/{cid}"})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["source"] == "public" and d["channel"]["title"] == "Animal Kids" and d["enough_data"]
+    assert d["next_video"]["format"] == "Video" and d["by_length"] == [] and "latest 10" in d["method"]
+    assert any("goa" in t.lower() for t in d["tips"])
+    assert c.get("/api/v1/youtube/public-insights", params={"channel": "??"}).status_code == 422
+
+
+def test_public_insights_uses_full_channel_with_key(monkeypatch):
+    cid = "UC" + "c" * 22
+    monkeypatch.setenv("YOUTUBE_API_KEY", "k123")
+    calls = []
+
+    def fake_get(path, token, **params):
+        calls.append((path, token, params))
+        if path == "/channels":
+            assert params.get("id") == cid and "mine" not in params
+            return {"items": [{"id": cid, "snippet": {"title": "Full"}, "statistics": {"subscriberCount": "5", "viewCount": "9", "videoCount": "1"},
+                               "contentDetails": {"relatedPlaylists": {"uploads": "UU1"}}}]}
+        if path == "/playlistItems":
+            return {"items": [{"contentDetails": {"videoId": "x1"}}]}
+        return {"items": [{"id": "x1", "snippet": {"title": "t", "publishedAt": "2026-01-01T00:00:00Z"}, "statistics": {"viewCount": "10"},
+                           "contentDetails": {"duration": "PT5M"}}]}
+    monkeypatch.setattr(ci, "_get", fake_get)
+    ci._cache.clear()
+    d = ci.public_insights(cid, "Asia/Kolkata")
+    assert d["channel"]["subscribers"] == 5 and all(t == "key:k123" for _, t, _ in calls)
