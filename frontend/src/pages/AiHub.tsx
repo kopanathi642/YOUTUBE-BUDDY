@@ -128,11 +128,11 @@ export function AiExplorer() {
           <select className="input sm" value={engine} onChange={(e) => setF("engine", e.target.value)} aria-label="Engine"><option value="">Any engine</option>{Object.entries(ENGINE_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
         </div>
         {grid ? <div className="tgrid">{list.map((t) => <ToolCard key={t.id} t={t} />)}</div> : (
-          <table className="ex-table"><thead><tr><th>ID</th><th>Tool</th><th>Studio</th><th>Engine</th><th>Models</th><th>Output</th><th>Status</th></tr></thead>
+          <div className="ex-scroll"><table className="ex-table"><thead><tr><th>ID</th><th>Tool</th><th>Studio</th><th>Engine</th><th>Models</th><th>Output</th><th>Status</th></tr></thead>
             <tbody>{list.map((t) => <tr key={t.id}><td className="mono">{t.id}</td><td><Link to={`/ai-generator/tool/${t.id}`}><b>{t.name}</b></Link><small className="dim">{t.summary}</small></td>
               <td>{cat?.studios.find((s) => s.id === t.studio)?.code}</td><td className="small">{ENGINE_LABEL[t.engine]}</td>
               <td className="small dim">{t.models.map((m) => m.label.split(" (")[0]).slice(0, 3).join(", ") || "—"}</td><td className="small">{t.output}{t.timeline ? " · timeline" : ""}</td>
-              <td><StateDot t={t} />{t.status.state === "needs_key" && <small className="dim">{t.status.needs.join(", ")}</small>}</td></tr>)}</tbody></table>)}
+              <td><StateDot t={t} />{t.status.state === "needs_key" && <small className="dim">{t.status.needs.join(", ")}</small>}</td></tr>)}</tbody></table></div>)}
       </div>
     </Frame>
   );

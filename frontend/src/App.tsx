@@ -137,7 +137,7 @@ export default function App() {
           <Route path="/projects" element={<LegacyProjects />} />
           <Route path="/edit/:projectId" element={<Private bare><Editor /></Private>} />
           <Route path="/shorts/:projectId" element={<Private bare><ShortsStudio /></Private>} />
-          <Route path="*" element={<div className="auth-wrap"><div className="card auth-card"><h2>Page not found</h2><a className="btn" href="/universes">Go to universes</a></div></div>} />
+          <Route path="*" element={<div className="auth-wrap"><div className="card auth-card"><h2>Page not found</h2><p className="muted">This address doesn't exist on Creator Universe. It may have moved, or there may be a typo in the link.</p><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><a className="btn primary" href="/universes">Go to universes</a><a className="btn" href="/">Home page</a></div></div></div>} />
         </Routes>
         </Suspense>
       </Providers>

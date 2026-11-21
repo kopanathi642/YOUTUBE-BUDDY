@@ -499,6 +499,7 @@
 .aiw .sf-need { color: #fcd34d; font-size: 11px; }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
 .aiw .ex-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; } .aiw .ex-filters select { width: auto; }
+.aiw .explorer > * { min-width: 0; } .aiw .ex-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .aiw .ex-table { width: 100%; border-collapse: collapse; font-size: 13px; } .aiw .ex-table th { text-align: left; font-size: 11.5px; color: var(--text-3); padding: 6px 8px; border-bottom: 1px solid var(--edge); }
 .aiw .ex-table td { padding: 8px; border-bottom: 1px solid rgba(167,139,250,.07); vertical-align: top; } .aiw .ex-table td small { display: block; }/* responsive: laptops stack the right rail under; narrow screens go single column */
 
@@ -514,7 +515,7 @@
   .aiw .nodes { grid-template-columns: 200px minmax(0, 1fr) 230px; }
 }
 @media (max-width: 860px) {
-  .aiw .aiw-body { grid-template-columns: 1fr; } .aiw .aiw-rail { position: static; height: auto; flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--edge); padding: 6px; }
+  .aiw .aiw-body { grid-template-columns: minmax(0, 1fr); } .aiw .aiw-rail { min-width: 0; position: static; height: auto; flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--edge); padding: 6px; }
   .aiw .L { grid-template-columns: 1fr !important; grid-template-areas: none !important; } .aiw .L > * { grid-area: auto !important; }
   .aiw .nodes { grid-template-columns: 1fr; } .aiw .nodes-pal, .aiw .nodes-insp { max-height: 240px; }
   .aiw .lane { grid-template-columns: 110px 1fr; }
