@@ -59,7 +59,7 @@ def test_health_check_reports_ok():
     with session_factory()() as db:
         h = agent.health(db)
     assert h["data"]["checks"] == {"database": True, "storage": True, "ffmpeg": True}
-    assert h["data"]["ai_tools_total"] == 120
+    assert h["data"]["ai_tools_total"] == 121
 
 
 def test_research_free_mode_finds_problems_and_survives_dead_feed(feeds):

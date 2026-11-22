@@ -1086,3 +1086,5 @@ LOCAL = {f.__name__: f for f in [
 
 from .local_more import HANDLERS as _MORE  # noqa: E402  (free engines added later; they import helpers from this module)
 LOCAL.update({f.__name__: f for f in _MORE})
+from .ad_editor import ad_edit as _ad_edit  # noqa: E402
+LOCAL["ad_edit"] = _ad_edit

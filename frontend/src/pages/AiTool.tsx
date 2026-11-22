@@ -119,6 +119,14 @@ function Workspace({ t, tools, studios }: { t: Tool; tools: Tool[]; studios: any
   };
   const restore = (h: Generation) => { setV({ ...defaults(t), ...h.params }); if (h.model && t.models.some((m) => m.id === h.model)) setModel(h.model); };
   const onUse = (k: string, val: any) => {
+    if (k === "_revise" && g) {   // AI Ad Editor: same inputs + the earlier run + what to change; analysis is reused server-side
+      if (!pid) return;
+      setBusy(true);
+      api<Generation>(`/projects/${pid}/ai/tools/${t.id}/run`, { method: "POST", body: { params: { ...g.params, previous: g.id, changes: String(val).slice(0, 300) }, model, parent_id: g.id },
+        headers: { "idempotency-key": crypto.randomUUID() } })
+        .then((r) => { setCur(r.id); setHistory((h) => [r, ...h]); }).catch((e) => toast((e as Error).message)).finally(() => setBusy(false));
+      return;
+    }
     if (k === "_to_film") { try { sessionStorage.setItem("cu.film.load", JSON.stringify(val.map((s: any) => ({ prompt: s.prompt, camera_move: s.camera_move, duration: Math.min(10, Math.max(5, s.duration)) })).slice(0, 8))); } catch { /* */ } nav("/ai-generator/tool/005"); return; }
     if (k === "_to_workflow") { try { sessionStorage.setItem("cu.wf.load", JSON.stringify(val)); } catch { /* */ } nav("/ai-generator/tool/111"); return; }
     if (k === "prompt") { try { sessionStorage.setItem(VKEY("001"), JSON.stringify({ ...defaults(tools.find((x) => x.id === "001")!), prompt: val })); } catch { /* */ } nav("/ai-generator/tool/001"); }
@@ -200,6 +208,7 @@ function Workspace({ t, tools, studios }: { t: Tool; tools: Tool[]; studios: any
 }
 
 const TASK_ACTION: Record<string, string> = {
+  "121": "Make the ad",
   "023": "Remove background", "041": "Create voice-over", "093": "Cut silences", "101": "Transcribe speech",
   "102": "Translate subtitles", "103": "Add captions", "104": "Dub video", "112": "Make Shorts",
 };

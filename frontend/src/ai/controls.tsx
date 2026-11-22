@@ -335,10 +335,10 @@ export function MediaBoard({ p, value, onChange, c }: { p: Param; value: string[
   return (
     <div className="board">
       <div className="board-slots">
-        {Array.from({ length: max }).map((_, i) => { const a = c.media.find((m) => m.id === sel[i]); return (
+        {Array.from({ length: max <= 4 ? max : Math.min(max, Math.max(4, sel.length + 1)) }).map((_, i) => { const a = c.media.find((m) => m.id === sel[i]); return (
           <div key={i} className={`board-slot ${a ? "has" : ""}`}>
             {a ? <><Thumb a={a} size={110} /><button type="button" className="board-x" aria-label="Remove" onClick={() => onChange(sel.filter((x) => x !== a.id))}><X size={12} /></button></>
-              : <span className="dim">Ref {i + 1}</span>}
+              : <span className="dim">{acc.includes("video") ? (i === sel.length ? "Pick below" : "") : `Ref ${i + 1}`}</span>}
           </div>); })}
       </div>
       <div className="board-pick">
@@ -512,7 +512,7 @@ export function Control({ p, c, flavor, compact }: { p: Param; c: Ctx; flavor?: 
 }
 
 export function Controls({ c, keys, skip = [], flavor, compact }: { c: Ctx; keys?: string[]; skip?: string[]; flavor?: string; compact?: boolean }) {
-  const ps = useMemo(() => (keys ? keys.map((k) => c.tool.params.find((p) => p.key === k)).filter(Boolean) as Param[] : c.tool.params.filter((p) => !skip.includes(p.key) && p.group !== "advanced")), [c.tool, keys, skip]);
+  const ps = useMemo(() => (keys ? keys.map((k) => c.tool.params.find((p) => p.key === k)).filter(Boolean) as Param[] : c.tool.params.filter((p) => !skip.includes(p.key) && p.group !== "advanced" && p.group !== "hidden")), [c.tool, keys, skip]);
   return <>{ps.map((p) => <Control key={p.key} p={p} c={c} flavor={flavor} compact={compact} />)}</>;
 }
 

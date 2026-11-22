@@ -79,11 +79,11 @@ def env(clip, photo, music):
 def test_registry_has_exactly_120_tools_in_12_studios(env):
     c = env["c"]
     cat = c.get("/api/v1/ai/tools").json()
-    assert len(cat["tools"]) == 120 and len(cat["studios"]) == 12
-    assert [t["id"] for t in cat["tools"]] == [f"{i:03d}" for i in range(1, 121)]
+    assert len(cat["tools"]) == 121 and len(cat["studios"]) == 12
+    assert [t["id"] for t in cat["tools"]] == [f"{i:03d}" for i in range(1, 122)]
     for s in cat["studios"]:
-        assert sum(1 for t in cat["tools"] if t["studio"] == s["id"]) == 10
-    assert len({t["slug"] for t in cat["tools"]}) == 120
+        assert sum(1 for t in cat["tools"] if t["studio"] == s["id"]) == (11 if s["id"] == "creator" else 10)
+    assert len({t["slug"] for t in cat["tools"]}) == 121
     # every non-ready tool says exactly what it needs; nothing is silently hidden
     for t in cat["tools"]:
         st = t["status"]
@@ -488,9 +488,9 @@ def test_public_studios_needs_no_login_and_counts_honestly(make_client, monkeypa
     r = client.get("/api/v1/public/studios")
     assert r.status_code == 200
     d = r.json()
-    assert len(d["studios"]) == 12 and d["total"] == 120
-    assert sum(s["total"] for s in d["studios"]) == 120
-    assert 0 < d["live"] < 120  # local tools are live; key-only tools are not
+    assert len(d["studios"]) == 12 and d["total"] == 121
+    assert sum(s["total"] for s in d["studios"]) == 121
+    assert 0 < d["live"] < 121  # local tools are live; key-only tools are not
     for s in d["studios"]:
         assert s["live"] == len(s["live_tools"]) <= s["total"]
     monkeypatch.setenv("FAL_KEY", "x")

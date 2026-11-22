@@ -160,6 +160,7 @@ export function Result({ g, seek, onUse }: { g: Generation; seek?: (t: number) =
       <pre className="pre">{(r.chapters || []).map((c: any) => `${mmss(c.t)} ${c.title}`).join("\n")}</pre><Copyable text={(r.chapters || []).map((c: any) => `${mmss(c.t)} ${c.title}`).join("\n")}>Copy for YouTube</Copyable></div>;
     case "broll": return <div className="rep"><ul className="findings">{(r.suggestions || []).map((s: any, i: number) => <li key={i}><button type="button" onClick={() => seek?.(s.start)}>{mmss(s.start)}</button>
       <div><b>{s.show}</b><small>{s.why}{s.library_asset_id ? " · from your library" : s.generate_prompt ? ` · generate: “${s.generate_prompt}”` : ""}</small></div></li>)}</ul></div>;
+    case "ad_edit": return <AdEditView g={g} r={r} onUse={onUse} />;
     case "beats": return null;
     case "storyboard": return null;
     case "script": return <div className="rep doc script-doc"><h2>{r.title}</h2>{r.logline && <p className="logline">{r.logline}</p>}
@@ -316,4 +317,32 @@ function Files({ g }: { g: Generation }) {
 export function ErrorBox({ g }: { g: Generation }) {
   if (g.status !== "failed" && g.status !== "canceled") return null;
   return <div className="error-box" role="alert"><AlertTriangle size={15} /> {g.status === "canceled" ? "Cancelled." : g.error}</div>;
+}
+
+
+const SECTION_LABEL: Record<string, string> = { hook: "Hook", build: "Build", climax: "Climax", reveal: "Reveal" };
+/** AI Ad Editor result: what it read from the brief, the checks, every shot and why, open in editor, revise in words. */
+function AdEditView({ g, r, onUse }: { g: Generation; r: any; onUse?: (k: string, v: any) => void }) {
+  const [ask, setAsk] = useState("");
+  const s = r.settings || {};
+  return <div className="rep ad-rep">
+    <div className="rep-kpis"><Kpi l="Length" v={`${s.duration}s`} /><Kpi l="Format" v={s.aspect} /><Kpi l="Look" v={s.look} /><Kpi l="Pace" v={s.pace} />
+      <Kpi l="Cuts" v={r.shots?.length ?? 0} /><Kpi l="Cut on" v={r.music?.used ? `music · ${r.music.bpm} BPM` : "steady grid"} /></div>
+    <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+      {r.sequence_id && <a className="btn sm" href={`/edit/${g.project_id}?seq=${r.sequence_id}`}>Open in editor — change any cut</a>}
+      <span className={`badge ${r.all_checks_ok ? "ok" : "warn"}`}>{r.all_checks_ok ? "All checks passed" : "Some checks need attention"}</span>
+      {r.revision_of && <span className="badge">Revision · analysis reused for {r.analysis_reused} clip{r.analysis_reused === 1 ? "" : "s"}</span>}
+    </div>
+    {onUse && <form className="ad-revise" onSubmit={(e) => { e.preventDefault(); if (ask.trim()) { onUse("_revise", ask.trim()); setAsk(""); } }}>
+      <input className="input" value={ask} maxLength={300} onChange={(e) => setAsk(e.target.value)} aria-label="What should change?"
+        placeholder="What should change? e.g. faster, warmer, 15 seconds, vertical, title: Diwali Sale, different opening" />
+      <button className="btn primary sm" disabled={!ask.trim()}>Revise</button></form>}
+    {r.understood_changes?.length > 0 && <p className="small">Changed: {r.understood_changes.join(" · ")}</p>}
+    <ul className="checks">{(r.checks || []).map((c: any) => <li key={c.check}>{c.ok && !c.warn ? <CheckCircle2 size={15} className="ok" /> : <XCircle size={15} className={c.warn ? "warn" : "bad"} />}<span>{c.check}</span><code>{c.detail}</code></li>)}</ul>
+    {r.brief_reading && <details><summary className="small">How the brief was read</summary><ul className="small">{Object.entries(r.brief_reading).map(([k, v]) => <li key={k}><b>{k}</b>: {String(v)}</li>)}</ul></details>}
+    <table className="rep-t"><thead><tr><th>Part</th><th>Time</th><th>Clip</th><th>Why this shot</th></tr></thead><tbody>
+      {(r.shots || []).map((x: any, i: number) => <tr key={i}><td><span className="badge">{SECTION_LABEL[x.section] ?? x.section}</span></td>
+        <td>{x.timeline_s[0].toFixed(1)}–{x.timeline_s[1].toFixed(1)}s</td><td>{x.clip}</td><td>{x.reason}</td></tr>)}</tbody></table>
+    <p className="dim small">{r.method}</p><p className="dim small">{r.limits}</p>
+  </div>;
 }
