@@ -226,3 +226,17 @@ def test_off_switch_keeps_todays_behaviour(monkeypatch):
     # a hosted key still takes precedence over the GPU worker
     monkeypatch.setenv("LLM_BASE_URL", "")
     assert registry.status(registry.TOOLS[TOOL])["state"] == "ready"
+
+
+def test_tool_status_says_when_gpu_worker_is_offline(monkeypatch):
+    from app import gpu
+    from app.tools import registry as r
+    monkeypatch.setattr(r, "_gpu_llm", lambda: True)
+    for k in ("GROQ_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY"):
+        monkeypatch.delenv(k, raising=False)
+    t = next(t for t in r.TOOLS.values() if t["engine"]["type"] == "llm" and t["id"] in r.local_llm_tools())
+    monkeypatch.setattr(gpu, "online_now", lambda: False)
+    s = r.status(t)
+    assert s["state"] == "ready" and s["gpu_offline"] and "offline right now" in s["notice"]
+    monkeypatch.setattr(gpu, "online_now", lambda: True)
+    assert "gpu_offline" not in r.status(t)

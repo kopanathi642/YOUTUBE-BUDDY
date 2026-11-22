@@ -166,7 +166,7 @@ function Workspace({ t, tools, studios }: { t: Tool; tools: Tool[]; studios: any
         <Link to={`/ai-generator/studio/${t.studio}`} className="btn icon ghost" aria-label="Back to studio"><ArrowLeft size={16} /></Link>
         <span className="ws-studio"><SI size={15} />{studio?.name}</span>
         <h1><span className="ws-id">{t.id}</span>{t.name}</h1>
-        <span className={`ws-state ${t.status.state}`}>{t.status.state === "ready" ? "Ready" : t.status.state === "needs_key" ? <><KeyRound size={12} />Needs key</> : "Not built yet"}</span>
+        <span className={`ws-state ${t.status.state}`}>{t.status.state === "ready" ? (t.status.gpu_offline ? "GPU offline" : "Ready") : t.status.state === "needs_key" ? <><KeyRound size={12} />Needs key</> : "Not built yet"}</span>
         <span className="dim small ws-engine" title={t.status.detail}>{ENGINE_LABEL[t.engine]}</span>
         <div className="grow" />
         {t.models.length > 0 && t.engine !== "local" && <select className="input sm model-pick" value={model} onChange={(e) => setModel(e.target.value)} aria-label="Model">
@@ -177,6 +177,7 @@ function Workspace({ t, tools, studios }: { t: Tool; tools: Tool[]; studios: any
       </header>
       {projects?.length === 0 && <div className="info-box" style={{ margin: "0 18px 10px" }}>Outputs are saved into a project. <Link to="/editor/projects">Create a project</Link> first.</div>}
       {t.notice && <div className="info-box" style={{ margin: "0 18px 10px" }}>{t.notice}</div>}
+      {t.status.gpu_offline && <div className="info-box" role="status" style={{ margin: "0 18px 10px" }}>{t.status.notice}</div>}
       <Layout t={t} c={c} g={g} history={history} select={setCur} runBar={runBar} actions={actions} onUse={onUse} tools={tools} studios={studios}
         input={media.find((x) => x.id === (v.video || v.image || v.audio))} />
     </Frame>

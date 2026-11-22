@@ -624,6 +624,10 @@ def status(t: dict, k: dict | None = None) -> dict:
     if missing:
         return {"state": "needs_key", "needs": [NEEDS_TEXT[m] for m in dict.fromkeys(missing)], "detail": e["note"]}
     if "llm" in need and _gpu_llm() and not (os.environ.get("GROQ_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY")):
+        from .. import gpu
+        if gpu.online_now() is False:
+            return {"state": "ready", "needs": [], "detail": e["note"], "runs_on": "gpu_worker", "gpu_offline": True,
+                    "notice": "The GPU computer that runs this tool is offline right now. You can start a run — it waits in the queue and finishes when the GPU computer is back."}
         return {"state": "ready", "needs": [], "detail": e["note"], "runs_on": "gpu_worker",
                 "notice": "Runs on the GPU worker. If it is offline, your run waits in the queue and starts when it is back."}
     return {"state": "ready", "needs": [], "detail": e["note"]}

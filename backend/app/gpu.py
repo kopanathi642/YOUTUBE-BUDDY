@@ -105,3 +105,26 @@ def new_token() -> tuple[str, str]:
 
 def hash_token(tok: str) -> str:
     return hashlib.sha256(tok.encode()).hexdigest()
+
+
+_online_cache: list = [0.0, None]
+
+
+def online_now() -> bool | None:
+    """Is any GPU worker online (heartbeat within ONLINE_SECONDS)? Cached 20 s. None if the database can't be asked."""
+    import time
+    if time.time() - _online_cache[0] < 20:
+        return _online_cache[1]
+    try:
+        from datetime import timedelta
+        from sqlalchemy import select
+        from .db import session_factory
+        from .models import GpuWorker
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=ONLINE_SECONDS)
+        with session_factory()() as db:
+            val = db.scalar(select(GpuWorker.id).where(GpuWorker.last_seen_at >= cutoff, GpuWorker.revoked_at.is_(None),
+                                                       GpuWorker.paused.is_(False)).limit(1)) is not None
+    except Exception:
+        val = None
+    _online_cache[:] = [time.time(), val]
+    return val

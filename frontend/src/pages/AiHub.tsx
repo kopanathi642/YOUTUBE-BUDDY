@@ -10,7 +10,8 @@ import { Frame } from "./AiTool";
 import "../ai/ai.css";
 
 function StateDot({ t }: { t: Tool }) {
-  return t.status.state === "ready" ? <span className="st ready" title={t.status.detail}><CheckCircle2 size={12} />Ready</span>
+  return t.status.state === "ready" && t.status.gpu_offline ? <span className="st key" title={t.status.notice}><CheckCircle2 size={12} />GPU offline</span>
+    : t.status.state === "ready" ? <span className="st ready" title={t.status.detail}><CheckCircle2 size={12} />Ready</span>
     : t.status.state === "needs_key" ? <span className="st key" title={`Needs ${t.status.needs.join(", ")}`}><KeyRound size={12} />Needs key</span>
     : <span className="st unbuilt" title={t.status.detail}><Lock size={12} />Not built</span>;
 }

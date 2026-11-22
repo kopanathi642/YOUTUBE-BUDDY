@@ -9,7 +9,7 @@ export type Param = {
   default?: any; options?: any[]; accept?: string[]; min_items?: number; max_items?: number; group?: string; help?: string;
 };
 export type Model = { id: string; label: string; family: string; usd_per_s: number | null; usd_per_run: number | null; tier?: string; durations?: number[]; audio?: boolean };
-export type ToolStatus = { state: "ready" | "needs_key" | "unbuilt"; needs: string[]; detail: string };
+export type ToolStatus = { state: "ready" | "needs_key" | "unbuilt"; needs: string[]; detail: string; runs_on?: "gpu_worker"; gpu_offline?: boolean; notice?: string };
 export type Tool = {
   id: string; slug: string; name: string; studio: string; summary: string; params: Param[]; output: string; timeline: boolean; ui: string;
   engine: "local" | "fal" | "llm" | "youtube" | "pipeline" | "unbuilt"; models: Model[]; consent: boolean; notice?: string | null; status: ToolStatus; premium_models?: boolean;
