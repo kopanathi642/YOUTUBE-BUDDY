@@ -57,8 +57,10 @@ def keywords(request: Request, q: str = Query(..., min_length=2, max_length=80),
 
     def run():
         seen, groups = set(), []
-        for label, query in [("Popular searches", q), ("How-to searches", f"how to {q}"), ("Best / top", f"best {q}"),
-                             ("Hindi phrasing", f"{q} kaise"), ("For beginners", f"{q} for beginners")]:
+        variants = ([("Popular searches", q), ("How-to searches", f"how to {q}"), ("Best / top", f"best {q}"),
+                     ("Hindi phrasing (kaise)", f"{q} kaise"), ("For beginners", f"{q} for beginners")] if lang == "en"
+                    else [("Popular searches", q), ("Longer searches", f"{q} ")])   # typed in an Indian script: no English add-ons
+        for label, query in variants:
             items = [s for s in _suggest(query, lang) if s not in seen]
             seen.update(items)
             if items:

@@ -76,3 +76,34 @@ def test_every_tool_page_renders_even_with_unicode_in_its_data():
     for slug in seo.TOOLS:
         out = seo.render_index(tpl, f"/tools/{slug}", "Brand", "https://youtubebuddy.com")
         assert seo.TOOLS[slug][0] in out and "application/ld+json" in out
+
+
+def test_indexnow_key_file_and_payload(make_client, monkeypatch):
+    from app import indexnow
+    sent = {}
+
+    class R:
+        status_code = 202
+    monkeypatch.setattr(indexnow.httpx, "post", lambda url, json, timeout: sent.update(json) or R())
+    assert indexnow.submit("https://youtubebuddy.com") == 202
+    assert sent["host"] == "youtubebuddy.com" and sent["keyLocation"] == f"https://youtubebuddy.com/{indexnow.key()}.txt"
+    assert "https://youtubebuddy.com/tools/youtube-money-calculator" in sent["urlList"]
+
+
+def test_home_has_organization_data():
+    _, tags = seo.head_tags("/", "Brand", "https://youtubebuddy.com")
+    assert '"@type": "Organization"' in tags and '"@type": "WebSite"' in tags
+
+
+def test_keywords_in_indian_language_skip_english_addons(make_client, monkeypatch):
+    calls = []
+
+    class R:
+        status_code = 200
+
+        def __init__(self, q):
+            self.content = ('["%s", ["%s 1"]]' % (q, q)).encode()
+    monkeypatch.setattr(pt.httpx, "get", lambda url, params, **kw: calls.append((params["q"], params["hl"])) or R(params["q"]))
+    pt._cache.clear(); pt.limiter.reset()
+    r = make_client().get("/api/v1/public/keywords", params={"q": "गोवा यात्रा", "lang": "hi"})
+    assert r.status_code == 200 and all(hl == "hi" for _, hl in calls) and not any(q.startswith("how to") for q, _ in calls)

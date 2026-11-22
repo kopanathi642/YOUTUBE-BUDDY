@@ -115,8 +115,12 @@ def _head_tags(path: str, brand: str, base: str) -> tuple[str, str]:
             "description": desc, "url": url, "image": img, "inLanguage": "en-IN",
             "offers": {"@type": "Offer", "price": "0", "priceCurrency": "INR", "description": "Free plan"},
         }
+        org = {"@context": "https://schema.org", "@type": "Organization", "name": brand, "url": url, "logo": _abs(base, "/og.png"),
+               "description": "Free YouTube tools and a browser video editor for creators in India.", "areaServed": "IN"}
+        site = {"@context": "https://schema.org", "@type": "WebSite", "name": brand, "url": url, "inLanguage": "en-IN"}
         # "</" can't appear inside the JSON, so the script block can't be closed early by data
-        tags.append('<script type="application/ld+json">' + json.dumps(data).replace("</", "<\\/") + "</script>")
+        for d in (data, org, site):
+            tags.append('<script type="application/ld+json">' + json.dumps(d).replace("</", "<\\/") + "</script>")
     return full, "\n    ".join(tags)
 
 

@@ -153,11 +153,18 @@ def _mount_frontend(app: FastAPI) -> None:
 
     @app.get("/robots.txt", include_in_schema=False)
     def robots():
-        return PlainTextResponse(seo.robots_txt(s.public_base_url))
+        return PlainTextResponse(seo.robots_txt(s.public_base_url), headers={"cache-control": "public, max-age=300"})
+
+    @app.get("/{name}.txt", include_in_schema=False)
+    def indexnow_key(name: str):
+        from . import indexnow
+        if name != indexnow.key():
+            return PlainTextResponse("Not found", status_code=404)
+        return PlainTextResponse(name)
 
     @app.get("/sitemap.xml", include_in_schema=False)
     def sitemap():
-        return Response(seo.sitemap_xml(s.public_base_url), media_type="application/xml")
+        return Response(seo.sitemap_xml(s.public_base_url), media_type="application/xml", headers={"cache-control": "public, max-age=300"})
 
     @app.get("/{path:path}", include_in_schema=False)
     def spa(path: str):

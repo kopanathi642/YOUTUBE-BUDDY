@@ -217,24 +217,34 @@ function Watch() {
 }
 
 type Kw = { query: string; total: number; groups: { label: string; items: string[] }[] };
+const LANGS: [string, string][] = [["en", "English"], ["hi", "हिन्दी Hindi"], ["te", "తెలుగు Telugu"], ["ta", "தமிழ் Tamil"], ["bn", "বাংলা Bengali"],
+  ["mr", "मराठी Marathi"], ["kn", "ಕನ್ನಡ Kannada"], ["ml", "മലയാളം Malayalam"], ["gu", "ગુજરાતી Gujarati"]];
+function LangPick({ v, set }: { v: string; set: (s: string) => void }) {
+  return <label className="ft-lang"><span className="dim">Search language</span>
+    <select value={v} onChange={(e) => set(e.target.value)} aria-label="Search language">{LANGS.map(([k, n]) => <option key={k} value={k}>{n}</option>)}</select></label>;
+}
 function Keywords() {
-  const l = useLookup<Kw>((q) => `/public/keywords?q=${encodeURIComponent(q)}`);
+  const [lang, setLang] = useState("en");
+  const l = useLookup<Kw>((q) => `/public/keywords?q=${encodeURIComponent(q)}&lang=${lang}`);
   const all = l.data ? l.data.groups.flatMap((g) => g.items) : [];
   return <>
-    <LookupForm l={l} placeholder="e.g. goa trip, study tips, mutual funds" button="Find keywords" label="Topic" />
+    <LangPick v={lang} set={setLang} />
+    <LookupForm l={l} placeholder="e.g. goa trip, study tips, mutual funds — or type in Hindi, Telugu, Tamil…" button="Find keywords" label="Topic" />
     <Err msg={l.err} />
     {l.data && <div className="ft-res">
       <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}><b>{l.data.total} searches people make about “{l.data.query}”</b><CopyBtn text={all.join("\n")} label="Copy all" /></div>
       {l.data.groups.map((g) => <div key={g.label}><h4>{g.label}</h4><div className="ft-chips">{g.items.map((k) => <span key={k} className="badge">{k}</span>)}</div></div>)}
-      <p className="dim ft-note">From YouTube's own search suggestions for India. Suggestions show what people search often; YouTube doesn't publish exact search volumes. Use these words in your title, description and first lines of the video.</p>
+      <p className="dim ft-note">From YouTube's own search suggestions for India, in the language you pick — type the topic in that script (गोवा यात्रा) for the best results. Suggestions show what people search often; YouTube doesn't publish exact search volumes. Use these words in your title, description and first lines of the video.</p>
     </div>}
   </>;
 }
 
 function Hashtags() {
-  const l = useLookup<Kw>((q) => `/public/keywords?q=${encodeURIComponent(q)}`);
+  const [lang, setLang] = useState("en");
+  const l = useLookup<Kw>((q) => `/public/keywords?q=${encodeURIComponent(q)}&lang=${lang}`);
   const tags = l.data ? hashtags([l.data.query, ...l.data.groups.flatMap((g) => g.items)]) : [];
   return <>
+    <LangPick v={lang} set={setLang} />
     <LookupForm l={l} placeholder="Your video topic, e.g. street food delhi" button="Make hashtags" label="Video topic" />
     <Err msg={l.err} />
     {l.data && <div className="ft-res">

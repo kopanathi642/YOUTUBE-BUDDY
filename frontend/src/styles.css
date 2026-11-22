@@ -294,3 +294,4 @@ footer.land-foot { border-top: 1px solid var(--line); padding: 24px 32px; color:
 .ft-cta { margin-top: 18px; padding: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .ft-foot { display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: center; padding: 18px 16px 26px; font-size: 13px; border-top: 1px solid rgba(255,255,255,.08); }
 .ft-foot a { color: inherit; opacity: .8; }
+.ft-lang { display: flex; align-items: center; gap: 8px; font-size: 13px; flex-wrap: wrap; } .ft-lang select { max-width: 100%; }
