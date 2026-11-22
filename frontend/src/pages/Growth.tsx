@@ -47,7 +47,7 @@ function AddChannel({ ws, role, onDone }: { ws: string; role: "own" | "competito
   }
   return (
     <form className="gr-add" onSubmit={add}>
-      <input className="input" value={ref} onChange={(e) => setRef(e.target.value)} placeholder={role === "own" ? "Your channel ID (UC…) or youtube.com/channel/UC… link" : "Competitor channel ID (UC…) or link"} aria-label="Channel ID or link" />
+      <input className="input" value={ref} onChange={(e) => setRef(e.target.value)} placeholder={role === "own" ? "Your channel link or @handle, e.g. youtube.com/@yourchannel" : "Competitor channel link or @handle"} aria-label="Channel link or @handle" />
       <button className="btn primary" disabled={busy || ref.trim().length < 3}><Plus size={14} />{role === "own" ? "Set my channel" : "Track"}</button>
     </form>
   );

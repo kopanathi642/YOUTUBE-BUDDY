@@ -107,3 +107,12 @@ def test_keywords_in_indian_language_skip_english_addons(make_client, monkeypatc
     pt._cache.clear(); pt.limiter.reset()
     r = make_client().get("/api/v1/public/keywords", params={"q": "गोवा यात्रा", "lang": "hi"})
     assert r.status_code == 200 and all(hl == "hi" for _, hl in calls) and not any(q.startswith("how to") for q, _ in calls)
+
+
+def test_growth_tools_accept_handles(monkeypatch):
+    from app import growth_engine as ge
+    monkeypatch.setattr(ci, "resolve_channel", lambda ref: "UC" + "e" * 22 if "@" in ref else (_ for _ in ()).throw(ci.youtube.YouTubeError("bad")))
+    assert ge.parse_channel_ref("youtube.com/@AnimalKids") == "UC" + "e" * 22
+    import pytest
+    with pytest.raises(ge.GrowthError):
+        ge.parse_channel_ref("nope nope")

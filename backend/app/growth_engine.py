@@ -43,21 +43,16 @@ class GrowthError(Exception):
 
 # ------------------------------------------------------------------ channel feeds
 def parse_channel_ref(ref: str) -> str:
-    """Accept a channel ID (UC…) or a youtube.com/channel/UC… URL. @handles need the YouTube API key to resolve."""
+    """Accept a channel ID (UC…), a channel link or an @handle."""
     ref = ref.strip()
     m = re.search(r"(UC[0-9A-Za-z_-]{22})", ref)
     if m:
         return m.group(1)
-    h = re.search(r"@([A-Za-z0-9._-]{3,30})", ref)
-    if h and os.environ.get("YOUTUBE_API_KEY"):
-        r = httpx.get(os.environ.get("YOUTUBE_API_URL", "https://www.googleapis.com/youtube/v3") + "/channels",
-                      params={"part": "id", "forHandle": "@" + h.group(1), "key": os.environ["YOUTUBE_API_KEY"]}, timeout=15)
-        items = r.json().get("items") or [] if r.status_code < 400 else []
-        if items:
-            return items[0]["id"]
-        raise GrowthError("No channel found for that @handle")
-    raise GrowthError("Paste the channel ID (starts with UC…) or a youtube.com/channel/UC… link. "
-                      "Find it on YouTube: channel page → About → Share channel → Copy channel ID.")
+    from . import channel_insights, youtube   # links, @handles and bare handles, with or without an API key
+    try:
+        return channel_insights.resolve_channel(ref)
+    except youtube.YouTubeError as e:
+        raise GrowthError(str(e))
 
 
 def fetch_feed(channel_id: str) -> dict:

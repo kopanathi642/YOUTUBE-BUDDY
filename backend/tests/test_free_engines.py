@@ -164,7 +164,7 @@ def test_channel_tools_work_from_public_feeds(env, monkeypatch):
     assert len(g["result"]["rows"]) == 2 and g["result"]["rows"][0]["views_per_day"]
     bad = run(c, pid, "071", {"channel": "@somehandle"})
     drain()
-    assert "/channel/UC" in c.get(f"/api/v1/generations/{bad['id']}").json()["error"]
+    assert "YouTube" in c.get(f"/api/v1/generations/{bad['id']}").json()["error"]   # @handles are looked up now; offline here → clear message
 
 
 def test_ask_the_video_from_transcript(env, monkeypatch):

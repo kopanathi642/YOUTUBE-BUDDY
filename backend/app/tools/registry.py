@@ -65,7 +65,7 @@ TONE = P("tone", "chips", "Tone", default="friendly", options=["friendly", "ener
 AUDIENCE = P("audience", "text", "Audience", placeholder="Indian students preparing for exams")
 LENGTH = P("length", "chips", "Length", default="medium", options=["short", "medium", "long"])
 BRIEF = P("brief", "longtext", "Brief", placeholder="What is it about? Key points, call to action…", required=True, max=6000)
-CHANNEL = P("channel", "text", "Channel", placeholder="youtube.com/channel/UC… link or channel ID", required=True)
+CHANNEL = P("channel", "text", "Channel", placeholder="Channel link or @handle, e.g. youtube.com/@yourchannel", required=True)
 REGION = P("region", "chips", "Region", default="IN", options=["IN", "US", "GB", "AE", "SG", "CA", "AU"])
 
 
