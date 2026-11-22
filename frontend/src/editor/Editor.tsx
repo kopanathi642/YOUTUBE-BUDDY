@@ -32,6 +32,7 @@ import NodesPanel from "./NodesPanel";
 import BottomStrip from "./BottomStrip";
 import RecordModal from "./RecordModal";
 import { AssistantPanel, VoicePanel, QuickActions, Recommendations, PlanDialog, Caps, Capability } from "./AiPanels";
+import { AdDirector } from "./AdDirector";
 
 type SaveState = "saved" | "dirty" | "saving" | "error" | "conflict" | "offline";
 
@@ -382,7 +383,7 @@ export default function Editor() {
   }
   async function createSequence(body: object, okMsg: string) {
     if (!project) return;
-    await doSave(true);
+    if (!await doSave(true)) { toast("Finish saving the current sequence before creating another."); return; }
     try {
       const s = await api<SequenceDoc>(`/projects/${project.id}/sequences`, { method: "POST", body });
       setSequences((ss) => [...ss, s]); openSequence(s); toast(okMsg);
@@ -560,7 +561,7 @@ export default function Editor() {
               onDropAsset={(id, trackId, at) => { const a = assetMap.get(id); if (a) addAssetToTimeline(a, trackId, at); }}
               timecode="" />}
           panels={{
-            assistant: { id: "assistant", label: "AI Assistant", icon: Bot, node: <AssistantPanel caps={caps} autoAdjust={autoAdjust} setAutoAdjust={setAutoAdjust} onMagic={() => action("magic")} readOnly={readOnly} pending={!analysed} /> },
+            assistant: { id: "assistant", label: "AI Assistant", icon: Bot, node: <><AdDirector assets={assets} disabled={readOnly} create={ad => createSequence({name: "Director · 30-second ad", ad}, "Ad draft ready to edit")} /><AssistantPanel caps={caps} autoAdjust={autoAdjust} setAutoAdjust={setAutoAdjust} onMagic={() => action("magic")} readOnly={readOnly} pending={!analysed} /></> },
             voice: { id: "voice", label: "Translate & Voice", icon: Mic2, node: <VoicePanel caps={caps} catalog={catalog} onStudio={() => dubSource?.asset_id && setStudioFor(dubSource.asset_id)} onLipSync={hide.has("lipsync") ? undefined : () => action("lipsync")}
               source={dubSource ? { name: assetMap.get(dubSource.asset_id)?.filename ?? "clip" } : null} /> },
             color: { id: "color", label: "Color", icon: PaletteI, node: <div className="color-panel-anchor"><ColorPanel tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly} luts={assets.filter((a) => a.kind === "lut")} projectId={projectId!} onLutUploaded={loadMedia} /></div> },

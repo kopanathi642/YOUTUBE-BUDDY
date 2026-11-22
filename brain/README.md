@@ -23,6 +23,26 @@ fresh-process verification.
 
 ## Commands
 
+### CPU advertisement draft
+
+In a project's Editor, open **AI Assistant → Director · Make a 30-second ad**. Select at least 30 seconds of ready footage,
+choose the product reveal, and optionally add a music track. The Director reserves the end of the reveal clip, assembles
+the remaining shots using measured scene cuts and clip order, applies a grade, and creates a separate sequence with
+editable markers. Music-grid timing uses the entered BPM and assumes a downbeat at zero. Export with the normal MP4
+exporter. Revisions use the existing timeline, version history, undo and redo.
+
+Run `python brain/hardware.py` to inspect host CPU, RAM and NVIDIA driver visibility without loading a model.
+With the backend dependencies and FFmpeg installed, set `PYTHONPATH=backend` and run
+`python brain/demo_ad.py OUTPUT_DIRECTORY` from the repository root. Use a new output directory.
+The demo generates original watch footage and a score, measures the footage, builds the same timeline as the editor,
+renders a 30-second ad and a quieter-music revision, and decodes both files to check playback.
+
+This first Director workflow uses rules for pacing and grade. Opening footage follows the selected media order.
+The user identifies the product reveal. Semantic shot recognition, unrestricted natural-language revisions and blind
+professional evaluations remain future phases. No cloud account or local accelerator is required for this workflow.
+Optional weight training belongs in the existing Kaggle notebook or an explicitly provisioned cloud notebook.
+Existing hosted generation adapters and remote GPU workers are separate capabilities with their own configuration and costs.
+
 ```bash
 python brain/data/build_synth.py
 python brain/train_scratch.py --epochs 3 --layers 4 --dim 192 --heads 6 --out brain/checkpoints/planner-scratch-v0

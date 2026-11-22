@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
+from ..ad_director import AdBrief, build_ad
 from ..deps import load_project, load_sequence, ser_project
 from ..models import MediaAsset, Project, Role, Sequence, SequenceVersion, User
 from ..security import audit, current_user, require_member
@@ -173,6 +174,7 @@ def restore(sequence_id: uuid.UUID, body: RestoreIn, request: Request, user: Use
 # ---------------------------------------------------------------- multiple sequences + smart reframe
 
 class SequenceCreate(BaseModel):
+    ad: AdBrief | None = None
     name: str = Field(min_length=1, max_length=200)
     format: Literal["landscape", "vertical", "square", "portrait_45", "portrait_23", "landscape_32"] | None = None
     from_sequence_id: uuid.UUID | None = None
@@ -229,7 +231,20 @@ def create_sequence(project_id: uuid.UUID, body: SequenceCreate, request: Reques
     p = load_project(db, user, project_id, Role.editor)
     if db.scalar(select(func.count()).select_from(Sequence).where(Sequence.project_id == p.id)) >= 20:
         raise HTTPException(422, "A project can have at most 20 sequences")
-    if body.from_sequence_id:
+    if body.ad:
+        if body.from_sequence_id:
+            raise HTTPException(422, "Choose either an ad draft or a source sequence.")
+        ids = set(body.ad.videos)
+        if body.ad.music:
+            ids.add(body.ad.music)
+        assets = {a.id: a for a in db.scalars(select(MediaAsset).where(
+            MediaAsset.project_id == p.id, MediaAsset.id.in_(ids), MediaAsset.status == "ready",
+            MediaAsset.deleted_at.is_(None)))}
+        try:
+            tl = build_ad(body.ad, assets, 30, *ASPECTS[body.format or "landscape"])
+        except ValueError as e:
+            raise HTTPException(422, str(e)) from e
+    elif body.from_sequence_id:
         src = db.get(Sequence, body.from_sequence_id)
         if not src or src.project_id != p.id:
             raise HTTPException(404, "Source sequence not found")
