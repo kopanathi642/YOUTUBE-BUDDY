@@ -1,3 +1,4 @@
+import { InterfaceText } from "../interfaceLanguage";
 import { CSSProperties, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Dices, Upload, X, Plus, GripVertical, Film, Music, Image as ImageIcon, Check, Sun, Paintbrush, Eraser, Undo2, Trash2 } from "lucide-react";
 import { api, Asset } from "../api";
@@ -11,7 +12,7 @@ export type Ctx = { v: Record<string, any>; set: (k: string, x: any) => void; me
 export function Field({ p, children, inline }: { p: Param; children: ReactNode; inline?: boolean }) {
   return (
     <div className={`ai-field ${inline ? "inline" : ""}`}>
-      <div className="ai-flabel"><span>{p.label}{p.required && <i className="req">*</i>}</span>{p.help && <span className="ai-help" title={p.help}>?</span>}</div>
+      <div className="ai-flabel"><span><InterfaceText source={p.label} />{p.required && <i className="req">*</i>}</span>{p.help && <span className="ai-help" title={p.help}>?</span>}</div>
       {children}
     </div>
   );
@@ -192,26 +193,33 @@ let voiceCache: any = null;
 export function useVoices() {
   const [v, setV] = useState<any>(voiceCache);
   useEffect(() => { if (!voiceCache) api("/ai/voices").then((x) => { voiceCache = x; setV(x); }).catch(() => {}); }, []);
-  return v as { voices: { id: string; label: string; language: string; style: string }[]; languages: Record<string, string> } | null;
+  return v as { voices: { id: string; label: string; language: string; style: string }[]; languages: Record<string, string>; translation_targets?: string[] } | null;
 }
 
-export function LangPicker({ p, value, onChange }: { p: Param; value: string; onChange: (x: string) => void }) {
+export function LangPicker({ p, value, onChange, translated, dubbed }: { p: Param; value: string; onChange: (x: string) => void; translated?: boolean; dubbed?: boolean }) {
   const v = useVoices();
-  const langs = v?.languages ?? { en: "English", hi: "Hindi" };
+  const codes: string[] = p.options ?? (dubbed ? [...new Set(v?.voices.map((voice) => voice.language))] :
+    translated ? ["original", ...(v?.translation_targets ?? [])] : Object.keys(v?.languages ?? {}));
+  const names = new Intl.DisplayNames(["en"], { type: "language" });
+  const label = (code: string) => code === "auto" ? "Detect automatically" : code === "original" ? "Keep the spoken language" :
+    v?.languages[code] ?? names.of(code) ?? code;
+  const langs = codes.map((code) => [code, label(code)]).sort(([a, name], [b, other]) =>
+    a === "auto" || a === "original" ? -1 : b === "auto" || b === "original" ? 1 : name.localeCompare(other));
   return (
     <select className="input" value={value || ""} onChange={(e) => onChange(e.target.value)} aria-label={p.label}>
-      {Object.entries(langs).map(([k, n]) => <option key={k} value={k}>{n}</option>)}
+      {!langs.some(([k]) => k === value) && <option value={value || ""} disabled>Select a language</option>}
+      {langs.map(([k, n]) => <option key={k} value={k}>{n}</option>)}
     </select>
   );
 }
 
 export function LangsPicker({ p, value, onChange }: { p: Param; value: string[]; onChange: (x: string[]) => void }) {
   const v = useVoices();
-  const langs = v?.languages ?? { en: "English", hi: "Hindi" };
+  const langs = (v?.translation_targets ?? []).map((code) => [code, v?.languages[code] ?? code]);
   const sel = new Set(value || []);
   return (
     <div className="lang-grid" role="group" aria-label={p.label}>
-      {Object.entries(langs).map(([k, n]) => { const on = sel.has(k); return (
+      {langs.map(([k, n]) => { const on = sel.has(k); return (
         <button type="button" key={k} role="checkbox" aria-checked={on} className={`lang ${on ? "on" : ""}`}
           onClick={() => onChange(on ? [...sel].filter((x) => x !== k) : [...sel, k].slice(0, p.max_items ?? 8))}><b>{k.toUpperCase()}</b>{n}</button>); })}
     </div>
@@ -220,10 +228,15 @@ export function LangsPicker({ p, value, onChange }: { p: Param; value: string[];
 
 export function VoicePick({ p, value, onChange, lang }: { p: Param; value: string; onChange: (x: string) => void; lang?: string }) {
   const v = useVoices();
-  const list = (v?.voices ?? []).filter((x) => !lang || x.language === lang);
+  const voices = v?.voices ?? [];
+  const selectedLang = lang ?? voices.find((voice) => voice.id === value)?.language;
+  const list = voices.filter((x) => !selectedLang || x.language === selectedLang);
   useEffect(() => { if (list.length && !list.some((x) => x.id === value)) onChange(list[0].id); }, [lang, v]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="voice-list" role="radiogroup" aria-label={p.label}>
+      {!lang && voices.length > 0 && <label>Voice language <select className="input" value={selectedLang ?? ""} onChange={(e) => onChange(voices.find((voice) => voice.language === e.target.value)!.id)}>
+        {[...new Set(voices.map((voice) => voice.language))].sort((a, b) => (v?.languages[a] ?? a).localeCompare(v?.languages[b] ?? b)).map((code) => <option key={code} value={code}>{v?.languages[code] ?? code}</option>)}
+      </select></label>}
       {list.map((x) => (
         <button type="button" key={x.id} role="radio" aria-checked={value === x.id} className={`voice ${value === x.id ? "on" : ""}`} onClick={() => onChange(x.id)}>
           <span className="voice-av">{x.label[0]}</span><span><b>{x.label.split(" (")[0]}</b><small>{v?.languages[x.language] ?? x.language} · {x.style}</small></span>
@@ -483,7 +496,7 @@ export function Control({ p, c, flavor, compact }: { p: Param; c: Ctx; flavor?: 
     case "style": el = <StyleGrid p={p} value={v} onChange={set} />; break;
     case "palette": el = <Palette p={p} value={v} onChange={set} />; break;
     case "color": el = <ColorIn p={p} value={v} onChange={set} />; break;
-    case "language": el = <LangPicker p={p} value={v} onChange={set} />; break;
+    case "language": el = <LangPicker translated={c.tool.id === "103"} dubbed={["104", "106"].includes(c.tool.id)} p={p} value={v} onChange={set} />; break;
     case "languages": el = <LangsPicker p={p} value={v} onChange={set} />; break;
     case "voice": el = <VoicePick p={p} value={v} onChange={set} lang={c.v.target || c.v.language} />; break;
     case "bpm": el = <Bpm p={p} value={v ?? 96} onChange={set} />; break;

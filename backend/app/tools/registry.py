@@ -59,6 +59,12 @@ PALETTE = P("palette", "palette", "Colour palette", default="auto", options=[
 COMPOSITION = P("composition", "chips", "Composition", default="rule of thirds", options=[
     "centered", "rule of thirds", "symmetrical", "leading lines", "negative space", "close-up portrait", "flat lay"])
 LANG = P("language", "language", "Language", default="en")
+# Multilingual Whisper small/medium vocabulary. Norwegian Bokmål maps to Whisper's "no" in speech.asr.
+SPOKEN_LANGUAGE = P("language", "language", "Spoken language", default="auto", options=["auto", *(
+    "af am ar as az ba be bg bn bo br bs ca cs cy da de el en es et eu fa fi fo fr gl gu ha haw he hi hr ht hu hy "
+    "id is it ja jw ka kk km kn ko la lb ln lo lt lv mg mi mk ml mn mr ms mt my ne nl nn nb oc pa pl ps pt ro ru "
+    "sa sd si sk sl sn so sq sr su sv sw ta te tg th tk tl tr tt uk ur uz vi yi yo zh"
+).split()])
 LANGS = P("targets", "languages", "Target languages", default=["hi"], min_items=1, max_items=6)
 VOICE = P("voice_id", "voice", "Voice")
 TONE = P("tone", "chips", "Tone", default="friendly", options=["friendly", "energetic", "calm", "funny", "serious", "inspiring", "dramatic"])
@@ -328,7 +334,7 @@ T(40, "animated-captions", "Animated Captions", "animation", "Bold, word-timed c
   "video", True, ui="keyframes")
 
 # ---------------------------------------------------------------- E. AI Audio & Music (041-050)
-T(41, "text-to-speech", "Voice Studio (Text to Speech)", "audio", "Natural voice-overs in English and Indian languages.",
+T(41, "text-to-speech", "Voice Studio (Text to Speech)", "audio", "Choose a voice in a supported language and turn your script into audio.",
   {"type": "local", "handler": "tts", "note": "Free Piper voices on our worker; premium ElevenLabs/MiniMax voices with a fal.ai key", "models": TTS},
   [P("text", "longtext", "Script", required=True, max=5000), VOICE, P("speed", "slider", "Speed", min=0.7, max=1.4, step=0.05, default=1.0),
    P("emotion", "chips", "Delivery (premium voices)", default="neutral", options=["neutral", "happy", "excited", "calm", "sad", "serious"])],
@@ -396,7 +402,7 @@ T(60, "rewrite-tone", "Rewrite & Tone Shift", "writing", "Rewrite text shorter, 
 T(61, "scene-breakdown", "Scene Breakdown", "content", "Every cut and scene with thumbnails and timings.",
   local("scene_report"), [media()], "report", False, ui="analysis")
 T(62, "transcript", "Transcript", "content", "Accurate, timestamped transcript you can search and export.",
-  local("transcript_report", WHISPER_NOTE), [media(accept=("video", "audio")), LANG], "report", False, ui="transcript")
+  local("transcript_report", WHISPER_NOTE), [media(accept=("video", "audio")), SPOKEN_LANGUAGE], "report", False, ui="transcript")
 T(63, "people-detection", "Face & People Detection", "content", "Where faces appear in each shot, drawn as overlays.",
   local("face_report", "Runs on our worker (OpenCV face detector)"), [media()], "report", False, ui="analysis")
 T(64, "video-qa", "Ask the Video", "content", "Ask questions about what happens in a video.",
@@ -516,11 +522,11 @@ T(100, "markers", "Auto Markers", "videointel", "Scene, silence and loudness mar
 
 # ---------------------------------------------------------------- K. AI Localization (101-110)
 T(101, "transcribe", "Transcribe", "localize", "Speech to text with word timings, in 90+ languages.",
-  local("transcript_report", WHISPER_NOTE), [media(accept=("video", "audio")), LANG], "subtitles", False, ui="subtitles")
+  local("transcript_report", WHISPER_NOTE), [media(accept=("video", "audio")), SPOKEN_LANGUAGE], "subtitles", False, ui="subtitles")
 T(102, "translate-subs", "Translate Subtitles", "localize", "Translated .srt subtitles, line-timed to the original.",
   local("translate_subs", "Runs on our worker (Argos) — or OpenAI with your key"), [media(accept=("video", "audio")), LANGS], "subtitles", False, ui="subtitles")
 T(103, "burn-subtitles", "Subtitle Burn-in", "localize", "Hard-coded subtitles with Indian-script fonts.",
-  local("burn_subtitles", WHISPER_NOTE), [media(), P("language", "language", "Subtitle language", default="en"),
+  local("burn_subtitles", WHISPER_NOTE), [media(), P("language", "language", "Subtitle language", default="original"),
                                           P("text_color", "color", "Text colour", default="#ffffff"), P("box", "toggle", "Background box", default=True)],
   "video", True, ui="subtitles")
 T(104, "ai-dub", "AI Dubbing", "localize", "Translate and re-voice speech, timed to the original.",
@@ -536,7 +542,7 @@ T(107, "speaker-split", "Speaker Diarization", "localize", "Who spoke when, for 
   ui="subtitles")
 T(108, "multi-language", "Multi-Language Pack", "localize", "Subtitles in several languages at once.",
   local("translate_subs", "Runs on our worker (Argos) — or OpenAI with your key"), [media(accept=("video", "audio")),
-                                                                                    P("targets", "languages", "Languages", default=["hi", "ta", "te", "bn"], min_items=2, max_items=8)],
+                                                                                    P("targets", "languages", "Languages", required=True, default=[], min_items=2, max_items=8)],
   "subtitles", False, ui="subtitles")
 T(109, "translation-compare", "Translation Compare", "localize", "Two translations side by side, line by line.",
   pipe("translation_compare", ["llm"], "Argos on our worker vs. language model"), [media(accept=("video", "audio")), P("target", "language", "Language", default="hi")],

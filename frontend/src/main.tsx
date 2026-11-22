@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { InterfaceLanguage } from "./interfaceLanguage";
 import { captureRef } from "./referral";
 // Fonts are bundled with the app (no request to Google Fonts: better privacy, works under a strict CSP).
 import "@fontsource/inter/latin-400.css";
@@ -15,4 +16,4 @@ import "./gateway.css";
 import "./experience.css";
 
 captureRef();
-ReactDOM.createRoot(document.getElementById("root")!).render(<React.StrictMode><App /></React.StrictMode>);
+ReactDOM.createRoot(document.getElementById("root")!).render(<React.StrictMode><InterfaceLanguage><App /></InterfaceLanguage></React.StrictMode>);

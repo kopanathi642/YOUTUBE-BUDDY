@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from ..speech import assets as speech_assets
 from .. import jobs
 from ..ai_engines import LANG_NAMES, VOICE_BY_ID, default_voice, voices_public
 from ..db import get_db
@@ -46,7 +47,12 @@ def capabilities(user: User = Depends(current_user)):
 
 @router.get("/ai/voices")
 def voices(user: User = Depends(current_user)):
-    return {"voices": voices_public(), "languages": LANG_NAMES}
+    try:
+        targets = speech_assets.enabled_targets()
+    except speech_assets.AssetError:
+        targets = []
+    return {"voices": [v for v in voices_public() if v["language"] in targets], "languages": LANG_NAMES,
+            "translation_targets": targets}
 
 
 def _new_audio(db: Session, p_ws, p_id, user: User, filename: str) -> MediaAsset:

@@ -1027,9 +1027,11 @@ def translate_subs(rc: RunCtx):
 
 def burn_subtitles(rc: RunCtx):
     a = rc.asset("video")
-    lang = rc.p.get("language") or "en"
+    lang = rc.p.get("language") or "original"
     t = _transcript(rc, a)
     segs = t["segments"]
+    if lang == "original":
+        lang = t["language"]
     if lang != t["language"]:
         from ..worker import _ensure_translation, Permanent
         try:
