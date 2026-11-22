@@ -162,6 +162,8 @@ def test_channel_tools_work_from_public_feeds(env, monkeypatch):
     assert "100k subscribers" in g["result"]["summary"]
     g = done(c, run(c, pid, "073", {"channels": f"{cid}\nUC{'b' * 22}"}))
     assert len(g["result"]["rows"]) == 2 and g["result"]["rows"][0]["views_per_day"]
+    import httpx
+    monkeypatch.setattr(httpx, "get", lambda *args, **kwargs: httpx.Response(404))
     bad = run(c, pid, "071", {"channel": "@somehandle"})
     drain()
     assert "YouTube" in c.get(f"/api/v1/generations/{bad['id']}").json()["error"]   # @handles are looked up now; offline here → clear message
