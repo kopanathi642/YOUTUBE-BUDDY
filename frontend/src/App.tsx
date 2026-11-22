@@ -3,11 +3,13 @@ import { createContext, lazy, ReactNode, Suspense, useCallback, useContext, useE
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { api, ApiError, Me, Workspace } from "./api";
 import Landing from "./pages/HomeLanding";
+import { FREE_TOOLS } from "./tools/catalog";
 import AuthPage from "./pages/Auth";
 import { universeById } from "./universes";
 
 // Signed-in pages load on demand, so the public pages (landing, sign-in, legal) stay small and fast for visitors and Google.
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const FreeTools = lazy(() => import("./pages/FreeTools"));
 const Projects = lazy(() => import("./pages/Projects"));
 const Editor = lazy(() => import("./editor/Editor"));
 const Shell = lazy(() => import("./components/Shell"));
@@ -29,7 +31,7 @@ const Loading = () => <div className="auth-wrap"><div className="spinner" aria-l
 /** Tab title per page (the server sets the same title, description and robots rules in the HTML for crawlers). */
 const TITLES: [RegExp, string][] = [
   [/^\/$/, "Video editor & AI studio for creators"], [/^\/signin/, "Sign in"], [/^\/signup/, "Create your free account"],
-  [/^\/privacy/, "Privacy"], [/^\/terms/, "Terms"], [/^\/universes/, "Universes"], [/^\/editor\/projects/, "Projects"],
+  [/^\/tools\/?$/, "Free YouTube tools for creators"], [/^\/privacy/, "Privacy"], [/^\/terms/, "Terms"], [/^\/universes/, "Universes"], [/^\/editor\/projects/, "Projects"],
   [/^\/editor/, "Editor"], [/^\/edit\//, "Editing"], [/^\/shorts\//, "Shorts Creative Studio"], [/^\/ai-generator/, "AI Generator"], [/^\/super/, "Super Universe"],
   [/^\/library/, "Library"], [/^\/growth/, "Growth"], [/^\/channel/, "My channel"], [/^\/settings/, "Settings"],
 ];
@@ -37,7 +39,8 @@ function RouteTitle() {
   const { pathname } = useLocation();
   const brand = useBrand();
   useEffect(() => {
-    const t = TITLES.find(([re]) => re.test(pathname))?.[1] ?? "Page not found";
+    const tool = pathname.startsWith("/tools/") ? FREE_TOOLS.find((x) => x.slug === pathname.slice(7).replace(/\/$/, "")) : undefined;
+    const t = tool?.title ?? TITLES.find(([re]) => re.test(pathname))?.[1] ?? "Page not found";
     document.title = pathname === "/" ? `${brand} — ${t}` : `${t} · ${brand}`;
   }, [pathname, brand]);
   return null;
@@ -130,6 +133,8 @@ export default function App() {
           <Route path="/channel" element={<Private bare><Channel /></Private>} />
           <Route path="/growth" element={<Private bare><Growth /></Private>} />
           <Route path="/settings" element={<Private bare><Settings /></Private>} />
+          <Route path="/tools" element={<FreeTools />} />
+          <Route path="/tools/:slug" element={<FreeTools />} />
           <Route path="/privacy" element={<Legal kind="privacy" />} />
           <Route path="/terms" element={<Legal kind="terms" />} />
           <Route path="/home" element={<Navigate to="/editor" replace />} />

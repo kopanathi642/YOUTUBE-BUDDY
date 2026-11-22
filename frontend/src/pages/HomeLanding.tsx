@@ -357,6 +357,7 @@ export default function HomeLanding() {
             <a href="#features">Features</a>
             <a href="#features">Universes</a>
             <a href="#pricing">Pricing</a>
+            <Link to="/tools">Free tools</Link>
             <a href="#footer">About</a>
           </div>
 
@@ -754,6 +755,9 @@ export default function HomeLanding() {
 
             <div className="ch-foot-col">
               <b>Resources</b>
+              <Link to="/tools">Free YouTube tools</Link>
+              <Link to="/tools/youtube-channel-audit">Channel audit</Link>
+              <Link to="/tools/youtube-money-calculator">Money calculator</Link>
               <Link to="/signup">Create account</Link>
               <Link to="/signin">Sign in</Link>
               <a href="#features">Universes</a>
