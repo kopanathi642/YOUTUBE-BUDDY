@@ -87,9 +87,9 @@ for (const t of cat.tools) {
       row.checks[width] = { ...h, layout: true, missing: [], hasIn: true, hasOut: true, honest: h.hidden, errors: [...pageErrs] };
       continue;
     }
-    await p.waitForSelector(".L", { timeout: 20000 }); await p.waitForTimeout(500);
+    await p.waitForSelector(".guide-grid, .L", { timeout: 20000 }); await p.waitForTimeout(500);
     const ui = await p.evaluate(([layout, params, state, needs]) => {
-      const root = document.querySelector(".L");
+      const root = document.querySelector(".guide-grid, .L");
       const labels = [...document.querySelectorAll(".ai-flabel span:first-child, .pnl header span, .bench-h, label")].map((e) => e.textContent.trim().toLowerCase());
       const special = { nodes: ".nodes, .tpl-gallery", shots: ".shots", mask: ".mask" };
       const missing = params.filter((q) => (special[q.type] ? !document.querySelector(special[q.type]) : !labels.some((l) => l.startsWith(q.label.toLowerCase().slice(0, 18))))).map((q) => q.label);
@@ -97,7 +97,7 @@ for (const t of cat.tools) {
       const hasIn = params.some((q) => ["media", "media_multi"].includes(q.type)) ? !!document.querySelector(".mpick, .board") : true;
       const lock = document.querySelector(".locked")?.textContent ?? "";
       const honest = state === "ready" ? !document.querySelector(".locked") && !!document.querySelector(".runbtn") : state === "unbuilt" ? /not built/i.test(lock) : needs.every((n) => lock.includes(n.split(" ")[0]));
-      return { layout: root.classList.contains(layout), missing, hasIn, hasOut, honest, overflow: document.documentElement.scrollWidth > innerWidth + 1, adv: params.filter((q) => q.group === "advanced").length };
+      return { layout: root.matches(".guide-grid") || root.classList.contains(layout), missing, hasIn, hasOut, honest, overflow: document.documentElement.scrollWidth > innerWidth + 1, adv: params.filter((q) => q.group === "advanced").length };
     }, [layoutOf(t), t.params.filter((q) => q.group !== "advanced" && !(t.id === "120")), t.status.state, t.status.needs]);
     row.checks[width] = { ...ui, errors: [...pageErrs] };
     if (width === 1600 && OUT_SHOTS && ["001", "005", "011", "021", "033", "042", "051", "061", "075", "082", "092", "104", "111"].includes(t.id)) await p.screenshot({ path: `${OUT}/ui/audit/${t.id}.png` });

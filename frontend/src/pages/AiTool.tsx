@@ -1,12 +1,12 @@
 import { CSSProperties, useCallback, useEffect, useState } from "react";
 import { Link, NavLink, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Lock, Play, Square, Clapperboard, RefreshCcw, Shuffle, Star, FolderOpen, Library, KeyRound, Sparkles } from "lucide-react";
+import { ArrowLeft, Lock, Play, Square, Clapperboard, RefreshCcw, Shuffle, Star, Rows3, FolderOpen, Library, KeyRound, Sparkles } from "lucide-react";
 import { api } from "../api";
 import { useAuth, useToast } from "../App";
 import GlobalBar from "../components/GlobalBar";
 import { defaults, ENGINE_LABEL, estimate, fmtUsd, Generation, missing, Tool, useCatalogue, useGeneration, useProjectMedia, useProjects } from "../ai/core";
-import { Ctx } from "../ai/controls";
-import { LAYOUTS, STUDIO_META } from "../ai/studios";
+import { Advanced, Consent, Controls, Ctx } from "../ai/controls";
+import { LAYOUTS, Output, RenderQueue, STUDIO_META } from "../ai/studios";
 import "../ai/ai.css";
 
 const VKEY = (id: string) => `cu.ai.v.${id}`;
@@ -22,18 +22,15 @@ export default function AiTool() {
 }
 
 function Frame({ children, studio }: { children: React.ReactNode; studio?: string }) {
-  const { cat } = useCatalogue();
-  const m = STUDIO_META[studio ?? "video"];
+  const m = STUDIO_META[studio ?? "video"] ?? STUDIO_META.video;
   return (
     <div className="aiw" style={{ "--s1": m.c1, "--s2": m.c2 } as CSSProperties} data-motif={m.motif}>
       <GlobalBar sub="AI GENERATOR UNIVERSE" />
       <div className="aiw-body">
-        <nav className="aiw-rail" aria-label="Studios">
-          <Link to="/ai-generator" className="rail-home" title="AI Generator home"><Sparkles size={18} /></Link>
-          {cat?.studios.map((s) => { const M = STUDIO_META[s.id]; const I = M.icon; return (
-            <NavLink key={s.id} to={`/ai-generator/studio/${s.id}`} className={`rail-btn ${s.id === studio ? "on" : ""}`} title={s.name} style={{ "--r1": M.c1, "--r2": M.c2 } as CSSProperties}>
-              <I size={18} /><span>{s.code}</span></NavLink>); })}
-          <NavLink to="/library" className="rail-btn" title="Asset library"><Library size={18} /></NavLink>
+        <nav className="generator-nav" aria-label="Generator navigation">
+          <NavLink end to="/ai-generator"><Sparkles size={16} />Generator home</NavLink>
+          <NavLink to="/ai-generator/explore"><Rows3 size={16} />All tools</NavLink>
+          <NavLink to="/library"><Library size={16} />Asset library</NavLink>
         </nav>
         <main className="aiw-main">{children}</main>
       </div>
@@ -54,6 +51,7 @@ function Workspace({ t, tools, studios }: { t: Tool; tools: Tool[]; studios: any
   const [model, setModel] = useState<string | undefined>(t.engine === "local" ? undefined : t.models[0]?.id);
   const [history, setHistory] = useState<Generation[]>([]);
   const [cur, setCur] = useState<string | null>(null);
+  const [studioView, setStudioView] = useState(t.studio === "automation");
   const [busy, setBusy] = useState(false);
   const [g] = useGeneration(cur, () => { loadHistory(); reloadMedia(); });
 
@@ -127,6 +125,7 @@ function Workspace({ t, tools, studios }: { t: Tool; tools: Tool[]; studios: any
   };
   const running = !!g && ["queued", "running"].includes(g.status);
   const busyRun = busy || running;
+  const runLabel = TASK_ACTION[t.id] ?? RUN_LABEL[t.studio] ?? "Run tool";
 
   const runBar = (
     <div className="runbar">
@@ -136,7 +135,7 @@ function Workspace({ t, tools, studios }: { t: Tool; tools: Tool[]; studios: any
           {cost != null && <div className="cost" title="Provider list price for this run; billed by the provider">≈ {fmtUsd(cost)}<small>model cost</small></div>}
           {running ? <button type="button" className="btn runbtn stop" onClick={cancel}><Square size={15} />Stop</button>
             : <button type="button" className="btn runbtn" disabled={!!miss || busyRun || !pid || (t.consent && !v._consent)} onClick={() => run()} title={miss ? `Add ${miss}` : undefined}>
-              {busy ? <span className="spinner" /> : <Play size={16} />}{RUN_LABEL[t.studio] ?? "Run"}</button>}
+              {busy ? <span className="spinner" /> : <Play size={16} />}{runLabel}</button>}
           {miss && <small className="dim">{pending && miss.includes("processing") ? "Waiting for" : "Add"} {miss}</small>}
         </>}
     </div>
@@ -165,26 +164,46 @@ function Workspace({ t, tools, studios }: { t: Tool; tools: Tool[]; studios: any
       <header className="ws-head">
         <Link to={`/ai-generator/studio/${t.studio}`} className="btn icon ghost" aria-label="Back to studio"><ArrowLeft size={16} /></Link>
         <span className="ws-studio"><SI size={15} />{studio?.name}</span>
-        <h1><span className="ws-id">{t.id}</span>{t.name}</h1>
+        <h1>{t.name}</h1>
         <span className={`ws-state ${t.status.state}`}>{t.status.state === "ready" ? (t.status.gpu_offline ? "GPU offline" : "Ready") : t.status.state === "needs_key" ? <><KeyRound size={12} />Needs key</> : "Not built yet"}</span>
         <span className="dim small ws-engine" title={t.status.detail}>{ENGINE_LABEL[t.engine]}</span>
         <div className="grow" />
         {t.models.length > 0 && t.engine !== "local" && <select className="input sm model-pick" value={model} onChange={(e) => setModel(e.target.value)} aria-label="Model">
           {t.models.map((x) => <option key={x.id} value={x.id}>{x.label}{x.usd_per_s ? ` · $${x.usd_per_s}/s` : x.usd_per_run ? ` · $${x.usd_per_run}/image` : ""}{x.tier ? ` · ${x.tier}` : ""}</option>)}</select>}
         {t.engine === "local" && t.models.length > 0 && <span className="dim small" title={t.status.detail}>{t.id === "041" ? "Premium voices with a fal.ai key" : "Prompt-based replace with a fal.ai key"}</span>}
-        <label className="proj-pick"><FolderOpen size={14} /><select className="input sm" value={pid} onChange={(e) => setPid(e.target.value)} aria-label="Project">
+        <label className="proj-pick"><FolderOpen size={14} />Save to project <select className="input sm" value={pid} onChange={(e) => setPid(e.target.value)} aria-label="Project">
           {projects?.length === 0 && <option value="">No projects yet</option>}{projects?.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
       </header>
       {projects?.length === 0 && <div className="info-box" style={{ margin: "0 18px 10px" }}>Outputs are saved into a project. <Link to="/editor/projects">Create a project</Link> first.</div>}
       {t.notice && <div className="info-box" style={{ margin: "0 18px 10px" }}>{t.notice}</div>}
       {t.status.gpu_offline && <div className="info-box" role="status" style={{ margin: "0 18px 10px" }}>{t.status.notice}</div>}
-      <Layout t={t} c={c} g={g} history={history} select={setCur} runBar={runBar} actions={actions} onUse={onUse} tools={tools} studios={studios}
-        input={media.find((x) => x.id === (v.video || v.image || v.audio))} />
+      <div className="guide-intro"><p>{t.summary}</p>
+        {t.studio !== "automation" && <button className="btn sm" onClick={() => setStudioView(!studioView)}>{studioView ? "Open guided view" : "Open studio view"}</button>}
+      </div>
+      {studioView ? <Layout t={t} c={c} g={g} history={history} select={setCur} runBar={runBar} actions={actions} onUse={onUse} tools={tools} studios={studios}
+        input={media.find((x) => x.id === (v.video || v.image || v.audio))} /> : (
+        <div className="guide-grid">
+          <section className="guide-panel">
+            <h2>1. Set up your tool</h2>
+            <Controls c={c} /><Advanced c={c} /><Consent c={c} />{runBar}
+          </section>
+          <section className="guide-panel">
+            <h2>2. Review your result</h2>
+            <Output key={g?.id} g={g} onUse={onUse} empty={<p>Your result will appear here after you select <b>{runLabel}</b>.</p>} />
+            {actions}
+            {history.length > 0 && <><h3>Previous runs</h3><RenderQueue history={history} g={g} select={setCur} /></>}
+          </section>
+        </div>
+      )}
     </Frame>
   );
 }
 
-const RUN_LABEL: Record<string, string> = { video: "Roll camera", image: "Generate", transform: "Transform", animation: "Animate", audio: "Create audio", writing: "Write",
+const TASK_ACTION: Record<string, string> = {
+  "023": "Remove background", "041": "Create voice-over", "093": "Cut silences", "101": "Transcribe speech",
+  "102": "Translate subtitles", "103": "Add captions", "104": "Dub video", "112": "Make Shorts",
+};
+const RUN_LABEL: Record<string, string> = { video: "Generate video", image: "Generate", transform: "Transform", animation: "Animate", audio: "Create audio", writing: "Write",
   content: "Analyse", creator: "Research", imageedit: "Apply", videointel: "Build", localize: "Localize", automation: "Run workflow" };
 
 export { Frame };

@@ -1,6 +1,6 @@
-import { CSSProperties, useEffect, useMemo, useState } from "react";
+import { CSSProperties, useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { Search, KeyRound, CheckCircle2, Lock, ArrowRight, Sparkles, Grid3x3, Rows3 } from "lucide-react";
+import { Search, KeyRound, CheckCircle2, Lock, ArrowRight, Captions, Mic, Scissors, Grid3x3, Rows3 } from "lucide-react";
 import { api } from "../api";
 import { useAuth } from "../App";
 import { ENGINE_LABEL, Generation, Tool, useCatalogue } from "../ai/core";
@@ -30,7 +30,8 @@ function ToolCard({ t }: { t: Tool }) {
 /** Plain-language shortcuts to the most-used tools. A shortcut only shows when its tool is ready. */
 const QUICK = [
   { id: "023", label: "Remove background", hint: "Cut yourself out of a video" },
-  { id: "101", label: "Add captions", hint: "Subtitles from your speech" },
+  { id: "103", label: "Add captions", hint: "Put readable subtitles on your video" },
+  { id: "101", label: "Get a transcript", hint: "Turn speech into text with timestamps" },
   { id: "104", label: "Dub into a language", hint: "New voice in Hindi, English and more" },
   { id: "112", label: "Make Shorts", hint: "Long video into 9:16 clips" },
   { id: "041", label: "Text to voice", hint: "Type a line, hear it spoken" },
@@ -40,43 +41,45 @@ const QUICK = [
 ];
 
 export function AiHub() {
-  const { cat } = useCatalogue();
+  const { cat, err } = useCatalogue();
   const { workspace, me } = useAuth();
   const [q, setQ] = useState("");
   const [recent, setRecent] = useState<Generation[]>([]);
   useEffect(() => { if (workspace) api<Generation[]>(`/workspaces/${workspace.id}/generations?limit=12`).then(setRecent).catch(() => {}); }, [workspace]);
-  const hits = useMemo(() => (q.trim() && cat ? cat.tools.filter((t) => `${t.id} ${t.name} ${t.summary} ${t.slug}`.toLowerCase().includes(q.toLowerCase())).slice(0, 12) : []), [q, cat]);
+  const query = q.trim().toLowerCase();
+  const hits = cat?.tools.filter((t) => {
+    const shortcut = QUICK.find((item) => item.id === t.id);
+    return [t.id, t.name, t.summary, t.slug, shortcut?.label, shortcut?.hint].join(" ").toLowerCase().includes(query);
+  }) ?? [];
+  const featured = [
+    { id: "103", icon: Captions, theme: "caption" },
+    { id: "041", icon: Mic, theme: "voice" },
+    { id: "093", icon: Scissors, theme: "cut" },
+  ].filter((item) => cat?.tools.some((t) => t.id === item.id));
   return (
     <Frame>
-      <div className="hub">
-        <div className="hub-head">
-          <div><h1><Sparkles size={22} /> Your AI creative studio</h1>
-            <p className="muted">{cat ? `${cat.studios.length} studios · ${cat.tools.length} tools ready to use` : "Loading tools…"}</p></div>
-          {cat && <div className="hub-counts"><span className="st ready"><CheckCircle2 size={12} />{cat.tools.length} ready</span>
-            <Link className="btn sm" to="/ai-generator/explore"><Rows3 size={13} />Tool explorer</Link></div>}
-        </div>
-        <div className="hub-search"><Search size={16} /><input placeholder="Search tools — e.g. thumbnail, dub, captions, slow motion" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search tools" /></div>
-        {hits.length > 0 && <div className="tgrid">{hits.map((t) => <ToolCard key={t.id} t={t} />)}</div>}
-        {cat && q.trim() && hits.length === 0 && <div className="card empty" role="status"><Search size={24} /><b>No tools match “{q}”</b><button className="btn" onClick={() => setQ("")}>Clear search</button></div>}
-        {me?.is_platform_admin && cat && !cat.keys.fal && <div className="keys-banner"><KeyRound size={16} /><div><b>Connect services to enable more tools.</b>
-          <span> Video, image, music, lip-sync and 3D generation run on fal.ai (Veo 3.1, Kling 3, Seedance, MiniMax, FLUX, ElevenLabs). Add <code>FAL_KEY</code> in the host's secret settings to turn on {cat.tools.filter((t) => t.status.needs.some((n) => n.startsWith("FAL"))).length} tools.
-            {!cat.keys.llm && <> Writing and strategy tools need <code>GROQ_API_KEY</code>, <code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code>.</>}{!cat.keys.youtube && <> Channel research needs <code>YOUTUBE_API_KEY</code>.</>}</span></div></div>}
-        {!q.trim() && cat && <>
-          <h3 className="hub-h">What do you want to do?</h3>
-          <div className="quick-tasks">{QUICK.map((qk) => { const t = cat.tools.find((x) => x.id === qk.id); if (!t || t.status.state !== "ready") return null; return (
-            <Link key={qk.id} to={`/ai-generator/tool/${qk.id}`} className="quick-task"><b>{qk.label}</b><span>{qk.hint}</span></Link>); })}</div>
-          <h3 className="hub-h">Or browse all tools by studio</h3>
+      <div className="hub task-home">
+        <header className="task-head"><h1>What do you want to make?</h1>
+          <p>Choose a task or search for the result you need.</p>
+          <div className="hub-search"><Search size={19} /><input type="search" placeholder="Search for captions, voice-over, Shorts…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search tools" /></div>
+        </header>
+        {err ? <p role="alert">{err}</p> : !cat ? <p role="status">Loading tools…</p> : query ? <>
+          <h2 aria-live="polite">{hits.length} {hits.length === 1 ? "tool" : "tools"} found</h2>
+          {hits.length ? <div className="tgrid">{hits.map((t) => <ToolCard key={t.id} t={t} />)}</div>
+            : <p>Try a shorter search. <button className="btn sm" onClick={() => setQ("")}>Show all tasks</button></p>}
+        </> : <>
+          {!!featured.length && <section><h2>Start with a task</h2><div className="task-cards">{featured.map(({ id, icon: Icon, theme }) => {
+            const task = QUICK.find((item) => item.id === id)!;
+            return <Link key={id} className={`task-tile ${theme}`} to={`/ai-generator/tool/${id}`}>
+              <Icon size={32} aria-hidden="true" /><b>{task.label}</b><span>{task.hint}</span><ArrowRight size={18} className="task-arrow" /></Link>;
+          })}</div></section>}
+          <section><h2>Browse by studio</h2><div className="studio-directory">{cat.studios.map((s) => {
+            const Icon = STUDIO_META[s.id].icon;
+            return <Link key={s.id} to={`/ai-generator/studio/${s.id}`}><Icon size={19} /><div><b>{s.name}</b><small>{s.tagline}</small></div><ArrowRight size={15} /></Link>;
+          })}</div>{!cat.tools.length && <p>No tools are available in this workspace yet.</p>}</section>
         </>}
-        {!q.trim() && <div className="studios">
-          {cat?.studios.map((s) => { const m = STUDIO_META[s.id]; const I = m.icon; const ts = cat.tools.filter((t) => t.studio === s.id); const r = ts.filter((t) => t.status.state === "ready").length; return (
-            <Link key={s.id} to={`/ai-generator/studio/${s.id}`} className={`studio-card motif-${m.motif}`} style={{ "--s1": m.c1, "--s2": m.c2 } as CSSProperties}>
-              <span className="sc-art" aria-hidden="true"><i /><i /><i /></span>
-              <I size={22} className="sc-icon" />
-              <b>{s.name}</b><p>{s.tagline}</p>
-              <span className="sc-foot">{r} tools available<ArrowRight size={14} /></span>
-            </Link>); })}
-        </div>}
-        {recent.length > 0 && <><h3 className="hub-h">Recent generations</h3><div className="recent">{recent.map((g) => (
+        {!query && me?.is_platform_admin && !!cat?.hidden && <details><summary>Tool availability</summary><p>{cat.hidden} tools are hidden pending configuration or implementation. Available tools appear here automatically.</p></details>}
+        {!query && recent.length > 0 && <><h3 className="hub-h">Recent generations</h3><div className="recent">{recent.filter((g) => cat?.tools.some((t) => t.id === g.tool_id)).map((g) => (
           <Link key={g.id} to={`/ai-generator/tool/${g.tool_id}`} className="recent-item"><Thumb a={g.outputs[0]} size={120} /><b className="ellipsis">{g.tool_name}</b><span className="dim small">v{g.version} · {g.status}</span></Link>))}</div></>}
       </div>
     </Frame>
@@ -113,19 +116,18 @@ export function AiExplorer() {
   const [params, setParams] = useSearchParams();
   const studio = params.get("studio") ?? "", state = params.get("state") ?? "", engine = params.get("engine") ?? "";
   const [q, setQ] = useState("");
-  const [grid, setGrid] = useState(false);
+  const [grid, setGrid] = useState(true);
   const list = (cat?.tools ?? []).filter((t) => (!studio || t.studio === studio) && (!state || t.status.state === state) && (!engine || t.engine === engine)
     && (!q || `${t.id} ${t.name} ${t.summary}`.toLowerCase().includes(q.toLowerCase())));
   const setF = (k: string, v: string) => { const p = new URLSearchParams(params); v ? p.set(k, v) : p.delete(k); setParams(p, { replace: true }); };
   return (
     <Frame>
       <div className="explorer">
-        <div className="hub-head"><div><h1>Tool explorer</h1><p className="muted">{list.length} of 120 tools</p></div>
+        <div className="hub-head"><div><h1>Tool explorer</h1><p className="muted">{list.length} of {cat?.tools.length ?? 0} available tools</p></div>
           <button type="button" className="btn sm" onClick={() => setGrid(!grid)}>{grid ? <Rows3 size={13} /> : <Grid3x3 size={13} />}{grid ? "Table" : "Cards"}</button></div>
         <div className="ex-filters">
           <div className="hub-search sm"><Search size={14} /><input placeholder="Filter" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Filter tools" /></div>
           <select className="input sm" value={studio} onChange={(e) => setF("studio", e.target.value)} aria-label="Studio"><option value="">All studios</option>{cat?.studios.map((s) => <option key={s.id} value={s.id}>{s.code} · {s.name}</option>)}</select>
-          <select className="input sm" value={state} onChange={(e) => setF("state", e.target.value)} aria-label="Status"><option value="">Any status</option><option value="ready">Ready</option><option value="needs_key">Needs key</option><option value="unbuilt">Not built</option></select>
           <select className="input sm" value={engine} onChange={(e) => setF("engine", e.target.value)} aria-label="Engine"><option value="">Any engine</option>{Object.entries(ENGINE_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
         </div>
         {grid ? <div className="tgrid">{list.map((t) => <ToolCard key={t.id} t={t} />)}</div> : (

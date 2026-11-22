@@ -549,3 +549,30 @@
 .aiw .quick-task span { font-size: 13px; color: var(--text-2); }
 .aiw .hub-h { font-size: 17px; color: var(--text); font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { .aiw .quick-task { transition: none; } }
+.aiw .aiw-body:has(.generator-nav) { display: flex; flex-direction: column; }
+.aiw .generator-nav { display: flex; gap: 6px; flex-wrap: wrap; padding: 8px clamp(12px, 3vw, 44px); border-bottom: 1px solid var(--edge); }
+.aiw .generator-nav a { display: inline-flex; align-items: center; gap: 7px; padding: 8px 10px; color: #ccc7dc; border-radius: 8px; font-size: 13px; }
+.aiw .generator-nav a:is(.active,:hover) { background: #292139; color: white; }
+.aiw .hub.task-home { width: min(100%, 1100px); margin: 0 auto; padding: clamp(20px, 4vw, 52px) clamp(16px, 3vw, 40px); display: grid; gap: 28px; }
+.aiw .task-head h1 { margin: 0; font-size: clamp(28px, 4vw, 48px); line-height: 1.12; letter-spacing: -.04em; }
+.aiw .task-head p { color: #c2bbcf; margin: 10px 0 20px; }
+.aiw .task-head .hub-search { width: min(100%, 660px); margin: 0; }
+.aiw .task-home h2, .aiw .guide-panel h2 { margin: 0 0 12px; font-size: 19px; }
+.aiw .task-cards, .aiw .studio-directory { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,240px),1fr)); gap: 12px; }
+.aiw .task-tile { --accent: #bda5ff; display: grid; align-content: start; gap: 5px; position: relative; padding: 22px; border: 1px solid color-mix(in srgb,var(--accent) 35%,transparent); border-radius: 16px; background: linear-gradient(130deg,color-mix(in srgb,var(--accent) 17%,#11101c),#11101c); }
+.aiw .task-tile.voice { --accent: #64ddca; }
+.aiw .task-tile.cut { --accent: #ffbb91; }
+.aiw .task-tile svg { color: var(--accent); }
+.aiw .task-tile b { font-size: 20px; margin-top: 16px; }
+.aiw .task-tile span, .aiw .studio-directory small { color: #cec9d9; font-size: 13px; }
+.aiw .task-arrow { position: absolute; top: 20px; right: 20px; }
+.aiw .studio-directory a { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; border: 1px solid var(--edge); border-radius: 12px; padding: 16px; }
+.aiw .studio-directory small { display: block; margin-top: 4px; }
+.aiw .studio-directory a:hover, .aiw .task-tile:hover { border-color: #ab91e3; }
+.aiw .guide-intro { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 0 18px 16px; }
+.aiw .guide-intro p { color: #c8c3d4; margin: 0; }
+.aiw .guide-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 18px; align-items: start; width: min(100%,1300px); margin: 0 auto; padding: 0 18px 32px; }
+.aiw .guide-panel { display: grid; gap: 15px; min-width: 0; padding: clamp(14px,2vw,24px); border: 1px solid var(--edge); border-radius: 16px; background: var(--glass); }
+.aiw .guide-panel > * { min-width: 0; }
+.aiw .guide-panel h2 { margin: 0; }
+@media (max-width: 760px) { .aiw .guide-grid { grid-template-columns: minmax(0,1fr); } .aiw .generator-nav { gap: 0; } }
