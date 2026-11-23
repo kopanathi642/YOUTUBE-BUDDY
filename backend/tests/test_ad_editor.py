@@ -131,3 +131,11 @@ def test_director_renders_a_tutorial_without_a_product_arc(env):
     spoken = next(t for t in tl["tracks"] if t["id"] == "v1")["clips"]
     assert all(clip["speed"] == 1 and clip["volume"] == 1 for clip in spoken)
     assert next(t for t in tl["tracks"] if t["id"] == "a2")["clips"][0]["volume"] < .2
+
+
+def test_director_distinguishes_situation_from_genre():
+    from app.tools.story_edit import cutting_strategy
+    s = ad.read_brief("A tender wedding toast", {})
+    assert (s["genre"], s["feeling"], cutting_strategy(s)) == ("Wedding / event", "Tender", "dialogue")
+    s = ad.read_brief("A tense racing film", {"genre": "Documentary / film"})
+    assert (s["genre"], s["feeling"], cutting_strategy(s)) == ("Documentary / film", "Tense", "action")

@@ -26,7 +26,7 @@ from .. import analysis, media
 from ..models import Generation
 from ..timeline import AssetInfo, Timeline, compile_ffmpeg, default_timeline
 from .run import RunCtx, ToolError
-from .story_edit import FEELINGS, FORMATS as STORY_FORMATS, direction, story_picks
+from .story_edit import FEELINGS, cutting_strategy, direction, situation, story_picks
 
 ANALYSIS_KEY = "ad_shots_v1"
 FORMATS = {"16:9": (1920, 1080), "9:16": (1080, 1920), "1:1": (1080, 1080), "4:5": (1080, 1350)}
@@ -94,7 +94,7 @@ def read_brief(brief: str, p: dict) -> dict:
     pace = pick("pace", pc[0] if pc else None, pc[1] if pc else "") or "medium"
     why.setdefault("pace", "default")
     reveal = bool(re.search(r"reveal|product shot|end on|final shot|logo", b)) or bool(p.get("reveal"))
-    return {"genre": genre, "feeling": feeling, "brief": brief, "duration": max(6, min(120, dur)), "aspect": aspect if aspect in FORMATS else "16:9", "look": look if look in LOOKS else "elegant warm",
+    return {"genre": genre, "feeling": feeling, "situation": situation(b, p.get("situation")), "brief": brief, "duration": max(6, min(120, dur)), "aspect": aspect if aspect in FORMATS else "16:9", "look": look if look in LOOKS else "elegant warm",
             "pace": pace if pace in PACES else "medium", "reveal": reveal, "why": why}
 
 
@@ -349,7 +349,7 @@ def build(rc: RunCtx, assets: dict, pool: list[dict], s: dict, music, beats: lis
     D = float(s["duration"])
     reveal_s = max(2.5, min(6.0, D * 0.18))
     story = s.get("genre", "Advertisement") != "Advertisement"
-    dialogue = story and STORY_FORMATS[s["genre"]][1] == "dialogue"
+    dialogue = story and cutting_strategy(s) == "dialogue"
     picks = story_picks(assets, pool, s, beats, prev_plan) if story else []
     if story:
         slots = [("Opening" if i == 0 else "Closing" if i == len(picks)-1 else "Development",
@@ -511,6 +511,10 @@ def ad_edit(rc: RunCtx):
         changes = rc.p.get("changes") or ""
         s, understood = apply_changes(base, changes)
         if base.get("genre", "Advertisement") != "Advertisement":
+            focus = situation(changes, rc.p.get("situation"))
+            if focus != "From video type" and focus != base.get("situation"):
+                s["situation"] = focus
+                understood.append(f"situation → {focus}")
             for name, (pattern, _, look) in FEELINGS.items():
                 if re.search(pattern, changes, re.I):
                     s["feeling"] = name

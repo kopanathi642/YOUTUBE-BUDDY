@@ -39,11 +39,29 @@ def direction(text, requested, feeling):
     return genre, mood
 
 
+SITUATIONS = {
+    "Speaking": (r"\b(toast|vows|speaking|speaker|speech|dialogue|conversation|explanation|explains)\b", "dialogue"),
+    "Reaction": (r"\b(reaction|reactions|reunion|farewell)\b", "reaction"),
+    "Action": (r"\b(race|racing|chase|match|stunt|scoring)\b", "action"),
+    "Scenery": (r"\b(scenery|landscape|locations|places)\b", "journey"),
+}
+
+
+def situation(text, choice):
+    return choice if choice in SITUATIONS else next(
+        (key for key, (pattern, _) in SITUATIONS.items() if re.search(pattern, text, re.I)), "From video type")
+
+
+def cutting_strategy(settings):
+    setting = SITUATIONS.get(settings.get("situation"))
+    return setting[1] if setting else FORMATS[settings["genre"]][1]
+
+
 def story_picks(assets, pool, settings, beats, previous):
     """Return frame-aligned, natural-speed source ranges; each selection consumes its source range."""
     fps = 30
-    genre, feeling = settings["genre"], settings["feeling"]
-    strategy = FORMATS[genre][1]
+    feeling = settings["feeling"]
+    strategy = cutting_strategy(settings)
     words = set(re.findall(r"\w{3,}", settings.get("brief", "").casefold())) - {
         "the", "and", "this", "that", "with", "video", "make", "edit", "keep", "from", "into", "show"}
     order = list(assets)
@@ -52,7 +70,7 @@ def story_picks(assets, pool, settings, beats, previous):
     target = int(settings["duration"] * fps)
     if sum(limit.values()) < target:
         raise ToolError("The selected footage is shorter than the requested edit. Choose a shorter length or add clips.")
-    hold = {"dialogue": 12, "journey": 6, "action": 3, "montage": 4}[strategy]
+    hold = {"dialogue": 12, "journey": 6, "action": 3, "montage": 4, "reaction": 7}[strategy]
     hold *= FEELINGS[feeling][1] * {"calm": 1.35, "medium": 1, "energetic": .75}[settings["pace"]]
     pos, shots = 0, []
     end_id = settings.get("reveal_asset")
@@ -88,8 +106,8 @@ def story_picks(assets, pool, settings, beats, previous):
                     score -= 12
                 if shots and strategy in ("action", "montage") and shots[-1][0] == aid:
                     score -= 1
-                if feeling == "Tender" and w["faces"]:
-                    score += .35
+                if (feeling == "Tender" or strategy == "reaction") and w["faces"]:
+                    score += 1.2 if strategy == "reaction" else .35
                     reason += "; face visible"
                 if strategy == "dialogue":
                     for seg in transcript:

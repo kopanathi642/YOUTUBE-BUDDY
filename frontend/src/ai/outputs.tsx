@@ -327,7 +327,7 @@ function AdEditView({ g, r, onUse }: { g: Generation; r: any; onUse?: (k: string
   const s = r.settings || {};
   return <div className="rep ad-rep">
     <div className="rep-kpis"><Kpi l="Length" v={`${s.duration}s`} /><Kpi l="Format" v={s.aspect} /><Kpi l="Look" v={s.look} /><Kpi l="Pace" v={s.pace} />
-      {s.genre && <Kpi l="Video type" v={s.genre} />}{s.feeling && <Kpi l="Feeling" v={s.feeling} />}<Kpi l="Cuts" v={r.shots?.length ?? 0} /><Kpi l="Timing" v={["Interview / podcast", "Tutorial"].includes(s.genre) ? "Speech pacing" : r.music?.used ? `music · ${r.music.bpm} BPM` : "Pacing grid"} /></div>
+      {s.genre && <Kpi l="Video type" v={s.genre} />}{s.feeling && <Kpi l="Feeling" v={s.feeling} />}<Kpi l="Cuts" v={r.shots?.length ?? 0} /><Kpi l="Timing" v={(s.situation === "Speaking" || (s.situation === "From video type" && ["Interview / podcast", "Tutorial"].includes(s.genre))) ? "Speech pacing" : r.music?.used ? `music · ${r.music.bpm} BPM` : "Pacing grid"} /></div>
     <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
       {r.sequence_id && <a className="btn sm" href={`/edit/${g.project_id}?seq=${r.sequence_id}`}>Open in editor — change any cut</a>}
       <span className={`badge ${r.all_checks_ok ? "ok" : "warn"}`}>{r.all_checks_ok ? "All checks passed" : "Some checks need attention"}</span>

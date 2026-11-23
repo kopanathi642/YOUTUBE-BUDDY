@@ -581,6 +581,7 @@ T(121, "ai-ad-editor", "AI Editor Brain", "creator", "Auto-edit your footage int
   [P("clips", "media_multi", "Your clips", accept=["video", "image"], min_items=1, max_items=20, required=True),
    P("brief", "longtext", "Describe the situation and the edit you want", required=True, max=2000, placeholder="A quiet wedding toast. Hold on the speaker, then let the celebration pick up."),
    P("genre", "chips", "Video type", options=["auto", "General video", "Vlog / travel", "Wedding / event", "Interview / podcast", "Tutorial", "Documentary / film", "Sports / gaming", "Music video", "Short / reel", "Advertisement"], default="auto"),
+   P("situation", "chips", "What is happening?", options=["auto", "Speaking", "Reaction", "Action", "Scenery"], default="auto"),
    P("feeling", "chips", "How should it feel?", options=["auto", "Natural", "Tender", "Reflective", "Joyful", "Tense", "Energetic"], default="auto"),
    media("music", "Music (optional — cuts follow its beat)", ("audio",), required=False),
    media("reveal", "Closing shot (optional)", ("video", "image"), required=False),
