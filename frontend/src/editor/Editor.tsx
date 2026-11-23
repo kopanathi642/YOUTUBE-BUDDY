@@ -30,6 +30,7 @@ import ColorPanel from "./ColorPanel";
 import ScopesPanel from "./ScopesPanel";
 import NodesPanel from "./NodesPanel";
 import BottomStrip from "./BottomStrip";
+import AutoEdit from "./AutoEdit";
 import RecordModal from "./RecordModal";
 import { AssistantPanel, VoicePanel, QuickActions, Recommendations, PlanDialog, Caps, Capability } from "./AiPanels";
 import { AdDirector } from "./AdDirector";
@@ -114,6 +115,7 @@ export default function Editor() {
   const [snapOn, setSnapOn] = useState(true);
   const [caps, setCaps] = useState<Caps>(new Map());
   const [plan, setPlan] = useState<ReturnType<typeof buildPlan> | null>(null);
+  const [autoEdit, setAutoEdit] = useState(false);
   const [recording, setRecording] = useState(false);
   const [exportFocus, setExportFocus] = useState(0);
   const { layout, setLayout, focus } = useLayout();
@@ -531,6 +533,7 @@ export default function Editor() {
         <WorkspaceBar layout={layout} setLayout={setLayout} />
         <FocusMusic assets={assets} editorPlaying={playing} />
         <LayoutMenu layout={layout} setLayout={setLayout} />
+        <button className="btn sm" disabled={readOnly} onClick={() => setAutoEdit(true)}><Sparkles size={15} />Auto-edit</button>
         <button className="btn sm primary" onClick={() => action("export")} title="Export video"><RocketI size={15} />Export</button>
         <SaveBlock state={readOnly ? "readonly" : save} version={version} />
         <UserMenu />
@@ -561,7 +564,7 @@ export default function Editor() {
               onDropAsset={(id, trackId, at) => { const a = assetMap.get(id); if (a) addAssetToTimeline(a, trackId, at); }}
               timecode="" />}
           panels={{
-            assistant: { id: "assistant", label: "AI Assistant", icon: Bot, node: <><section className="panel" style={{padding: 12}}><h3>AI Editor Brain</h3><p>Describe your footage and the feeling you want. Get an editable cut with sound and colour.</p><Link className="btn primary" to={`/ai-generator/tool/121?project=${project.id}`}>Auto-edit my video</Link></section><AdDirector assets={assets} disabled={readOnly} create={ad => createSequence({name: "Director · 30-second ad", ad}, "Ad draft ready to edit")} /><AssistantPanel caps={caps} autoAdjust={autoAdjust} setAutoAdjust={setAutoAdjust} onMagic={() => action("magic")} readOnly={readOnly} pending={!analysed} /></> },
+            assistant: { id: "assistant", label: "AI Assistant", icon: Bot, node: <><section className="panel" style={{padding: 12}}><h3>AI Editor Brain</h3><p>Describe your footage and the feeling you want. Get an editable cut with sound and colour.</p><button className="btn primary" disabled={readOnly} onClick={() => setAutoEdit(true)}>Auto-edit my video</button></section><AdDirector assets={assets} disabled={readOnly} create={ad => createSequence({name: "Director · 30-second ad", ad}, "Ad draft ready to edit")} /><AssistantPanel caps={caps} autoAdjust={autoAdjust} setAutoAdjust={setAutoAdjust} onMagic={() => action("magic")} readOnly={readOnly} pending={!analysed} /></> },
             voice: { id: "voice", label: "Translate & Voice", icon: Mic2, node: <VoicePanel caps={caps} catalog={catalog} onStudio={() => dubSource?.asset_id && setStudioFor(dubSource.asset_id)} onLipSync={hide.has("lipsync") ? undefined : () => action("lipsync")}
               source={dubSource ? { name: assetMap.get(dubSource.asset_id)?.filename ?? "clip" } : null} /> },
             color: { id: "color", label: "Color", icon: PaletteI, node: <div className="color-panel-anchor"><ColorPanel tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly} luts={assets.filter((a) => a.kind === "lut")} projectId={projectId!} onLutUploaded={loadMedia} /></div> },
@@ -578,6 +581,12 @@ export default function Editor() {
             suggest: { id: "suggest", label: "Suggestions", icon: Lightbulb, node: <Recommendations tl={tl} assets={assetMap} edit={edit} readOnly={readOnly} /> },
           } as Record<PanelId, PanelDef>} />
       </div>
+      {autoEdit && <AutoEdit key={project.id} projectId={project.id} assets={assets} readOnly={readOnly} timelineIds={tl.tracks.flatMap(t => t.clips).sort((a, b) => a.start - b.start).flatMap(c => c.asset_id ? [c.asset_id] : [])} onClose={() => setAutoEdit(false)} onOpen={async id => {
+        if (!await doSave(true)) throw new Error("Save the current timeline before opening your cut.");
+        const next = await api<SequenceDoc>(`/sequences/${id}`);
+        setSequences(ss => [...ss.filter(s => s.id !== id), next]);
+        openSequence(next); void loadMedia();
+      }} />}
       {plan && <PlanDialog ops={plan} onClose={() => setPlan(null)} onApply={(ids) => { let t = tl; for (const o of plan) if (ids.has(o.id)) t = o.apply(t); edit(t); setPlan(null); toast(`AI Magic applied ${ids.size} change${ids.size > 1 ? "s" : ""} — Ctrl+Z to undo`); }} />}
       {showHistory && (
         <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && setShowHistory(false)}>
