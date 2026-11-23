@@ -1410,3 +1410,300 @@
 .ch3-genart span:nth-child(2)::after{animation-delay:-1s}.ch3-genart span:nth-child(3)::after{animation-delay:-2s}
 .ch3-genart small{position:absolute;left:10px;bottom:7px;font-size:11px;color:#f1f5f9;text-shadow:0 1px 4px #000;z-index:1}
 @keyframes ch3-shimmer{from{background-position:150% 0}to{background-position:-100% 0}}
+
+/* ==========================================================================
+   "So Simple a 5th Grader Can Edit" Interactive Playground & Gesture Effects
+   Scoped strictly under .ch
+   ========================================================================== */
+
+.ch .ch-kid-section {
+  padding-top: 100px;
+  position: relative;
+  z-index: 2;
+  text-align: center;
+}
+
+.ch .ch-kid-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #34d399;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.ch .ch-kid-box {
+  margin-top: 48px;
+  border-radius: 28px;
+  padding: 2px;
+  background: linear-gradient(135deg, rgba(0,240,255,0.4), rgba(139,92,246,0.4), rgba(16,185,129,0.35));
+  box-shadow: 0 40px 100px rgba(0,0,0,0.7), 0 0 80px rgba(0,240,255,0.15);
+  overflow: hidden;
+}
+
+.ch .ch-kid-inner {
+  border-radius: 26px;
+  background: radial-gradient(ellipse at 50% 0%, #120e2e 0%, #060414 70%);
+  padding: clamp(24px, 4vw, 44px);
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* Gesture pill toggles */
+.ch .ch-gesture-row {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ch .ch-gesture-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #cbd5e1;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  user-select: none;
+}
+
+.ch .ch-gesture-pill:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.25);
+  color: #fff;
+}
+
+.ch .ch-gesture-pill:active {
+  transform: scale(0.96);
+}
+
+.ch .ch-gesture-pill.active {
+  background: linear-gradient(135deg, rgba(0,240,255,0.25), rgba(139,92,246,0.3));
+  border-color: #00f0ff;
+  color: #fff;
+  box-shadow: 0 0 25px rgba(0,240,255,0.35);
+}
+
+.ch .ch-pill-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #64748b;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.ch .ch-gesture-pill.active .ch-pill-indicator {
+  background: #00f0ff;
+  box-shadow: 0 0 10px #00f0ff;
+}
+
+/* Interactive Player Simulator */
+.ch .ch-sim-display {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: center;
+  text-align: left;
+}
+
+@media (max-width: 860px) {
+  .ch .ch-sim-display {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ch .ch-sim-viewport {
+  position: relative;
+  margin: 0 auto;
+  border-radius: 20px;
+  border: 2px solid rgba(255,255,255,0.12);
+  background: #050410;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+  transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), aspect-ratio 0.4s;
+  display: flex;
+  flex-direction: column;
+}
+
+.ch .ch-sim-viewport.mode-16-9 {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 320px;
+}
+
+.ch .ch-sim-viewport.mode-9-16 {
+  width: 200px;
+  height: 340px;
+  border-radius: 28px;
+  border-width: 4px;
+  border-color: rgba(255,255,255,0.2);
+}
+
+.ch .ch-sim-canvas {
+  flex: 1;
+  position: relative;
+  background: linear-gradient(170deg, #1e1b4b 0%, #0f172a 60%, #020617 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.ch .ch-sim-glow-sphere {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,240,255,0.3) 0%, rgba(139,92,246,0.2) 50%, transparent 70%);
+  animation: ch-pulse-glow 3s ease-in-out infinite;
+}
+
+/* Kinetic Animated Caption on Simulated Screen */
+.ch .ch-sim-caption {
+  position: absolute;
+  bottom: 24px;
+  left: 12px;
+  right: 12px;
+  text-align: center;
+  z-index: 5;
+  animation: ch-bounce-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ch .ch-sim-caption span {
+  display: inline-block;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: clamp(14px, 2vw, 20px);
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: #facc15;
+  color: #000;
+  box-shadow: 0 4px 18px rgba(250, 204, 21, 0.6);
+  letter-spacing: -0.01em;
+}
+
+/* Silence Cut Badge */
+.ch .ch-sim-cut-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.9);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+  animation: ch-bounce-in 0.3s ease-out;
+}
+
+/* Sim details panel right */
+.ch .ch-sim-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ch .ch-sim-card {
+  padding: 18px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.ch .ch-sim-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.ch .ch-sim-card-text b {
+  display: block;
+  font-size: 15px;
+  color: #f1f5f9;
+  margin-bottom: 4px;
+}
+
+.ch .ch-sim-card-text p {
+  margin: 0;
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+/* 3 Kid-friendly steps */
+.ch .ch-kid-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-top: 36px;
+  text-align: left;
+}
+
+@media (max-width: 760px) {
+  .ch .ch-kid-steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ch .ch-kstep {
+  padding: 24px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.ch .ch-kstep-num {
+  font-size: 38px;
+  font-weight: 800;
+  font-family: "Space Grotesk", sans-serif;
+  color: rgba(255,255,255,0.12);
+  line-height: 1;
+  margin-bottom: 12px;
+}
+
+.ch .ch-kstep h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.ch .ch-kstep p {
+  margin: 0;
+  font-size: 14px;
+  color: #94a3b8;
+  line-height: 1.55;
+}
+
+@keyframes ch-bounce-in {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}

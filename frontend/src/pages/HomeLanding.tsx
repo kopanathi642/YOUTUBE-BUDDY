@@ -4,6 +4,7 @@ import {
   Play,
   Facebook, Instagram, X as XIcon, Youtube,
   Zap, Layers, ArrowRight, CheckCircle2,
+  Sparkles, Scissors, Languages,
 } from "lucide-react";
 import { api } from "../api";
 import { useAuth, useBrand } from "../App";
@@ -318,6 +319,10 @@ export default function HomeLanding() {
   const [cat, setCat]     = useState<Catalogue | null>(null);
   const [plans, setPlans] = useState<PublicPlan[] | null>(null);
   const [yearly, setYearly] = useState(false);
+  const [simCaptions, setSimCaptions] = useState(true);
+  const [simSilence, setSimSilence] = useState(true);
+  const [simVoice, setSimVoice] = useState<"hi" | "en" | "te">("hi");
+  const [simAspect, setSimAspect] = useState<"16:9" | "9:16">("16:9");
   const [aiOn, setAiOn]   = useState<Record<string, boolean>>({
     "Auto Reframe": true,
     "Remove Silences": true,
@@ -443,6 +448,154 @@ export default function HomeLanding() {
           </div>
         </div>
       </div>
+
+      {/* ── SO SIMPLE A 5TH GRADER CAN EDIT ── */}
+      <section className="ch-kid-section ch-wrap">
+        <div className="ch-kid-badge">
+          <Sparkles size={13} style={{ marginRight: 4 }} />
+          ZERO LEARNING CURVE · ANYONE CAN EDIT
+        </div>
+        <h2>So Simple, Even a 5th Grader Can Edit a Viral Video</h2>
+        <p className="ch-sub">
+          No complicated tracks, no confusing hotkeys. Tap a single button to auto-cut silences, generate animated subtitles, or dub into Hindi — test the live simulator below!
+        </p>
+
+        <div className="ch-kid-box">
+          <div className="ch-kid-inner">
+            {/* Interactive Gesture Pill Toggles */}
+            <div className="ch-gesture-row" role="group" aria-label="Interactive Demo Controls">
+              <button
+                type="button"
+                className={`ch-gesture-pill${simCaptions ? " active" : ""}`}
+                onClick={() => setSimCaptions(!simCaptions)}
+                aria-pressed={simCaptions}
+              >
+                <span className="ch-pill-indicator" />
+                ✨ Auto Captions: {simCaptions ? "ON" : "OFF"}
+              </button>
+
+              <button
+                type="button"
+                className={`ch-gesture-pill${simSilence ? " active" : ""}`}
+                onClick={() => setSimSilence(!simSilence)}
+                aria-pressed={simSilence}
+              >
+                <span className="ch-pill-indicator" />
+                ✂️ Cut Quiet Silences: {simSilence ? "ON" : "OFF"}
+              </button>
+
+              <button
+                type="button"
+                className={`ch-gesture-pill${simVoice === "hi" ? " active" : ""}`}
+                onClick={() => setSimVoice(simVoice === "hi" ? "en" : simVoice === "en" ? "te" : "hi")}
+              >
+                <span className="ch-pill-indicator" />
+                🎙️ AI Dub: {simVoice === "hi" ? "Hindi 🇮🇳" : simVoice === "en" ? "English 🇺🇸" : "Telugu 🇮🇳"}
+              </button>
+
+              <button
+                type="button"
+                className={`ch-gesture-pill${simAspect === "9:16" ? " active" : ""}`}
+                onClick={() => setSimAspect(simAspect === "16:9" ? "9:16" : "16:9")}
+              >
+                <span className="ch-pill-indicator" />
+                📱 Format: {simAspect === "16:9" ? "16:9 Landscape" : "9:16 Shorts"}
+              </button>
+            </div>
+
+            {/* Simulated Live Viewport */}
+            <div className="ch-sim-display">
+              <div className={`ch-sim-viewport mode-${simAspect.replace(":", "-")}`}>
+                <div className="ch-sim-canvas">
+                  <div className="ch-sim-glow-sphere" />
+                  
+                  {/* Floating Elements on Screen */}
+                  {simSilence && (
+                    <div className="ch-sim-cut-badge">
+                      <Scissors size={12} />
+                      -14s Silences Cut!
+                    </div>
+                  )}
+
+                  {/* Animated Waveform for Voice */}
+                  <div style={{ position: "absolute", bottom: simCaptions ? 65 : 20, display: "flex", gap: 3, alignItems: "flex-end", height: 26, zIndex: 4 }}>
+                    {Array.from({ length: simAspect === "9:16" ? 14 : 26 }, (_, i) => (
+                      <span key={i} style={{
+                        width: 3,
+                        height: `${30 + ((i * 47) % 70)}%`,
+                        background: simVoice === "hi" ? "#f59e0b" : simVoice === "en" ? "#00f0ff" : "#10b981",
+                        borderRadius: 2,
+                        animation: `ch-bars ${0.7 + (i % 3) * 0.2}s ease-in-out infinite`,
+                      }} />
+                    ))}
+                  </div>
+
+                  {/* Kinetic Animated Captions */}
+                  {simCaptions && (
+                    <div className="ch-sim-caption">
+                      <span>🔥 HOW TO GO VIRAL IN 2026!</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Explanatory Cards */}
+              <div className="ch-sim-info">
+                <div className="ch-sim-card">
+                  <div className="ch-sim-card-icon" style={{ background: "linear-gradient(135deg, #00f0ff, #8b5cf6)" }}>
+                    <Sparkles size={18} color="#fff" />
+                  </div>
+                  <div className="ch-sim-card-text">
+                    <b>Zero Video Editing Skills Needed</b>
+                    <p>Whether you are 10 years old or 60, YouTube Buddy automatically detects what needs fixing and enhances it in 1 tap.</p>
+                  </div>
+                </div>
+
+                <div className="ch-sim-card">
+                  <div className="ch-sim-card-icon" style={{ background: "linear-gradient(135deg, #10b981, #06b6d4)" }}>
+                    <Scissors size={18} color="#fff" />
+                  </div>
+                  <div className="ch-sim-card-text">
+                    <b>No Awkward Pauses or Stutters</b>
+                    <p>The AI automatically cuts dead silence so your videos stay punchy, fast, and keep viewers hooked till the end.</p>
+                  </div>
+                </div>
+
+                <div className="ch-sim-card">
+                  <div className="ch-sim-card-icon" style={{ background: "linear-gradient(135deg, #f59e0b, #ec4899)" }}>
+                    <Languages size={18} color="#fff" />
+                  </div>
+                  <div className="ch-sim-card-text">
+                    <b>Instant Multilingual Dubbing</b>
+                    <p>Reach all of India and the world by dubbing your speech into Hindi, English, Tamil, and Telugu with natural emotion.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 3 Step Workflow */}
+            <div className="ch-kid-steps">
+              <div className="ch-kstep">
+                <div className="ch-kstep-num">01</div>
+                <h3>Drop in your Video</h3>
+                <p>Upload any raw video shot on your phone, camera, or laptop. No formatting required.</p>
+              </div>
+
+              <div className="ch-kstep">
+                <div className="ch-kstep-num">02</div>
+                <h3>Tap 1 Button</h3>
+                <p>Click "Auto Captions", "Remove Silences", or "Make Shorts". AI polishes everything in seconds.</p>
+              </div>
+
+              <div className="ch-kstep">
+                <div className="ch-kstep-num">03</div>
+                <h3>Export & Go Viral</h3>
+                <p>Download ready-to-publish 1080p/4K video directly for YouTube, Instagram Reels, or Shorts.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* ── BENTO GRID ──────────────────────────────────────── */}
       <section className="ch-sec ch-wrap" id="features">
