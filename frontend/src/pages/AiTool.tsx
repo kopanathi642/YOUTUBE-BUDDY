@@ -185,6 +185,16 @@ function Workspace({ t, tools, studios }: { t: Tool; tools: Tool[]; studios: any
       {projects?.length === 0 && <div className="info-box" style={{ margin: "0 18px 10px" }}>Outputs are saved into a project. <Link to="/editor/projects">Create a project</Link> first.</div>}
       {t.notice && <div className="info-box" style={{ margin: "0 18px 10px" }}>{t.notice}</div>}
       {t.status.gpu_offline && <div className="info-box" role="status" style={{ margin: "0 18px 10px" }}>{t.status.notice}</div>}
+      <div className="tool-guide-ribbon" role="note" aria-label="Tool instructions">
+        <span className="tgr-title"><Sparkles size={13} /> 3-Step Guide:</span>
+        <div className="tgr-steps">
+          <span className="tgr-step"><b>Step 1:</b> Enter prompt or upload media on the left</span>
+          <span className="tgr-sep">➔</span>
+          <span className="tgr-step"><b>Step 2:</b> Click <b>&ldquo;{runLabel}&rdquo;</b> below</span>
+          <span className="tgr-sep">➔</span>
+          <span className="tgr-step"><b>Step 3:</b> Preview result on right &amp; click <b>&ldquo;Edit in Timeline&rdquo;</b></span>
+        </div>
+      </div>
       <div className="guide-intro"><p>{t.summary}</p>
         {t.studio !== "automation" && <button className="btn sm" onClick={() => setStudioView(!studioView)}>{studioView ? "Open guided view" : "Open studio view"}</button>}
       </div>

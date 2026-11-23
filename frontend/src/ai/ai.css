@@ -576,3 +576,424 @@
 .aiw .guide-panel > * { min-width: 0; }
 .aiw .guide-panel h2 { margin: 0; }
 @media (max-width: 760px) { .aiw .guide-grid { grid-template-columns: minmax(0,1fr); } .aiw .generator-nav { gap: 0; } }
+
+/* ================================================================ 
+   AI Generator Universe — Intuitive Redesign & Creator Guides
+   Scoped strictly under .aiw
+   ================================================================ */
+
+.aiw .hub-redesign {
+  width: min(100%, 1280px);
+  margin: 0 auto;
+  padding: clamp(24px, 3.5vw, 48px) clamp(16px, 2.5vw, 36px);
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* ── Hero Banner ── */
+.aiw .ai-hero-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.aiw .ai-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  padding: 5px 12px;
+  border-radius: 999px;
+  align-self: flex-start;
+}
+.aiw .ai-hero-header h1 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: #f8fafc;
+}
+.aiw .ai-hero-header p {
+  margin: 0;
+  font-size: clamp(14px, 1.8vw, 17px);
+  color: #94a3b8;
+  max-width: 720px;
+  line-height: 1.6;
+}
+
+/* ── How to use 3-step banner ── */
+.aiw .ai-steps-card {
+  border-radius: 20px;
+  border: 1px solid rgba(139, 92, 246, 0.22);
+  background: linear-gradient(145deg, rgba(139, 92, 246, 0.08) 0%, rgba(14, 11, 30, 0.6) 100%);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+}
+.aiw .ai-steps-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.aiw .ai-steps-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #e2e8f0;
+  letter-spacing: 0.02em;
+}
+.aiw .ai-steps-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+@media (max-width: 860px) {
+  .aiw .ai-steps-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+.aiw .ai-step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.aiw .ai-step-num {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #06b6d4, #8b5cf6);
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(6, 182, 212, 0.3);
+}
+.aiw .ai-step-text b {
+  display: block;
+  font-size: 14px;
+  color: #f1f5f9;
+  margin-bottom: 3px;
+}
+.aiw .ai-step-text span {
+  font-size: 12.5px;
+  color: #94a3b8;
+  line-height: 1.45;
+}
+
+/* ── "Where is What?" visual drawer / cheat sheet ── */
+.aiw .where-drawer {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(18, 15, 38, 0.75);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.aiw .where-drawer[open] {
+  border-color: rgba(139, 92, 246, 0.4);
+}
+.aiw .where-summary {
+  padding: 16px 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 700;
+  color: #c4b5fd;
+  user-select: none;
+  background: rgba(255, 255, 255, 0.02);
+}
+.aiw .where-summary:hover {
+  color: #fff;
+}
+.aiw .where-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  padding: 18px 20px 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.aiw .where-cat-box {
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.aiw .where-cat-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+.aiw .where-cat-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+}
+.aiw .where-cat-items a {
+  color: #cbd5e1;
+  text-decoration: none;
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+.aiw .where-cat-items a:hover {
+  background: rgba(139, 92, 246, 0.2);
+  color: #fff;
+}
+.aiw .where-cat-items a small {
+  color: #64748b;
+}
+
+/* ── Category Tabs ── */
+.aiw .cat-tabs-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.aiw .cat-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+.aiw .cat-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.aiw .cat-tab-btn:hover {
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.aiw .cat-tab-btn.active {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.35), rgba(139, 92, 246, 0.35));
+  border-color: #06b6d4;
+  box-shadow: 0 4px 18px rgba(6, 182, 212, 0.2);
+}
+
+/* ── Search Bar with Quick Filter Pills ── */
+.aiw .search-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.aiw .search-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.aiw .search-pill-label {
+  font-size: 11.5px;
+  color: #64748b;
+  margin-right: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+.aiw .search-pill-btn {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.aiw .search-pill-btn:hover {
+  background: rgba(139, 92, 246, 0.2);
+  color: #fff;
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+/* ── Modern Tool Cards Grid ── */
+.aiw .modern-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 18px;
+}
+.aiw .tool-card-pro {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px;
+  border-radius: 18px;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.04) 0%, rgba(13, 11, 26, 0.8) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-decoration: none;
+  color: #f1f5f9;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.25s, box-shadow 0.25s;
+  overflow: hidden;
+}
+.aiw .tool-card-pro:hover {
+  transform: translateY(-4px);
+  border-color: rgba(6, 182, 212, 0.45);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 30px rgba(6, 182, 212, 0.12);
+}
+.aiw .tool-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.aiw .tool-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.aiw .tool-card-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.aiw .badge-pill {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+.aiw .badge-pill.ready {
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+  border-color: rgba(34, 197, 94, 0.25);
+}
+.aiw .badge-pill.key {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.25);
+}
+.aiw .badge-pill.output {
+  background: rgba(56, 189, 248, 0.1);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.2);
+}
+.aiw .tool-card-name {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #f8fafc;
+  letter-spacing: -0.01em;
+}
+.aiw .tool-card-desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #94a3b8;
+  flex: 1;
+}
+.aiw .tool-card-flow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+.aiw .tool-card-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+/* ── In-Workspace Tool Instructions Ribbon (AiTool.tsx) ── */
+.aiw .tool-guide-ribbon {
+  margin: 0 18px 12px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(6, 182, 212, 0.08), rgba(139, 92, 246, 0.08));
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+}
+.aiw .tgr-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  color: #38bdf8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 11px;
+}
+.aiw .tgr-steps {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  flex: 1;
+  color: #cbd5e1;
+}
+.aiw .tgr-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.aiw .tgr-step b {
+  color: #fff;
+  font-weight: 600;
+}
+.aiw .tgr-sep {
+  color: #64748b;
+  font-size: 12px;
+}
