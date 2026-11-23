@@ -1,5 +1,7 @@
 # YB AI Editor Brain — status against the master prompt (23 Nov 2026)
 
+The live editing entry point is tool 121, **AI Editor Brain**. The editor’s AI Assistant links to it with the current project selected. Choose a video type and feeling, or let the brief guide those choices. Interviews and tutorials use natural-speed source audio, quieter music and cached transcript phrase boundaries when available. Travel, events and documentary edits favour source order, while sports and music edits vary shots using measured motion and pacing. The general editor uses each selected video interval at most once and supports 6–120 second drafts. The advertising profile retains the product-reveal workflow described below. These are rules and measured signals, with no professional blind preference score.
+
 Rule: only what is built and tested is marked done. No quality claims without measurements.
 
 ## Built and tested — the "first required demonstration" (master prompt §15)

@@ -116,3 +116,18 @@ def test_ad_without_music_still_works(env):
     assert r["settings"]["aspect"] == "1:1" and r["settings"]["duration"] == 12 and not r["music"]["used"]
     assert "grid" in r["music"]["cut_on"] and r["all_checks_ok"], r["checks"]
     assert any(c.get("warn") and "add music" in c["detail"] for c in r["checks"])
+
+
+def test_director_renders_a_tutorial_without_a_product_arc(env):
+    c, pid = env["c"], env["pid"]
+    g = done(c, run(c, pid, "121", {"clips": [env["lively"], env["pattern"]], "music": env["music"],
+                                    "brief": "A reflective 12 second tutorial about movement and texture."}))
+    result = g["result"]
+    assert result["settings"]["genre"] == "Tutorial" and result["settings"]["feeling"] == "Reflective"
+    assert result["all_checks_ok"] and result["sections"][-1]["name"] == "Closing"
+    output = _probe(c, next(o for o in g["outputs"] if o["kind"] == "video")["id"])
+    assert abs(output["duration_s"] - 12) < .3
+    tl = c.get(f"/api/v1/sequences/{result['sequence_id']}").json()["timeline"]
+    spoken = next(t for t in tl["tracks"] if t["id"] == "v1")["clips"]
+    assert all(clip["speed"] == 1 and clip["volume"] == 1 for clip in spoken)
+    assert next(t for t in tl["tracks"] if t["id"] == "a2")["clips"][0]["volume"] < .2

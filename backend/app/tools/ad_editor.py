@@ -26,6 +26,7 @@ from .. import analysis, media
 from ..models import Generation
 from ..timeline import AssetInfo, Timeline, compile_ffmpeg, default_timeline
 from .run import RunCtx, ToolError
+from .story_edit import FEELINGS, FORMATS as STORY_FORMATS, direction, story_picks
 
 ANALYSIS_KEY = "ad_shots_v1"
 FORMATS = {"16:9": (1920, 1080), "9:16": (1080, 1920), "1:1": (1080, 1080), "4:5": (1080, 1350)}
@@ -45,6 +46,8 @@ WINDOW_S = 4.0
 def read_brief(brief: str, p: dict) -> dict:
     """Settings from the brief text; an explicit option (not "auto") always wins. Returns settings + what was read."""
     b = (brief or "").lower()
+    genre, feeling = direction(b, p.get("genre"), p.get("feeling"))
+    advert = genre == "Advertisement"
     why = {}
 
     def pick(key, found, reason):
@@ -61,9 +64,9 @@ def read_brief(brief: str, p: dict) -> dict:
     dur = pick("duration", int(m.group(1)) if m else None, f"brief says “{m.group(0)}”" if m else "")
     dur = int(dur or 30)
     if "duration" not in why:
-        why["duration"] = "default for an ad"
+        why["duration"] = "default draft length"
     asp = None
-    for words, a in (((r"vertical|9:16|reel|short|story|tiktok"), "9:16"), ((r"square|1:1"), "1:1"), ((r"4:5|portrait post"), "4:5"),
+    for words, a in (((r"vertical|9:16|reel|shorts?\b|tiktok"), "9:16"), ((r"square|1:1"), "1:1"), ((r"4:5|portrait post"), "4:5"),
                      ((r"16:9|landscape|youtube video|widescreen|tv"), "16:9")):
         mm = re.search(words, b)
         if mm:
@@ -79,8 +82,8 @@ def read_brief(brief: str, p: dict) -> dict:
         if mm:
             lk = (l, f"brief mentions “{mm.group(0)}”")
             break
-    look = pick("look", lk[0] if lk else None, lk[1] if lk else "") or "elegant warm"
-    why.setdefault("look", "default for a cinematic ad")
+    look = pick("look", lk[0] if lk else None, lk[1] if lk else "") or ("elegant warm" if advert else FEELINGS[feeling][2])
+    why.setdefault("look", f"{feeling} colour palette")
     pc = None
     for words, pv in ((r"energetic|fast|hype|punchy|action|sport|upbeat|exciting", "energetic"), (r"calm|slow|gentle|soft|relax|serene", "calm"),
                       (r"emotional|cinematic|story|elegant", "medium")):
@@ -91,7 +94,7 @@ def read_brief(brief: str, p: dict) -> dict:
     pace = pick("pace", pc[0] if pc else None, pc[1] if pc else "") or "medium"
     why.setdefault("pace", "default")
     reveal = bool(re.search(r"reveal|product shot|end on|final shot|logo", b)) or bool(p.get("reveal"))
-    return {"duration": max(6, min(120, dur)), "aspect": aspect if aspect in FORMATS else "16:9", "look": look if look in LOOKS else "elegant warm",
+    return {"genre": genre, "feeling": feeling, "brief": brief, "duration": max(6, min(120, dur)), "aspect": aspect if aspect in FORMATS else "16:9", "look": look if look in LOOKS else "elegant warm",
             "pace": pace if pace in PACES else "medium", "reveal": reveal, "why": why}
 
 
@@ -345,7 +348,14 @@ def build(rc: RunCtx, assets: dict, pool: list[dict], s: dict, music, beats: lis
     W, H = FORMATS[s["aspect"]]
     D = float(s["duration"])
     reveal_s = max(2.5, min(6.0, D * 0.18))
-    slots = plan_cuts(D, beats, s["pace"], reveal_s)
+    story = s.get("genre", "Advertisement") != "Advertisement"
+    dialogue = story and STORY_FORMATS[s["genre"]][1] == "dialogue"
+    picks = story_picks(assets, pool, s, beats, prev_plan) if story else []
+    if story:
+        slots = [("Opening" if i == 0 else "Closing" if i == len(picks)-1 else "Development",
+                  pos / fps, (pos + length) / fps) for i, (_, _, length, pos, _, _) in enumerate(picks)]
+    else:
+        slots = plan_cuts(D, beats, s["pace"], reveal_s)
     tl = default_timeline(fps, W, H)
     tr = {t["id"]: t for t in tl["tracks"]}
     grade = {"enabled": True, **{k: list(v) if isinstance(v, tuple) else v for k, v in LOOKS[s["look"]].items()}}
@@ -357,7 +367,9 @@ def build(rc: RunCtx, assets: dict, pool: list[dict], s: dict, music, beats: lis
     reveal_asset = s.get("reveal_asset")
     for i, (sec, t0, t1) in enumerate(slots):
         need = t1 - t0
-        if sec == "reveal" and reveal_asset:
+        if story:
+            _, source_frame, _, _, w, why = picks[i]
+        elif sec == "reveal" and reveal_asset:
             ra = assets[reveal_asset]
             w = max((x for x in pool if x["clip"] == reveal_asset), key=lambda x: x["quality"] + 0.6 * x["calm"], default=None)
             w = w or {"uid": f"{reveal_asset}:0", "clip": reveal_asset, "start": 0.0, "end": float(ra.duration_s or need),
@@ -370,7 +382,9 @@ def build(rc: RunCtx, assets: dict, pool: list[dict], s: dict, music, beats: lis
             why = reason_for(sec, w)
         a = assets[w["clip"]]
         src_len = float(a.duration_s or need)
-        if a.kind == "image":
+        if story:
+            src_in = source_frame / fps
+        elif a.kind == "image":
             src_in = 0.0
         else:
             k = used.count(w["uid"])   # a reused shot starts somewhere else in its clip, so it isn't an exact repeat
@@ -389,6 +403,9 @@ def build(rc: RunCtx, assets: dict, pool: list[dict], s: dict, music, beats: lis
                 "transform": _cover(a, W, H), "color": grade,
                 "effects": [{"type": "vignette", "amount": 0.25}] + ([{"type": "letterbox", "amount": 0.1}] if s["aspect"] == "16:9" and s["look"] != "natural" else [])}
         clip["speed"] = max(0.25, min(4, clip["speed"]))
+        if story:
+            clip.update({"in": source_frame, "out": source_frame + picks[i][2], "speed": 1.0,
+                         "volume": 1.0 if dialogue else .65, "effects": []})
         if sec == "reveal":
             sc = clip["transform"]["scale"]
             clip["keyframes"] = {"scale": [{"t": 0, "v": sc, "ease": "ease"}, {"t": frames - 1, "v": round(min(10, sc * 1.07), 4)}]}
@@ -413,7 +430,7 @@ def build(rc: RunCtx, assets: dict, pool: list[dict], s: dict, music, beats: lis
     if music:
         mlen = float(music.duration_s or D)
         n = int(round(min(D, mlen) * fps))
-        tr["a2"]["clips"].append({"id": "admusic", "asset_id": str(music.id), "start": 0, "in": 0, "out": n, "volume": 0.9,
+        tr["a2"]["clips"].append({"id": "admusic", "asset_id": str(music.id), "start": 0, "in": 0, "out": n, "volume": 0.14 if dialogue else 0.9,
                                   "fade_in": min(6, n // 4), "fade_out": min(int(1.8 * fps), n // 3)})
     Timeline.model_validate(tl)
     return tl, plan
@@ -472,7 +489,7 @@ def ad_edit(rc: RunCtx):
         except ValueError:
             prev = None
         if not prev or prev.workspace_id != rc.gen.workspace_id or prev.tool_id != rc.gen.tool_id or not prev.result:
-            raise ToolError("The ad to revise wasn't found — run the AI Ad Editor first")
+            raise ToolError("The edit to revise was not found. Create an edit first.")
         prev_plan = prev.result
         base = dict(prev.result.get("settings") or {})
         for k in ("clips", "music", "reveal"):
@@ -491,7 +508,16 @@ def ad_edit(rc: RunCtx):
         raise ToolError("Music must be an audio file")
     reveal = rc.asset("reveal", required=False)
     if prev:
-        s, understood = apply_changes(base, rc.p.get("changes") or "")
+        changes = rc.p.get("changes") or ""
+        s, understood = apply_changes(base, changes)
+        if base.get("genre", "Advertisement") != "Advertisement":
+            for name, (pattern, _, look) in FEELINGS.items():
+                if re.search(pattern, changes, re.I):
+                    s["feeling"] = name
+                    if s["look"] == base["look"]:
+                        s["look"] = look
+                    understood.append(f"feeling → {name}")
+                    break
         for k in ("duration", "aspect", "look", "pace"):
             if rc.p.get(k) not in (None, "", "auto") and str(rc.p[k]) != str(base.get(k)):
                 s[k] = int(rc.p[k]) if k == "duration" else rc.p[k]
@@ -525,7 +551,7 @@ def ad_edit(rc: RunCtx):
                 rc.db.flush()
         for j, w in enumerate(score_windows([dict(x) for x in wins])):
             pool.append({**w, "uid": f"{a.id}:{j}", "clip": a.id, "clip_dur": float(a.duration_s or 60)})
-    if reveal is not None and len(assets) > 1:
+    if s.get("genre", "Advertisement") == "Advertisement" and reveal is not None and len(assets) > 1:
         pool_main = [w for w in pool if w["clip"] != reveal.id]
         pool = pool_main or pool
     if not pool:
@@ -544,18 +570,19 @@ def ad_edit(rc: RunCtx):
     if music is not None:
         assets[music.id] = music
     out, checks = render_and_check(rc, tl, assets, float(s["duration"]), has_music=music is not None)
-    name = f"Ad — {s['duration']} s {s['aspect']} {s['look']}" + (" (revised)" if prev else "")
+    label = s.get("genre", "Advertisement")
+    name = f"{label} — {s['duration']} s {s['aspect']} {s['look']}" + (" (revised)" if prev else "")
     rc.add(out, "video", name)
     seq = rc.add_sequence(name, tl)
     settings = {k: (str(v) if k == "reveal_asset" and v else v) for k, v in s.items() if k not in ("avoid_hook", "avoid_reveal")}
     rc.result = {
         "kind": "ad_edit", "sequence_id": seq, "settings": settings, "brief_reading": brief_reading, "revision_of": str(prev.id) if prev else None,
         "understood_changes": understood if prev else None, "shots": shots,
-        "sections": [{"name": n, "shots": sum(1 for x in shots if x["section"] == n)} for n in ("hook", "build", "climax", "reveal")],
+        "sections": [{"name": n, "shots": sum(1 for x in shots if x["section"] == n)} for n in dict.fromkeys(x["section"] for x in shots)],
         "music": {"used": bool(music), "bpm": bpm, "cut_on": beat_src}, "checks": checks, "all_checks_ok": all(c["ok"] for c in checks),
         "analysis_reused": reused, "cost_usd": 0,
-        "method": "Measured shot quality (sharpness, exposure, colour, motion, faces) → hook/build/climax/reveal plan cut on the beat → "
-                  "the editor's own render engine (FFmpeg) on our CPU worker. Open the sequence to change any cut.",
+        "method": (f"{label} edit · {s.get('feeling')} direction. Uses measured footage and available transcript timings. Open the sequence to change any cut." if label != "Advertisement" else "Measured shot quality (sharpness, exposure, colour, motion, faces) → hook/build/climax/reveal plan cut on the beat → "
+                  "the editor's own render engine (FFmpeg) on our CPU worker. Open the sequence to change any cut."),
         "limits": "Rule-based planning from measured signals: it does not understand what is happening in a shot the way a person does. "
                   "Generated footage (new shots that weren't filmed) needs a paid cloud model and is not used here.",
     }

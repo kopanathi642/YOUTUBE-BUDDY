@@ -208,6 +208,7 @@ function Workspace({ t, tools, studios }: { t: Tool; tools: Tool[]; studios: any
 }
 
 const TASK_ACTION: Record<string, string> = {
+  "121": "Auto-edit my video",
   "121": "Make the ad",
   "023": "Remove background", "041": "Create voice-over", "093": "Cut silences", "101": "Transcribe speech",
   "102": "Translate subtitles", "103": "Add captions", "104": "Dub video", "112": "Make Shorts",

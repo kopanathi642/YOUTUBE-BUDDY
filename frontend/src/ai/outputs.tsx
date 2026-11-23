@@ -327,7 +327,7 @@ function AdEditView({ g, r, onUse }: { g: Generation; r: any; onUse?: (k: string
   const s = r.settings || {};
   return <div className="rep ad-rep">
     <div className="rep-kpis"><Kpi l="Length" v={`${s.duration}s`} /><Kpi l="Format" v={s.aspect} /><Kpi l="Look" v={s.look} /><Kpi l="Pace" v={s.pace} />
-      <Kpi l="Cuts" v={r.shots?.length ?? 0} /><Kpi l="Cut on" v={r.music?.used ? `music · ${r.music.bpm} BPM` : "steady grid"} /></div>
+      {s.genre && <Kpi l="Video type" v={s.genre} />}{s.feeling && <Kpi l="Feeling" v={s.feeling} />}<Kpi l="Cuts" v={r.shots?.length ?? 0} /><Kpi l="Timing" v={["Interview / podcast", "Tutorial"].includes(s.genre) ? "Speech pacing" : r.music?.used ? `music · ${r.music.bpm} BPM` : "Pacing grid"} /></div>
     <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
       {r.sequence_id && <a className="btn sm" href={`/edit/${g.project_id}?seq=${r.sequence_id}`}>Open in editor — change any cut</a>}
       <span className={`badge ${r.all_checks_ok ? "ok" : "warn"}`}>{r.all_checks_ok ? "All checks passed" : "Some checks need attention"}</span>
@@ -335,7 +335,7 @@ function AdEditView({ g, r, onUse }: { g: Generation; r: any; onUse?: (k: string
     </div>
     {onUse && <form className="ad-revise" onSubmit={(e) => { e.preventDefault(); if (ask.trim()) { onUse("_revise", ask.trim()); setAsk(""); } }}>
       <input className="input" value={ask} maxLength={300} onChange={(e) => setAsk(e.target.value)} aria-label="What should change?"
-        placeholder="What should change? e.g. faster, warmer, 15 seconds, vertical, title: Diwali Sale, different opening" />
+        placeholder="What should change? e.g. faster, warmer, 15 seconds, vertical, more reflective, different opening" />
       <button className="btn primary sm" disabled={!ask.trim()}>Revise</button></form>}
     {r.understood_changes?.length > 0 && <p className="small">Changed: {r.understood_changes.join(" · ")}</p>}
     <ul className="checks">{(r.checks || []).map((c: any) => <li key={c.check}>{c.ok && !c.warn ? <CheckCircle2 size={15} className="ok" /> : <XCircle size={15} className={c.warn ? "warn" : "bad"} />}<span>{c.check}</span><code>{c.detail}</code></li>)}</ul>
