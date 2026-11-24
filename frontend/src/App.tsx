@@ -11,6 +11,7 @@ import { universeById } from "./universes";
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const FreeTools = lazy(() => import("./pages/FreeTools"));
 const About = lazy(() => import("./pages/About"));
+const Stats = lazy(() => import("./pages/Stats"));
 const Projects = lazy(() => import("./pages/Projects"));
 const Editor = lazy(() => import("./editor/Editor"));
 const Shell = lazy(() => import("./components/Shell"));
@@ -32,7 +33,7 @@ const Loading = () => <div className="auth-wrap"><div className="spinner" aria-l
 /** Tab title per page (the server sets the same title, description and robots rules in the HTML for crawlers). */
 const TITLES: [RegExp, string][] = [
   [/^\/$/, "Video editor & AI studio for creators"], [/^\/signin/, "Sign in"], [/^\/signup/, "Create your free account"],
-  [/^\/about/, "About YouTube Buddy"], [/^\/tools\/?$/, "Free YouTube tools for creators"], [/^\/privacy/, "Privacy"], [/^\/terms/, "Terms"], [/^\/universes/, "Universes"], [/^\/editor\/projects/, "Projects"],
+  [/^\/about/, "About YouTube Buddy"], [/^\/stats/, "Website stats"], [/^\/tools\/?$/, "Free YouTube tools for creators"], [/^\/privacy/, "Privacy"], [/^\/terms/, "Terms"], [/^\/universes/, "Universes"], [/^\/editor\/projects/, "Projects"],
   [/^\/editor/, "Editor"], [/^\/edit\//, "Editing"], [/^\/shorts\//, "Shorts Creative Studio"], [/^\/ai-generator/, "AI Generator"], [/^\/super/, "Super Universe"],
   [/^\/library/, "Library"], [/^\/growth/, "Growth"], [/^\/channel/, "My channel"], [/^\/settings/, "Settings"],
 ];
@@ -43,8 +44,22 @@ function RouteTitle() {
     const tool = pathname.startsWith("/tools/") ? FREE_TOOLS.find((x) => x.slug === pathname.slice(7).replace(/\/$/, "")) : undefined;
     const t = tool?.title ?? TITLES.find(([re]) => re.test(pathname))?.[1] ?? "Page not found";
     document.title = pathname === "/" ? `${brand} — ${t}` : `${t} · ${brand}`;
+    trackView(pathname);
   }, [pathname, brand]);
   return null;
+}
+
+/** One page view for the founder's Stats page: no cookies; where the visitor came from only on their first page. */
+let firstView = true;
+function trackView(pathname: string) {
+  try {
+    const q = new URLSearchParams(location.search);
+    const body = { path: pathname, referrer: firstView ? document.referrer || null : null,
+      ref: firstView ? (q.get("ref") || q.get("utm_source")) : null, w: window.innerWidth };
+    firstView = false;
+    fetch("/api/v1/track", { method: "POST", keepalive: true, credentials: "include",
+      headers: { "content-type": "application/json", "x-requested-with": "creator-universe" }, body: JSON.stringify(body) }).catch(() => {});
+  } catch { /* stats must never break the page */ }
 }
 
 const BrandCtx = createContext("Creator Universe");
@@ -134,6 +149,7 @@ export default function App() {
           <Route path="/channel" element={<Private bare><Channel /></Private>} />
           <Route path="/growth" element={<Private bare><Growth /></Private>} />
           <Route path="/settings" element={<Private bare><Settings /></Private>} />
+          <Route path="/stats" element={<Private bare><Stats /></Private>} />
           <Route path="/about" element={<About />} />
           <Route path="/tools" element={<FreeTools />} />
           <Route path="/tools/:slug" element={<FreeTools />} />

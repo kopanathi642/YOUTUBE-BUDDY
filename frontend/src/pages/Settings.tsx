@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { api } from "../api";
 import { useAuth, useBrand } from "../App";
@@ -34,6 +35,9 @@ export default function Settings() {
             {w.id === workspace?.id ? <span className="badge ok">current</span> : <button className="btn sm" onClick={() => setWorkspace(w.id)}>Switch</button>}</div>)}
           <div className="dim" style={{ fontSize: 12, marginTop: 8 }}>Create a team workspace and add members in the Team card.</div>
         </section>
+        {me.is_platform_admin && <div className="card row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+          <div><b>Website stats</b><div className="dim small">Visitors, views, top pages, sources, countries — like WordPress. Only admins see this.</div></div>
+          <Link className="btn primary" to="/stats">Open stats</Link></div>}
         {me.is_platform_admin && <MetricsCard />}
         {me.is_platform_admin && <AgentCard />}
         <BillingCard />

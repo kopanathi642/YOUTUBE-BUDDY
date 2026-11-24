@@ -395,3 +395,19 @@ class CompositionTemplate(Base, Timestamped):
     category: Mapped[str] = mapped_column(String(60), nullable=False)
     data: Mapped[dict] = mapped_column(JSONB, nullable=False)
     favorite: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+
+
+class PageVisit(Base):
+    """One page view on the website, for the founder's Stats page. No cookies and nothing that names a person: the
+    visitor id is a hash of IP + browser + the day with a server secret, so it can't be reversed or followed across days."""
+    __tablename__ = "page_visits"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+    path: Mapped[str] = mapped_column(String(200), nullable=False)
+    source: Mapped[str] = mapped_column(String(40), nullable=False, default="Direct")
+    referrer_host: Mapped[str | None] = mapped_column(String(120))
+    country: Mapped[str | None] = mapped_column(String(2))
+    device: Mapped[str] = mapped_column(String(10), nullable=False, default="desktop")
+    browser: Mapped[str | None] = mapped_column(String(20))
+    visitor: Mapped[str] = mapped_column(String(16), nullable=False)
+    signed_in: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
