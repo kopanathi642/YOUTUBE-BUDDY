@@ -38,6 +38,18 @@ export default function GlobalBar({ sub, right }: { sub?: string; right?: ReactN
   const [sum, setSum] = useState<Summary | null>(null);
   const [caps, setCaps] = useState<Cap[]>([]);
   const [seen, setSeen] = useState(() => { try { return localStorage.getItem("cu.seenJobs") ?? ""; } catch { return ""; } });
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   useEffect(() => {
     if (!workspace) return;
@@ -64,8 +76,9 @@ export default function GlobalBar({ sub, right }: { sub?: string; right?: ReactN
       <Brand sub={sub} />
       <div className="gb-search">
         <Search size={15} className="dim" />
-        <input placeholder="Search projects…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Global project search"
+        <input ref={searchInputRef} placeholder="Search projects…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Global project search"
           onKeyDown={(e) => { if (e.key === "Enter" && hits?.[0]) nav(`/edit/${hits[0].id}`); if (e.key === "Escape") setQ(""); }} />
+        <kbd className="gb-kbd">Ctrl K</kbd>
         {hits && <div className="card gb-results" role="listbox">
           {hits.length === 0 && <div className="dim" style={{ padding: 10, fontSize: 13 }}>No projects match “{q}”.</div>}
           {hits.slice(0, 8).map((p) => <Link key={p.id} to={`/edit/${p.id}`} className="gb-hit" role="option" aria-selected={false} onClick={() => setQ("")}><FolderOpen size={14} />{p.name}<span className="dim">{timeAgo(p.updated_at)}</span></Link>)}

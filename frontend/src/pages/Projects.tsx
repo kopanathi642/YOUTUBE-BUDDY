@@ -4,11 +4,11 @@ import { Plus, Search, Film, Archive, ArchiveRestore, Trash2, MonitorPlay, Smart
 import { api, Project, timeAgo } from "../api";
 import { useAuth, useToast } from "../App";
 
-export function NewProjectModal({ onClose }: { onClose: () => void }) {
+export function NewProjectModal({ onClose, initialFormat }: { onClose: () => void; initialFormat?: string }) {
   const { workspace } = useAuth();
   const nav = useNavigate();
   const [name, setName] = useState("Untitled project");
-  const [format, setFormat] = useState("landscape");
+  const [format, setFormat] = useState(initialFormat ?? "landscape");
   const [fps, setFps] = useState(30);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
