@@ -7,7 +7,7 @@ TEMPLATE = ('<!doctype html><html><head><meta name="description" content="x" /><
 
 def test_public_page_gets_title_canonical_preview_and_structured_data():
     out = seo.render_index(TEMPLATE, "/", "Clip Studio", "https://clip.example")
-    assert "<title>Clip Studio — Video editor &amp; AI studio for creators</title>" in out
+    assert "<title>Clip Studio — Free AI video editor &amp; YouTube tools for creators</title>" in out
     assert '<link rel="canonical" href="https://clip.example/">' in out
     assert '<meta property="og:image" content="https://clip.example/og.png">' in out
     assert '"@type": "SoftwareApplication"' in out and "index, follow" in out

@@ -908,6 +908,7 @@ export default function HomeLanding() {
 
             <div className="ch-foot-col">
               <b>Resources</b>
+              <Link to="/about">About YouTube Buddy</Link>
               <Link to="/tools">Free YouTube tools</Link>
               <Link to="/tools/youtube-channel-audit">Channel audit</Link>
               <Link to="/tools/youtube-money-calculator">Money calculator</Link>

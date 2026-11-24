@@ -31,7 +31,7 @@ export default function FreeTools() {
       {slug && !tool ? <main className="ft-main"><h1>Tool not found</h1><p className="muted">That tool doesn't exist. <Link to="/tools">See all free tools</Link>.</p></main>
         : tool ? <ToolPage t={tool} /> : <Index />}
       <footer className="ft-foot">
-        <span>© {new Date().getFullYear()} {brand}</span><Link to="/tools">Free YouTube tools</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link>
+        <span>© {new Date().getFullYear()} {brand}</span><Link to="/about">About</Link><Link to="/tools">Free YouTube tools</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link>
         <span className="dim">Not affiliated with YouTube or Google.</span>
       </footer>
     </div>

@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT ?? "playwright");
 const B = process.env.BASE ?? "http://localhost:8000", OUT = process.env.OUT ?? "/tmp";
 
-const PUBLIC = ["/", "/signin", "/signup", "/privacy", "/terms", "/home", "/tools", "/tools/youtube-channel-audit", "/tools/youtube-money-calculator"];
+const PUBLIC = ["/", "/about", "/signin", "/signup", "/privacy", "/terms", "/home", "/tools", "/tools/youtube-channel-audit", "/tools/youtube-money-calculator"];
 const PRIVATE = ["/universes", "/editor", "/editor/projects", "/ai-generator", "/ai-generator/explore", "/library", "/channel",
   "/growth", "/settings", "/super", "/projects"];
 const ROUTES = [...PUBLIC, ...PRIVATE, "/tools/", "/ai-generator/tool/", "/ai-generator/studio/", "/edit/", "/shorts/", "/ai-creation/"];

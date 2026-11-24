@@ -10,6 +10,7 @@ import { universeById } from "./universes";
 // Signed-in pages load on demand, so the public pages (landing, sign-in, legal) stay small and fast for visitors and Google.
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const FreeTools = lazy(() => import("./pages/FreeTools"));
+const About = lazy(() => import("./pages/About"));
 const Projects = lazy(() => import("./pages/Projects"));
 const Editor = lazy(() => import("./editor/Editor"));
 const Shell = lazy(() => import("./components/Shell"));
@@ -31,7 +32,7 @@ const Loading = () => <div className="auth-wrap"><div className="spinner" aria-l
 /** Tab title per page (the server sets the same title, description and robots rules in the HTML for crawlers). */
 const TITLES: [RegExp, string][] = [
   [/^\/$/, "Video editor & AI studio for creators"], [/^\/signin/, "Sign in"], [/^\/signup/, "Create your free account"],
-  [/^\/tools\/?$/, "Free YouTube tools for creators"], [/^\/privacy/, "Privacy"], [/^\/terms/, "Terms"], [/^\/universes/, "Universes"], [/^\/editor\/projects/, "Projects"],
+  [/^\/about/, "About YouTube Buddy"], [/^\/tools\/?$/, "Free YouTube tools for creators"], [/^\/privacy/, "Privacy"], [/^\/terms/, "Terms"], [/^\/universes/, "Universes"], [/^\/editor\/projects/, "Projects"],
   [/^\/editor/, "Editor"], [/^\/edit\//, "Editing"], [/^\/shorts\//, "Shorts Creative Studio"], [/^\/ai-generator/, "AI Generator"], [/^\/super/, "Super Universe"],
   [/^\/library/, "Library"], [/^\/growth/, "Growth"], [/^\/channel/, "My channel"], [/^\/settings/, "Settings"],
 ];
@@ -133,6 +134,7 @@ export default function App() {
           <Route path="/channel" element={<Private bare><Channel /></Private>} />
           <Route path="/growth" element={<Private bare><Growth /></Private>} />
           <Route path="/settings" element={<Private bare><Settings /></Private>} />
+          <Route path="/about" element={<About />} />
           <Route path="/tools" element={<FreeTools />} />
           <Route path="/tools/:slug" element={<FreeTools />} />
           <Route path="/privacy" element={<Legal kind="privacy" />} />

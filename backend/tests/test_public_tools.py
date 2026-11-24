@@ -116,3 +116,11 @@ def test_growth_tools_accept_handles(monkeypatch):
     import pytest
     with pytest.raises(ge.GrowthError):
         ge.parse_channel_ref("nope nope")
+
+
+def test_search_name_about_page_and_alternate_names():
+    t, tags = seo.head_tags("/", "Creator Universe", "https://youtubebuddy.com")
+    assert t.startswith("YouTube Buddy (youtubebuddy.com)") and '"alternateName"' in tags and "youtubebuddy" in tags
+    assert seo.known("/about") and "/about" in seo.SITEMAP and "Allow: /about" in seo.robots_txt("https://x")
+    body = seo.fallback_body("/about", "B")
+    assert all(n in body for n, _ in seo.SERVICES)

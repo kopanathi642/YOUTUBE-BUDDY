@@ -11,10 +11,30 @@ import html
 import json
 import re
 
+# The name people type into Google. Pages lead with it so a search for "youtubebuddy" (with or without .com) finds us.
+SEARCH_NAME = "YouTube Buddy"
+ALT_NAMES = ["youtubebuddy", "youtubebuddy.com", "YouTubeBuddy", "YT Buddy"]
+
+
+def search_name(brand: str) -> str:
+    """BRAND_NAME once a real brand is set (rename needs no code change); until then the name people search for."""
+    return brand if brand and brand != "Creator Universe" else SEARCH_NAME
+SERVICES = [
+    ("AI Auto Editor", "Upload clips and describe the video: it picks the best shots, cuts to the music or keeps the speech, grades the colour and renders it."),
+    ("Online video editor", "A Premiere-style timeline in your browser: trim, transitions, effects, titles, colour, keyframes and audio mixing."),
+    ("Auto captions and dubbing", "Subtitles in Indian languages and dubbing into Hindi, Telugu, Tamil and more."),
+    ("Shorts maker", "Turn a long video into vertical Shorts and Reels with captions and smart framing."),
+    ("AI Generator", "121 AI tools for scripts, titles, thumbnails, voice, music, images and video."),
+    ("Channel analysis", "Paste your channel link to see your best upload day and time, title words that work and your next video's views."),
+    ("Free YouTube tools", "Money calculator in rupees, monetization checker, keyword research in Indian languages, hashtags, thumbnail downloader and more."),
+]
 PUBLIC = {
-    "/": ("Video editor & AI studio for creators",
-          "Edit videos in your browser, add captions automatically, dub into Hindi and other languages, and turn long "
-          "videos into Shorts. Free to start, pay by UPI."),
+    "/": ("Free AI video editor & YouTube tools for creators",
+          "YouTube Buddy (youtubebuddy.com): AI auto editor, online video editor, auto captions and Hindi dubbing, Shorts maker, "
+          "channel analysis and free YouTube tools for Indian creators. Free to start, pay by UPI."),
+    "/about": ("About YouTube Buddy — what the app does",
+               "What youtubebuddy.com is: an AI auto editor, browser video editor, captions and dubbing, Shorts maker, "
+               "121 AI tools, channel analysis and free YouTube tools, made in India for creators."),
     "/signup": ("Create your free account", "Start editing in your browser for free: captions, dubbing, Shorts and cloud export."),
     "/signin": ("Sign in", "Sign in to your video editor and AI studio."),
     "/privacy": ("Privacy policy", "How we handle your account, uploads and payments."),
@@ -40,11 +60,11 @@ TOOLS = {
 PUBLIC["/tools"] = ("Free YouTube tools for creators", "Free YouTube tools: channel audit, money and monetization calculators, keyword research, hashtags, thumbnail downloader and link generators. No sign-up.")
 for _slug, (_t, _d) in TOOLS.items():
     PUBLIC[f"/tools/{_slug}"] = (_t, _d)
-SITEMAP = ["/", "/tools", *[f"/tools/{k}" for k in TOOLS], "/signup", "/privacy", "/terms"]
+SITEMAP = ["/", "/about", "/tools", *[f"/tools/{k}" for k in TOOLS], "/signup", "/privacy", "/terms"]
 
 # Every path the web app knows. Anything else is a real 404 (no "soft 404" pages in Google's index).
 _APP_ROUTES = re.compile(
-    r"^/(|signin|signup|privacy|terms|tools|tools/[a-z0-9-]+|universes|editor|editor/projects|ai-generator|ai-generator/explore|"
+    r"^/(|about|signin|signup|privacy|terms|tools|tools/[a-z0-9-]+|universes|editor|editor/projects|ai-generator|ai-generator/explore|"
     r"ai-generator/studio/[^/]+|ai-generator/tool/[^/]+|super|library|channel|growth|settings|shorts/[^/]+|home|projects|edit/[^/]+|ai-creation(/.*)?)/?$")
 
 
@@ -82,7 +102,8 @@ def _head_tags(path: str, brand: str, base: str) -> tuple[str, str]:
     if path not in PUBLIC:
         return brand, '<meta name="robots" content="noindex, nofollow">'
     title, desc = PUBLIC[path]
-    full = f"{brand} — {title}" if path == "/" else f"{title} · {brand}"
+    sn = search_name(brand)
+    full = (f"{sn} (youtubebuddy.com) — {title}" if sn == SEARCH_NAME else f"{sn} — {title}") if path == "/" else f"{title} · {sn}"
     url = _abs(base, path)
     img = _abs(base, "/og.png")
     tags = [
@@ -90,7 +111,7 @@ def _head_tags(path: str, brand: str, base: str) -> tuple[str, str]:
         f'<link rel="canonical" href="{e(url)}">',
         '<meta name="robots" content="index, follow, max-image-preview:large">',
         '<meta property="og:type" content="website">',
-        f'<meta property="og:site_name" content="{e(brand)}">',
+        f'<meta property="og:site_name" content="{e(sn)}">',
         f'<meta property="og:title" content="{e(full)}">',
         f'<meta property="og:description" content="{e(desc)}">',
         f'<meta property="og:url" content="{e(url)}">',
@@ -115,11 +136,15 @@ def _head_tags(path: str, brand: str, base: str) -> tuple[str, str]:
             "description": desc, "url": url, "image": img, "inLanguage": "en-IN",
             "offers": {"@type": "Offer", "price": "0", "priceCurrency": "INR", "description": "Free plan"},
         }
-        org = {"@context": "https://schema.org", "@type": "Organization", "name": brand, "url": url, "logo": _abs(base, "/og.png"),
-               "description": "Free YouTube tools and a browser video editor for creators in India.", "areaServed": "IN"}
-        site = {"@context": "https://schema.org", "@type": "WebSite", "name": brand, "url": url, "inLanguage": "en-IN"}
+        org = {"@context": "https://schema.org", "@type": "Organization", "name": sn, "alternateName": ALT_NAMES, "url": url,
+               "logo": _abs(base, "/og.png"), "description": "Free AI video editor and YouTube tools for creators in India.", "areaServed": "IN"}
+        site = {"@context": "https://schema.org", "@type": "WebSite", "name": sn, "alternateName": ALT_NAMES, "url": url, "inLanguage": "en-IN"}
+        app_ = {"@context": "https://schema.org", "@type": "SoftwareApplication", "name": sn, "alternateName": ALT_NAMES, "url": url,
+                "applicationCategory": "MultimediaApplication", "operatingSystem": "Web browser",
+                "description": PUBLIC["/"][1], "offers": {"@type": "Offer", "price": "0", "priceCurrency": "INR"},
+                "featureList": [n for n, _ in SERVICES]}
         # "</" can't appear inside the JSON, so the script block can't be closed early by data
-        for d in (data, org, site):
+        for d in (data, org, site, app_):
             tags.append('<script type="application/ld+json">' + json.dumps(d).replace("</", "<\\/") + "</script>")
     return full, "\n    ".join(tags)
 
@@ -127,6 +152,11 @@ def _head_tags(path: str, brand: str, base: str) -> tuple[str, str]:
 def fallback_body(path: str, brand: str) -> str:
     """Plain HTML shown before the app starts (and to clients without JavaScript). React replaces it on load."""
     b = html.escape(brand)
+    if path == "/about":
+        items = "".join(f"<li><b>{html.escape(n)}</b> — {html.escape(d)}</li>" for n, d in SERVICES)
+        return (f'<main style="max-width:760px;margin:64px auto;padding:0 16px;font-family:system-ui,sans-serif;color:#f3f5ef">'
+                f"<h1>About {SEARCH_NAME} (youtubebuddy.com)</h1><p>{html.escape(PUBLIC['/about'][1])}</p><h2>What you can do</h2><ul>{items}</ul>"
+                '<p><a href="/tools" style="color:#c3f53c">Free YouTube tools</a> · <a href="/signup" style="color:#c3f53c">Create a free account</a></p></main>')
     if path == "/tools" or path.startswith("/tools/"):
         head = PUBLIC.get(path.rstrip("/"), PUBLIC["/tools"])
         items = "".join(f'<li><a href="/tools/{k}" style="color:#c3f53c">{html.escape(t)}</a> — {html.escape(d)}</li>' for k, (t, d) in TOOLS.items())
@@ -158,7 +188,7 @@ def render_index(template: str, path: str, brand: str, base: str) -> str:
 def robots_txt(base: str) -> str:
     return "\n".join([
         "User-agent: *",
-        "Allow: /$", "Allow: /tools", "Allow: /signup", "Allow: /signin", "Allow: /privacy", "Allow: /terms", "Allow: /assets/", "Allow: /og.png",
+        "Allow: /$", "Allow: /about", "Allow: /tools", "Allow: /signup", "Allow: /signin", "Allow: /privacy", "Allow: /terms", "Allow: /assets/", "Allow: /og.png",
         "Disallow: /api/", "Disallow: /edit/", "Disallow: /editor", "Disallow: /universes", "Disallow: /ai-generator",
         "Disallow: /super", "Disallow: /library", "Disallow: /channel", "Disallow: /growth", "Disallow: /shorts", "Disallow: /settings",
         "", f"Sitemap: {_abs(base, '/sitemap.xml')}", "",
