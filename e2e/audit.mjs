@@ -184,8 +184,14 @@ await step("Fusion node: ColorCorrect bypass toggle", async () => {
   await page.click(".color-panel-anchor .mini-tabs button:has-text('Looks')"); await page.click(".look:has-text('Warm')");
   await dock("Nodes"); await page.click(".node:has-text('ColorCorrect1')"); await page.click(".node:has-text('ColorCorrect1')");
 });
+await step("Creative assets rail opens each category in the left panel", async () => {
+  for (const category of ["Audio", "Text", "Stickers", "Effects", "Transitions", "Filters", "Adjustments", "Media"]) {
+    await page.getByRole("button", { name: category, exact: true }).and(page.locator(".rail-btn")).click();
+    if (await page.locator(".asset-category").inputValue() !== category.toLowerCase()) throw new Error(category + " did not open");
+  }
+});
 await step("Media bin Effects tab applies a look", async () => {
-  await page.click(".ed-bin [role=tab]:has-text('Effects')"); await page.click(".ed-bin .look:has-text('B&W')"); await page.click(".ed-bin [role=tab]:has-text('Media')");
+  await page.selectOption(".asset-category", "filters"); await page.click(".ed-bin .look:has-text('B&W')"); await page.selectOption(".asset-category", "media");
 });
 await step("Autosave reaches Cloud Saved", saved);
 await step("AI Magic: plan dialog, untick one, apply", async () => {
@@ -281,12 +287,12 @@ await step("Elements: sticker rendered to PNG, uploaded, placed on timeline", as
   await page.waitForFunction((n) => document.querySelectorAll(".clip").length > n, n, { timeout: 40000 });
 });
 await step("Stock tab hidden until a free stock key is set", async () => {
-  if (await page.locator(".ed-bin [role=tab]:has-text('Stock')").count()) throw new Error("Stock tab shown without a key");
+  if (await page.locator(".asset-category option[value=stock]").count()) throw new Error("Stock tab shown without a key");
 });
 await step("AI Assets tab lists generator outputs or explains", async () => {
-  await page.click(".ed-bin [role=tab]:has-text('AI Assets')"); await w(200);
+  await page.selectOption(".asset-category", "ai"); await w(200);
   if (!(await page.locator(".ed-bin .bin-list").count())) throw new Error("AI tab empty");
-  await page.click(".ed-bin [role=tab]:has-text('Media')");
+  await page.selectOption(".asset-category", "media");
 });
 await step("Speed & Time: 2× preset changes clip length", async () => {
   await page.locator(".tl-scroll").evaluate((e) => (e.scrollLeft = 0));

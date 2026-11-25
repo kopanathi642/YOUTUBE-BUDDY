@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { RotateCcw, MousePointerClick, ChevronRight, ChevronLeft, Diamond } from "lucide-react";
 import { Asset } from "../api";
 import { Clip, Timeline, Track, Transform, DEFAULT_TRANSFORM, DEFAULT_TITLE, Title, Crop, framesToTimecode, len, updateClip, setSpeed } from "../timeline";
@@ -21,7 +21,7 @@ function NumBox({ id, value, disabled, commit }: { id: string; value: string; di
 function Field({ label, value, min, max, step, unit, onChange, disabled, onReset, kf }: {
   label: string; value: number; min: number; max: number; step: number; unit?: string; disabled?: boolean; onChange: (v: number) => void; onReset?: () => void; kf?: React.ReactNode;
 }) {
-  const id = `f-${label.replace(/\W/g, "")}`;
+  const id = useId();
   return (
     <div className={`insp-field ${kf ? "has-kf" : ""}`}>
       <label htmlFor={id}>{kf}{label}</label>
@@ -42,15 +42,15 @@ const TITLE_STYLES: [string, Partial<Title>][] = [
   ["Neon", { color: "#22d3ee", bg_color: "#0b0d24", bg_opacity: 0.85 }], ["Big headline", { color: "#ffffff", bg_color: null, font_size: 180 }],
 ];
 
-export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab, onAddTitle, onStabilize, toast, playhead = 0, setPlayhead = () => {} }: {
-  playhead?: number; setPlayhead?: (f: number) => void;
+export default function Inspector({ tl, sel, asset, edit, readOnly, tab, setTab, showTabs = true, onAddTitle, onStabilize, toast, playhead = 0, setPlayhead = () => {} }: {
+  showTabs?: boolean; playhead?: number; setPlayhead?: (f: number) => void;
   tl: Timeline; sel: { track: Track; clip: Clip } | null; asset: Asset | undefined;
   edit: (t: Timeline | null, coalesce?: string) => boolean; readOnly: boolean;
   tab: "inspector" | "effects" | "transition" | "text" | "metadata"; setTab: (t: any) => void;
   onAddTitle: () => void; onStabilize: (assetId: string) => void; toast: (m: string) => void;
 }) {
   const tabs = [["inspector", "Inspector"], ["effects", "Effects"], ["transition", "Transition"], ["text", "Text"], ["metadata", "Metadata"]] as const;
-  const head = <div className="tabs" role="tablist">{tabs.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>)}</div>;
+  const head = showTabs && <div className="tabs" role="tablist">{tabs.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>)}</div>;
   if (!sel) return (
     <aside className="panel ed-insp" aria-label="Inspector">{head}
       <div className="empty" style={{ padding: "20px 14px" }}><MousePointerClick size={24} color="#a78bfa" />

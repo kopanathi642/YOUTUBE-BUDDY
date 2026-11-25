@@ -23,6 +23,7 @@ import { loadCatalogue } from "../ai/core";
 import { insertTemplate, TitleTemplate } from "../templates";
 import Viewer, { Sampler } from "./Viewer";
 import TimelinePanel from "./TimelinePanel";
+import QuickAdjustments from "./QuickAdjustments";
 import Inspector from "./Inspector";
 import ExportDock from "./ExportDock";
 import ToolSidebar from "./ToolSidebar";
@@ -109,8 +110,12 @@ export default function Editor() {
       setHide(h);
     });
   }, []);
-  const [binReq, setBinReq] = useState<{ tab: BinTab; n: number } | null>(null);
-  const openBin = (tab: BinTab) => { setBinReq((r) => ({ tab, n: (r?.n ?? 0) + 1 })); document.querySelector(".ed-bin")?.scrollIntoView({ behavior: "smooth", block: "nearest" }); };
+  const [binTab, setBinTab] = useState<BinTab>("media");
+  const openBin = (tab: BinTab) => {
+    setBinTab(tab);
+    setLayout((l) => l.media ? l : { ...l, media: true });
+    requestAnimationFrame(() => document.querySelector(".ed-bin")?.scrollIntoView({ block: "nearest" }));
+  };
   const [inspTab, setInspTab] = useState<"inspector" | "effects" | "transition" | "text" | "metadata">("inspector");
   const [snapOn, setSnapOn] = useState(true);
   const [caps, setCaps] = useState<Caps>(new Map());
@@ -417,7 +422,7 @@ export default function Editor() {
     };
     const scroll = (sel: string) => document.querySelector(sel)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     switch (id) {
-      case "media": if (!layout.media) setLayout((l) => ({ ...l, media: true })); setTimeout(() => scroll(".ed-bin"), 50); break;
+      case "media": openBin("media"); break;
       case "edit": scroll(".ed-timeline"); break;
       case "magic": setPlan(buildPlan(tl, assetMap)); break;
       case "studio": navigate(`/shorts/${projectId}`); break;
@@ -486,6 +491,9 @@ export default function Editor() {
 
   const sel = selected ? findClip(tl, selected) : null;
   const selAsset = sel ? assetMap.get(sel.clip.asset_id) : undefined;
+  const inspector = (tab: typeof inspTab, showTabs = false) => <Inspector tab={tab} setTab={setInspTab} showTabs={showTabs} tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly}
+    onAddTitle={addTitle} onStabilize={(id) => derive(id, "stabilize", "Stabilizing")} toast={toast}
+    playhead={playhead} setPlayhead={setPlayhead} />;
   /* Find AI suggestions: real checks on this timeline (silences, colour, levels, noise), then format and selection tips. */
   const findSuggestions: Suggestion[] = (() => {
     const out: Suggestion[] = buildPlan(tl, assetMap).slice(0, 4).map((o) => ({ key: o.id, label: o.label, detail: o.detail, run: () => { edit(o.apply(tl)); toast(o.label + " — done · Ctrl+Z to undo"); } }));
@@ -544,12 +552,15 @@ export default function Editor() {
           <button className="btn sm" onClick={() => resolveConflict(true)}>Keep mine (overwrite)</button></div>
       )}
       <div className="ed2-body">
-        <ToolSidebar caps={caps} onAction={action} readOnly={readOnly} hide={hide} />
+        <ToolSidebar caps={caps} onAction={action} readOnly={readOnly} hide={hide} onAsset={openBin} activeAsset={layout.media ? binTab : null} />
         <Workspace layout={layout} setLayout={setLayout}
           media={<MediaBin projectId={project.id} seqSize={{ w: tl.width, h: tl.height }} assets={assets} setAssets={setAssets} reload={loadMedia} readOnly={readOnly} onAdd={(a) => addAssetToTimeline(a)} fps={fps}
-              uploadRef={uploadRef} onRecord={() => setRecording(true)} canLook={!!sel && sel.track.kind === "video" && !!selAsset?.has_video}
+              uploadRef={uploadRef} onRecord={() => setRecording(true)} canLook={!!sel && !sel.track.locked && sel.track.kind === "video" && !!selAsset?.has_video}
               onLook={(i) => sel && edit(updateClip(tl, sel.clip.id, { color: withLook(LOOKS[i].grade) }))}
-              tabReq={binReq} hideStock={hide.has("stock")} onTemplate={(t: TitleTemplate) => {
+              binTab={binTab} setBinTab={setBinTab}
+              clipControls={binTab === "effects" || binTab === "transitions" ? inspector(binTab === "effects" ? "effects" : "transition")
+                : binTab === "adjustments" ? <QuickAdjustments clip={sel?.clip} disabled={readOnly || sel?.track.kind !== "video" || sel.track.locked || !selAsset?.has_video}
+                    onChange={(color, key) => sel && edit(updateClip(tl, sel.clip.id, { color }), sel.clip.id + ":color:" + key)} /> : null} hideStock={hide.has("stock")} onTemplate={(t: TitleTemplate) => {
                 if (readOnly) return;
                 const r = insertTemplate(tl, t, playhead);
                 if (!r) { toast("No free space at the playhead for this title — move the playhead or add a track"); return; }
@@ -571,9 +582,7 @@ export default function Editor() {
             scopes: { id: "scopes", label: "Scopes", icon: BarChart3, node: <ScopesPanel samplerRef={samplerRef} tick={playhead} /> },
             nodes: { id: "nodes", label: "Nodes", icon: Network, node: <div className="nodes-anchor"><NodesPanel tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly} /></div> },
             quick: { id: "quick", label: "Quick Actions", icon: Zap, node: <QuickActions caps={caps} onAction={action} readOnly={readOnly} hide={hide} /> },
-            inspector: { id: "inspector", label: "Inspector", icon: SlidersHorizontal, node: <Inspector tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly} tab={inspTab} setTab={setInspTab}
-              onAddTitle={addTitle} onStabilize={(id) => derive(id, "stabilize", "Stabilizing")} toast={toast}
-              playhead={playhead} setPlayhead={setPlayhead} /> },
+            inspector: { id: "inspector", label: "Inspector", icon: SlidersHorizontal, node: inspector(inspTab, true) },
             export: { id: "export", label: "Export", icon: RocketI, node: <ExportDock projectId={project.id} sequenceId={seq.id} tl={tl} flush={() => doSave(true)} dirty={tl !== savedRef.current} readOnly={readOnly} focusSignal={exportFocus} /> },
             story: { id: "story", label: "Storyboard", icon: FilmI, node: <BottomStrip tl={tl} assets={assetMap} setPlayhead={(f) => { setPlaying(false); setPlayhead(f); }} setSelected={setSelected} readOnly={readOnly}
               setNotes={(n) => edit({ ...tl, notes: n })}

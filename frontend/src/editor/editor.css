@@ -813,3 +813,7 @@ body.ws-dragging iframe, body.ws-dragging video { pointer-events: none; }
 .preset-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0 10px; padding: 6px 8px; border-radius: 6px; background: rgba(255,255,255,.03); border: 1px solid var(--line, #2c2c33); font-size: 12px; }
 .preset-bar select, .preset-bar input { flex: 1 1 120px; min-width: 0; padding: 4px 6px; border-radius: 5px; background: var(--bg-2, #1d1d24); color: var(--text, #e5e7eb); border: 1px solid var(--line, #333); font-size: 12px; }
 .preset-bar .preset-msg { flex-basis: 100%; font-size: 11px; }
+
+.ed-bin .asset-category { margin: 6px; width: calc(100% - 12px); flex-shrink: 0; }
+.ed-bin .asset-adjustments label { display: grid; gap: 5px; margin: 10px 2px; }
+.ed-bin .asset-adjustments label span { display: flex; justify-content: space-between; }

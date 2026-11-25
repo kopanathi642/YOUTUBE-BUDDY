@@ -1,11 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Image as ImageIcon, Sparkles, Film, Zap, LayoutGrid, BarChart3, Layers, Smartphone, Crop, Wrench, AudioLines,
-  Languages, Mic, Type, UserRoundX, FileText, Palette, Library, Wand, ArrowLeftRight, Workflow, Shapes, Upload, Crown, Coins, Eraser,
+  Languages, Mic, Type, UserRoundX, FileText, Palette, Library, Wand, ArrowLeftRight, Workflow, Shapes, SlidersHorizontal, Sticker, Upload, Crown, Coins, Eraser,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Caps } from "./AiPanels";
 import { useAuth } from "../App";
+
+import type { BinTab } from "./MediaBin";
+
+const ASSETS = [
+  ["media", "Media", ImageIcon], ["audio", "Audio", AudioLines], ["text", "Text", Type], ["stickers", "Stickers", Sticker],
+  ["effects", "Effects", Wand], ["transitions", "Transitions", ArrowLeftRight], ["filters", "Filters", Palette], ["adjustments", "Adjustments", SlidersHorizontal],
+] as const;
 
 type Item = { id: string; label: string; icon: any; cap?: string; soon?: boolean };
 
@@ -49,19 +56,18 @@ const MORE: Item[] = [
 
 type Cat = { id: string; label: string; icon: any; items?: Item[]; action?: string; hint?: string };
 const CATS: Cat[] = [
-  { id: "media", label: "Media", icon: ImageIcon, action: "media" },
   { id: "magic", label: "AI Magic", icon: Sparkles, action: "magic" },
   { id: "shorts", label: "Shorts", icon: Film, items: SHORTS, hint: "Turn long videos into vertical clips" },
   { id: "video", label: "Video", icon: Wrench, items: VIDEO_TOOLS, hint: "Clean up and fix footage" },
-  { id: "audio", label: "Audio", icon: AudioLines, items: AUDIO_TOOLS, hint: "Levels and noise" },
+  { id: "audio", label: "Audio tools", icon: AudioLines, items: AUDIO_TOOLS, hint: "Levels and noise" },
   { id: "words", label: "Text & Voice", icon: Languages, items: MORE.filter((i) => ["subtitle", "voice", "tts", "lipsync", "transcribe"].includes(i.id)), hint: "Captions, translation, dubbing, voice-over" },
   { id: "design", label: "Elements", icon: Shapes, items: MORE.filter((i) => ["elements", "motion", "design", "stock"].includes(i.id)), hint: "Titles, templates, stickers, stock" },
-  { id: "look", label: "Effects", icon: Palette, items: MORE.filter((i) => ["effects", "transitions", "color", "fusion"].includes(i.id)), hint: "Looks, transitions, grading, VFX" },
+  { id: "look", label: "Finishing", icon: Palette, items: MORE.filter((i) => ["effects", "transitions", "color", "fusion"].includes(i.id)), hint: "Looks, transitions, grading, VFX" },
   { id: "export", label: "Export", icon: Upload, action: "export" },
 ];
 
 /** Canva-style tool rail: one icon per category; categories with several tools open a flyout panel. */
-export default function ToolSidebar({ caps, onAction, readOnly, hide }: { caps: Caps; onAction: (id: string) => void; readOnly: boolean; hide: Set<string> }) {
+export default function ToolSidebar({ caps, onAction, readOnly, hide, onAsset, activeAsset }: { onAsset: (tab: BinTab) => void; activeAsset: BinTab | null; caps: Caps; onAction: (id: string) => void; readOnly: boolean; hide: Set<string> }) {
   const [open, setOpen] = useState<string | null>(null);
   const plan = useAuth().workspace?.plan ?? "free";
   const ref = useRef<HTMLElement>(null);
@@ -82,6 +88,10 @@ export default function ToolSidebar({ caps, onAction, readOnly, hide }: { caps: 
   return (
     <aside className="ed-side rail" aria-label="Tools" ref={ref}>
       <nav className="rail-nav">
+        {ASSETS.map(([tab, label, Icon]) => <button key={tab} aria-label={label} aria-pressed={activeAsset === tab}
+          className={`rail-btn ${activeAsset === tab ? "on" : ""}`} onClick={() => { setOpen(null); onAsset(tab); }}>
+          <Icon size={19} /><span>{label}</span>
+        </button>)}
         {CATS.filter((c) => !c.items || c.items.some(usable)).map((c) => (
           <button key={c.id} className={`rail-btn ${open === c.id ? "on" : ""} ${c.id === "magic" ? "magic" : ""}`} aria-label={c.label}
             aria-haspopup={c.items ? "menu" : undefined} aria-expanded={c.items ? open === c.id : undefined}

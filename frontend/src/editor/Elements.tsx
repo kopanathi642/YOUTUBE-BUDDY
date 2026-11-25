@@ -49,8 +49,8 @@ async function svgToPng(svg: string, name: string): Promise<File> {
   return new File([blob], `Element - ${name}.png`, { type: "image/png" });
 }
 
-export default function TemplatesTab({ projectId, readOnly, onTemplate, onElement, reload }: {
-  projectId: string; readOnly: boolean; onTemplate: (t: TitleTemplate) => void; onElement: (a: Asset) => void; reload: () => void;
+export default function TemplatesTab({ section, projectId, readOnly, onTemplate, onElement, reload }: {
+  section: "templates" | "text" | "stickers"; projectId: string; readOnly: boolean; onTemplate: (t: TitleTemplate) => void; onElement: (a: Asset) => void; reload: () => void;
 }) {
   const [colour, setColour] = useState("#fde047"), [filled, setFilled] = useState(false), [busy, setBusy] = useState<string | null>(null), [err, setErr] = useState<string | null>(null);
   async function addElement(name: string, svg: string) {
@@ -69,12 +69,13 @@ export default function TemplatesTab({ projectId, readOnly, onTemplate, onElemen
   }
   return (
     <div className="bin-list tpl-tab">
-      <div className="label">Animated titles</div>
+      {section !== "stickers" && <><div className="label">Animated titles</div>
       <div className="tpl-grid">
         {TITLE_TEMPLATES.map((t) => <button key={t.id} className="tpl-card" disabled={readOnly} onClick={() => onTemplate(t)} title={`${t.desc} · ${t.seconds}s · added at the playhead`}>
           <span className={`tpl-prev ${t.id}`}><b>{t.sample}</b></span><span className="ellipsis">{t.name}</span></button>)}
       </div>
-      <div className="label" style={{ marginTop: 10 }}>Frames</div>
+      </>}
+      {section !== "text" && <><div className="label" style={{ marginTop: 10 }}>Frames</div>
       <div className="fr-grid">
         {FRAMES.map((f) => <button key={f.name} className="fr-tile" disabled={readOnly || !!busy} title={`Add the ${f.name} frame over your video at the playhead`} onClick={() => addElement(`Frame ${f.name}`, f.svg(colour))}>
           {busy === `Frame ${f.name}` ? <span className="spinner" /> : <span className="fr-prev" dangerouslySetInnerHTML={{ __html: f.svg(colour) }} />}<span>{f.name}</span></button>)}
@@ -92,7 +93,7 @@ export default function TemplatesTab({ projectId, readOnly, onTemplate, onElemen
           {busy === s.name ? <span className="spinner" /> : <span className="el-svg" dangerouslySetInnerHTML={{ __html: s.svg(colour) }} />}<span>{s.name}</span></button>)}
       </div>
       {err && <div className="error-box" style={{ fontSize: 11.5, marginTop: 6 }}>{err}</div>}
-      <div className="dim" style={{ fontSize: 10.5, marginTop: 6 }}>Elements are saved to your media as transparent PNGs and placed on the graphics track. Icons: Lucide (ISC licence).</div>
+      <div className="dim" style={{ fontSize: 10.5, marginTop: 6 }}>Elements are saved to your media as transparent PNGs and placed on the graphics track. Icons: Lucide (ISC licence).</div></>}
     </div>
   );
 }
