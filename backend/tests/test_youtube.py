@@ -81,6 +81,7 @@ def google(monkeypatch):
     s = get_settings()
     monkeypatch.setattr(s, "google_oauth_client_id", "cid.apps.googleusercontent.com")
     monkeypatch.setattr(s, "google_oauth_client_secret", "csecret")
+    monkeypatch.setenv("YOUTUBE_CONNECT_PUBLIC", "1")    # as after Google verifies the app
     yield base
     srv.shutdown()
 
@@ -102,6 +103,7 @@ def _export(c, fixtures_media):
 
 
 def test_not_configured_says_what_is_missing(make_client, monkeypatch):
+    monkeypatch.setenv("YOUTUBE_CONNECT_PUBLIC", "1")
     monkeypatch.setattr(get_settings(), "google_oauth_client_id", None)
     c = make_client(); signup(c)
     s = c.get("/api/v1/youtube/status").json()
@@ -176,3 +178,29 @@ def test_resumable_chunks(google, tmp_path, monkeypatch):
     seen = []
     r = youtube.upload("at2", str(p), {"title": "t"}, seen.append)
     assert r["id"] == "vid42" and bytes(Fake.received) == b"x" * 2500 and len(seen) == 2
+
+
+def test_connect_hidden_until_google_verifies(make_client, google, monkeypatch):
+    """Google shows an 'unverified app' warning until verification, so ordinary users don't get the Connect button."""
+    monkeypatch.delenv("YOUTUBE_CONNECT_PUBLIC")
+    c = make_client(); signup(c)
+    s = c.get("/api/v1/youtube/status").json()
+    assert s["configured"] is False and s["restricted"] is True and s["missing"] == []
+    r = c.get("/api/v1/youtube/connect")
+    assert r.status_code == 403 and "link" in r.json()["detail"].lower()
+    monkeypatch.setenv("YOUTUBE_TESTERS", "someone@example.com")      # listed tester, but email must be Google-verified
+    assert c.get("/api/v1/youtube/connect").status_code == 403
+    monkeypatch.setenv("YOUTUBE_CONNECT_PUBLIC", "true")              # after Google approves
+    assert c.get("/api/v1/youtube/status").json()["configured"] is True
+    assert c.get("/api/v1/youtube/connect").status_code == 200
+
+
+def test_founder_can_connect_before_verification(make_client, google, monkeypatch):
+    monkeypatch.delenv("YOUTUBE_CONNECT_PUBLIC")
+    import uuid as _uuid
+    boss = f"boss{_uuid.uuid4().hex[:8]}@example.com"
+    monkeypatch.setattr(get_settings(), "admin_emails", boss)
+    c = make_client(); signup(c, email=boss)
+    s = c.get("/api/v1/youtube/status").json()
+    assert s["configured"] is True and s["restricted"] is False
+    assert c.get("/api/v1/youtube/connect").status_code == 200

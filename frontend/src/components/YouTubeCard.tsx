@@ -3,7 +3,7 @@ import { Youtube, Link2, Unlink } from "lucide-react";
 import { api } from "../api";
 import { useToast } from "../App";
 
-export type YtStatus = { configured: boolean; missing: string[]; connected: boolean; channel_title: string | null; redirect_uri: string };
+export type YtStatus = { configured: boolean; restricted?: boolean; missing: string[]; connected: boolean; channel_title: string | null; redirect_uri: string };
 const MSG: Record<string, string> = { connected: "YouTube channel connected", denied: "YouTube connection was cancelled", bad_state: "That YouTube sign-in link expired — try again",
   no_refresh: "Google didn't grant offline access — remove the app at myaccount.google.com/permissions and connect again", failed: "Couldn't connect YouTube — try again",
   missing_scopes: "Almost there: on Google's permission screen, tick both YouTube boxes (or “Select all”) before pressing Continue",

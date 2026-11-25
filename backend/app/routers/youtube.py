@@ -24,15 +24,30 @@ STATE_COOKIE = "yt_oauth_state"
 BACK_COOKIE = "yt_oauth_back"   # which page to return to after Google: settings or channel (fixed list, not a URL)
 
 
+def connect_allowed(user: User) -> bool:
+    """Until Google verifies the app, its sign-in shows an 'unverified app' warning, so only the founder's accounts and
+    listed testers may start a connection. YOUTUBE_CONNECT_PUBLIC=1 opens it to everyone once Google approves."""
+    import os
+    from ..billing import is_platform_admin
+    if os.environ.get("YOUTUBE_CONNECT_PUBLIC", "").strip().lower() in ("1", "true", "yes"):
+        return True
+    testers = {e.strip().lower() for e in os.environ.get("YOUTUBE_TESTERS", "").split(",") if e.strip()}
+    return is_platform_admin(user) or (user.email.lower() in testers and user.email_verified)
+
+
 @router.get("/youtube/status")
 def status(user: User = Depends(current_user), db: Session = Depends(get_db)):
     c = db.scalar(select(YouTubeConnection).where(YouTubeConnection.user_id == user.id))
-    return {"configured": not youtube.missing(), "missing": youtube.missing(), "connected": c is not None,
+    restricted = not connect_allowed(user) and c is None
+    return {"configured": not youtube.missing() and not restricted, "restricted": restricted,
+            "missing": youtube.missing(), "connected": c is not None,
             "channel_title": c and c.channel_title, "channel_id": c and c.channel_id, "redirect_uri": youtube.redirect_uri()}
 
 
 @router.get("/youtube/connect")
 def connect(back: str = "settings", user: User = Depends(current_user)):
+    if not connect_allowed(user):
+        raise HTTPException(403, "Connecting a YouTube channel isn't open yet. You can still analyse any channel by pasting its link.")
     if youtube.missing():
         raise HTTPException(409, "YouTube publishing isn't set up on this server yet: add " + ", ".join(youtube.missing()))
     state = secrets.token_urlsafe(24)

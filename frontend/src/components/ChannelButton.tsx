@@ -17,11 +17,11 @@ export default function ChannelButton() {
   const { me } = useAuth();
   const [s, setS] = useState<YtStatus | null>(null);
   useEffect(() => { ytStatus().then(setS); }, []);
-  if (!me || !s || (!s.configured && !me.is_platform_admin)) return null;
-  const label = s.connected ? (s.channel_title || "My channel") : "Connect channel";
+  if (!me || !s || (!s.configured && !s.restricted && !me.is_platform_admin)) return null;
+  const label = s.connected ? (s.channel_title || "My channel") : s.restricted ? "Channel insights" : "Connect channel";
   return (
-    <Link to="/channel" className={`btn ghost yt-chan ${s.connected ? "on" : ""}`} title={s.connected ? `Channel insights for ${label}` : "Connect your YouTube channel to get insights and next-video estimates"}
-      aria-label={s.connected ? `Channel insights: ${label}` : "Connect YouTube channel"}>
+    <Link to="/channel" className={`btn ghost yt-chan ${s.connected ? "on" : ""}`} title={s.connected ? `Channel insights for ${label}` : s.restricted ? "Paste any channel link to get insights and next-video estimates" : "Connect your YouTube channel to get insights and next-video estimates"}
+      aria-label={s.connected ? `Channel insights: ${label}` : s.restricted ? "Channel insights" : "Connect YouTube channel"}>
       <Youtube size={18} color="#ff3b3b" aria-hidden /><span className="hide-m ellipsis" style={{ maxWidth: 130 }}>{label}</span>
     </Link>
   );
