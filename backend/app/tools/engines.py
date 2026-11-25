@@ -290,7 +290,16 @@ def _mask_png(rc: RunCtx) -> str:
 
 # ---------------------------------------------------------------- language-model tools
 
-LANG_HINT = lambda p: f" Write in {p.get('language') or 'English'} (language code {p.get('language') or 'en'}; 'hi' means Hindi in Devanagari)."  # noqa: E731
+LANG_NAMES = {"en": "English", "hi": "Hindi, in Devanagari script", "te": "Telugu, in Telugu script", "ta": "Tamil, in Tamil script",
+              "kn": "Kannada, in Kannada script", "ml": "Malayalam, in Malayalam script", "bn": "Bengali, in Bengali script",
+              "mr": "Marathi, in Devanagari script", "gu": "Gujarati, in Gujarati script", "pa": "Punjabi, in Gurmukhi script",
+              "ur": "Urdu, in Urdu script"}
+
+
+def LANG_HINT(p: dict) -> str:
+    code = (p.get("language") or "en").strip()
+    name = LANG_NAMES.get(code, code)
+    return f" Write in {name} (language code {code}). Keep JSON keys in English."
 
 TASKS = {
     "script": ("You are a senior YouTube scriptwriter for Indian creators.",

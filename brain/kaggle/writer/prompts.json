@@ -1,0 +1,82 @@
+{
+ "tasks": {
+  "script": [
+   "You are a senior YouTube scriptwriter for Indian creators.",
+   "Write a {format} script. Brief: {brief}\nTone: {tone}. Audience: {audience}. Length: {length}.",
+   "{\"title\": str, \"logline\": str, \"scenes\": [{\"heading\": str, \"narration\": str, \"visuals\": str, \"on_screen_text\": str, \"duration_s\": number}], \"cta\": str}"
+  ],
+  "hooks": [
+   "You write scroll-stopping video hooks.",
+   "Write {count} different opening hooks (first 3 seconds). Brief: {brief}. Tone: {tone}. Audience: {audience}.",
+   "{\"items\": [{\"text\": str, \"technique\": str, \"score\": number(1-10), \"why\": str}]}"
+  ],
+  "titles": [
+   "You are a YouTube packaging expert.",
+   "Write {count} titles under 70 characters. Brief: {brief}. Tone: {tone}. Audience: {audience}.",
+   "{\"items\": [{\"text\": str, \"curiosity\": number(1-10), \"clarity\": number(1-10), \"chars\": number, \"why\": str}]}"
+  ],
+  "description": [
+   "You write YouTube descriptions that rank.",
+   "Write an SEO description and tags. Brief: {brief}. Links to include: {links}.",
+   "{\"description\": str, \"tags\": [str], \"hashtags\": [str], \"keywords\": [str]}"
+  ],
+  "outline": [
+   "You are a story editor.",
+   "Outline this as a {structure} story. Brief: {brief}. Tone: {tone}. Audience: {audience}.",
+   "{\"title\": str, \"beats\": [{\"name\": str, \"summary\": str, \"purpose\": str, \"minutes\": number}]}"
+  ],
+  "dialogue": [
+   "You write natural, funny, culturally specific dialogue.",
+   "Write a {length} scene. Brief: {brief}. Characters: {characters}. Tone: {tone}.",
+   "{\"title\": str, \"setting\": str, \"lines\": [{\"character\": str, \"line\": str, \"direction\": str}]}"
+  ],
+  "shotlist": [
+   "You are a director of photography.",
+   "Break this script into shots for a {aspect_ratio} video:\n{script}",
+   "{\"shots\": [{\"prompt\": str, \"camera_move\": one of [static, push in, pull out, pan left, pan right, tilt up, tilt down, orbit, crane up, tracking, handheld], \"camera_angle\": str, \"lens\": str, \"duration\": number(4-10), \"narration\": str}]}"
+  ],
+  "prompt": [
+   "You write prompts for state-of-the-art {target} generation models (Veo, Kling, FLUX).",
+   "Turn this idea into 3 precise prompts in {style} style. Include subject, action, setting, camera, lens, light, mood. Idea: {prompt}",
+   "{\"items\": [{\"text\": str, \"why\": str}]}"
+  ],
+  "social": [
+   "You are a social media copywriter.",
+   "Write posts for {platforms}. Brief: {brief}. Tone: {tone}. Audience: {audience}.",
+   "{\"items\": [{\"platform\": str, \"text\": str, \"hashtags\": [str]}]}"
+  ],
+  "rewrite": [
+   "You are an editor.",
+   "Rewrite to be {goal}, tone {tone}:\n{text}",
+   "{\"text\": str, \"changes\": [str]}"
+  ],
+  "title_ab": [
+   "You are a YouTube packaging analyst. Be honest; these are judgments, not predictions of real click-through rate.",
+   "Compare these titles for audience {audience}:\n{titles}",
+   "{\"items\": [{\"text\": str, \"clarity\": number(1-10), \"curiosity\": number(1-10), \"specificity\": number(1-10), \"chars\": number, \"verdict\": str}], \"winner\": str, \"why\": str}"
+  ],
+  "seo": [
+   "You are a YouTube SEO analyst.",
+   "Grade this metadata for keyword '{keyword}'. Title: {title}\nDescription: {description}\nTags: {tags}",
+   "{\"score\": number(0-100), \"checks\": [{\"name\": str, \"pass\": bool, \"detail\": str}], \"improved_title\": str, \"improved_tags\": [str]}"
+  ],
+  "calendar": [
+   "You are a content strategist.",
+   "Plan 4 weeks, {per_week} uploads per week, for niche {niche}, audience {audience}.",
+   "{\"weeks\": [{\"week\": number, \"items\": [{\"day\": str, \"format\": str, \"title\": str, \"hook\": str}]}]}"
+  ]
+ },
+ "lang_names": {
+  "en": "English",
+  "hi": "Hindi, in Devanagari script",
+  "te": "Telugu, in Telugu script",
+  "ta": "Tamil, in Tamil script",
+  "kn": "Kannada, in Kannada script",
+  "ml": "Malayalam, in Malayalam script",
+  "bn": "Bengali, in Bengali script",
+  "mr": "Marathi, in Devanagari script",
+  "gu": "Gujarati, in Gujarati script",
+  "pa": "Punjabi, in Gurmukhi script",
+  "ur": "Urdu, in Urdu script"
+ }
+}
