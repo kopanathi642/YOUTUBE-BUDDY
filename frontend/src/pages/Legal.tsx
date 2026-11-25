@@ -34,6 +34,7 @@ export default function Legal({ kind }: { kind: "privacy" | "terms" }) {
         </ul>
         <h2>YouTube</h2>
         <p>If you connect YouTube, {brand} uses YouTube API Services to upload the videos you choose to publish, with the title, description and visibility you set. With your permission it also reads your channel's details and your videos' public statistics (titles, views, likes, upload times) to show you analytics and AI suggestions for your channel; this data is used only for you, is not sold or shared, and is refreshed or deleted when you disconnect. We store an encrypted access token, never your Google password. See the <a href="https://www.youtube.com/t/terms" target="_blank" rel="noreferrer">YouTube Terms of Service</a> and the <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Google Privacy Policy</a>. You can disconnect anytime in Settings, or revoke access at <a href="https://myaccount.google.com/permissions" target="_blank" rel="noreferrer">myaccount.google.com/permissions</a>; we then delete the stored token.</p>
+        <p><b>Google user data — Limited Use.</b> {brand}'s use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noreferrer">Google API Services User Data Policy</a>, including the Limited Use requirements. We use Google user data only to provide the features you see in {brand}; we do not use it for advertising, do not sell it, do not let humans read it (except with your permission, for security, or where the law requires), and do not use it to train AI models. We save only your channel's ID and name and an encrypted access token; channel and video statistics read through the YouTube API are kept in memory for at most 10 minutes to show your analytics and are never saved to our database. Everything from YouTube is deleted when you disconnect or delete your account.</p>
         <h2>Cookies</h2>
         <p>One essential sign-in cookie. No advertising or tracking cookies.</p>
         <h2>Your rights</h2>
@@ -55,6 +56,8 @@ export default function Legal({ kind }: { kind: "privacy" | "terms" }) {
         <p>Paid plans last 30 days per month paid and switch on after we verify your UPI or PayPal payment. Plans do not renew automatically. If a payment cannot be verified it is rejected and nothing is charged by us. Refunds for a verified payment can be requested within 7 days if you have not used premium AI runs.</p>
         <h2>Free plan</h2>
         <p>Free exports carry a small "Made with {brand}" badge; paid plans remove it. Free-plan limits may change.</p>
+        <h2>YouTube</h2>
+        <p>Features that connect to YouTube use YouTube API Services. By using them you agree to be bound by the <a href="https://www.youtube.com/t/terms" target="_blank" rel="noreferrer">YouTube Terms of Service</a>. How we handle YouTube and Google data is explained in our <a href="/privacy">Privacy policy</a> and the <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Google Privacy Policy</a>.</p>
         <h2>Acceptable use</h2>
         <p>No illegal content, malware, spam, attempts to break security, or reselling the service. We may suspend accounts that break these terms.</p>
         <h2>Service</h2>
