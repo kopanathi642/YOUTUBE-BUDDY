@@ -1,6 +1,6 @@
 import { CSSProperties, useCallback, useEffect, useState } from "react";
 import { Link, NavLink, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Lock, Play, Square, Clapperboard, RefreshCcw, Shuffle, Star, Rows3, FolderOpen, Library, KeyRound, Sparkles } from "lucide-react";
+import { ArrowLeft, Lock, Play, Square, Clapperboard, RefreshCcw, Shuffle, Star, Rows3, FolderOpen, Library, KeyRound, Sparkles, X as XIcon } from "lucide-react";
 import { api } from "../api";
 import { useAuth, useToast } from "../App";
 import GlobalBar from "../components/GlobalBar";
@@ -38,7 +38,20 @@ function Frame({ children, studio }: { children: React.ReactNode; studio?: strin
   );
 }
 
-function Workspace({ t, tools, studios }: { t: Tool; tools: Tool[]; studios: any[] }) {
+/** Inside the Editor: no page chrome, project fixed, and the result goes straight onto the timeline. */
+export type Embed = { pid: string; media?: string; onClose: () => void; onDone: (g: Generation) => void };
+
+/** One AI tool inside the Editor's drawer (same controls, same runs, same history as the AI Generator page). */
+export function EmbeddedTool({ id, embed }: { id: string; embed: Embed }) {
+  const { cat, err } = useCatalogue();
+  const t = cat?.tools.find((x) => x.id === id || x.slug === id);
+  if (err) return <div className="error-box" style={{ margin: 14 }}>{err}</div>;
+  if (cat && !t) return <div className="empty" style={{ margin: 20 }}>This tool isn't available.</div>;
+  if (!cat || !t) return <div className="ws-loading"><span className="spinner" /></div>;
+  return <Workspace key={t.id} t={t} tools={cat.tools} studios={cat.studios} embed={embed} />;
+}
+
+function Workspace({ t, tools, studios, embed }: { t: Tool; tools: Tool[]; studios: any[]; embed?: Embed }) {
   const { workspace } = useAuth();
   const toast = useToast();
   const nav = useNavigate();
@@ -56,8 +69,8 @@ function Workspace({ t, tools, studios }: { t: Tool; tools: Tool[]; studios: any
   const [g] = useGeneration(cur, () => { loadHistory(); reloadMedia(); });
 
   useEffect(() => { try { const { mask, ...rest } = v; sessionStorage.setItem(VKEY(t.id), JSON.stringify(rest)); void mask; } catch { /* storage off */ } }, [v, t.id]);
-  useEffect(() => {  // opened from the Editor with ?project=…&media=… : pick that project and drop the clip into the first media input
-    const q = new URLSearchParams(window.location.search), proj = q.get("project"), m = q.get("media");
+  useEffect(() => {  // opened from the Editor (drawer, or ?project=…&media=…): pick that project and drop the clip into the first media input
+    const q = new URLSearchParams(window.location.search), proj = embed?.pid ?? q.get("project"), m = embed ? embed.media : q.get("media");
     if (proj) setPid(proj);
     const slot = t.params.find((p) => p.type === "media");
     if (m && slot) setV((s) => ({ ...s, [slot.key]: m }));
@@ -150,11 +163,12 @@ function Workspace({ t, tools, studios }: { t: Tool; tools: Tool[]; studios: any
   );
   const actions = g && g.status === "succeeded" ? (
     <div className="gen-actions">
-      {t.timeline && (g.outputs.length > 0 || g.result?.sequence_ids?.length) && <button type="button" className="btn primary edit-tl" onClick={toTimeline}><Clapperboard size={15} />Edit in Timeline</button>}
+      {t.timeline && (g.outputs.length > 0 || g.result?.sequence_ids?.length) && <button type="button" className="btn primary edit-tl" onClick={embed ? () => embed.onDone(g) : toTimeline}>
+        <Clapperboard size={15} />{embed ? (g.result?.sequence_ids?.length && !g.outputs.length ? "Open the new edit" : "Add to timeline") : "Edit in Timeline"}</button>}
       {t.status.state === "ready" && <button type="button" className="btn sm" onClick={() => run({ parent: g.id })} disabled={busyRun} title="Run again as a new version"><RefreshCcw size={13} />Regenerate</button>}
       {t.status.state === "ready" && t.params.some((p) => p.key === "seed") && <button type="button" className="btn sm" onClick={() => run({ parent: g.id, seedBump: true })} disabled={busyRun}><Shuffle size={13} />Variation</button>}
       <button type="button" className="btn sm ghost" onClick={() => restore(g)} title="Load this version's settings">Use settings</button>
-      {g.outputs.length > 0 && <Link className="btn sm ghost" to="/library"><Library size={13} />In library</Link>}
+      {g.outputs.length > 0 && !embed && <Link className="btn sm ghost" to="/library"><Library size={13} />In library</Link>}
       <span className="stars" role="group" aria-label="Rate this result">{[1, 2, 3, 4, 5].map((n) => <button type="button" key={n} className={(g.rating ?? 0) >= n ? "on" : ""} aria-label={`${n} stars`}
         onClick={() => api(`/generations/${g.id}/rate`, { method: "POST", body: { rating: n } }).then(loadHistory)}><Star size={13} /></button>)}</span>
       {g.model && <span className="dim small model-tag">{g.model}{g.est_cost_usd != null ? ` · ≈${fmtUsd(g.est_cost_usd)}` : ""}</span>}
@@ -163,6 +177,25 @@ function Workspace({ t, tools, studios }: { t: Tool; tools: Tool[]; studios: any
     <div className="gen-actions"><button type="button" className="btn primary" onClick={() => api(`/generations/${g.id}/approve`, { method: "POST", body: { node_id: g.result.state.waiting } }).then(() => { setCur(null); setTimeout(() => setCur(g.id), 50); loadHistory(); })}>Approve and continue</button></div>
   ) : null;
 
+  if (embed) {
+    return (
+      <div className="aiw tool-embed" style={{ "--s1": STUDIO_META[t.studio].c1, "--s2": STUDIO_META[t.studio].c2 } as CSSProperties}>
+        <header className="te-head">
+          <div className="grow"><b>{t.name}</b><span className={`ws-state ${t.status.state}`}>{t.status.state === "ready" ? (t.status.gpu_offline ? "GPU offline" : "Ready") : t.status.state === "needs_key" ? "Needs key" : "Not built yet"}</span>
+            <div className="dim small">{t.summary}</div></div>
+          <button type="button" className="btn icon ghost" aria-label="Close tool" onClick={embed.onClose}><XIcon size={16} /></button>
+        </header>
+        {t.notice && <div className="info-box">{t.notice}</div>}
+        {t.status.gpu_offline && <div className="info-box" role="status">{t.status.notice}</div>}
+        <section className="guide-panel"><Controls c={c} /><Advanced c={c} /><Consent c={c} />{runBar}</section>
+        <section className="guide-panel">
+          <Output key={g?.id} g={g} onUse={onUse} empty={<p className="dim">Your result appears here. Then choose <b>Add to timeline</b>.</p>} />
+          {actions}
+          {history.length > 1 && <><h3>Previous runs</h3><RenderQueue history={history} g={g} select={setCur} /></>}
+        </section>
+      </div>
+    );
+  }
   const Layout = LAYOUTS[t.studio];
   const studio = studios.find((s) => s.id === t.studio);
   const m = STUDIO_META[t.studio];

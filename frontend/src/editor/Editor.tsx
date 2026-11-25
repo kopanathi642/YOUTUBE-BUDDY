@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { History as HistoryIcon, X as XIcon, Cloud, CloudOff, Loader2, AlertTriangle, Undo2, Redo2, Home, FolderOpen, Scissors, Workflow, Palette, AudioLines, Sparkles, Activity, Type, Image as ImageIcon, LayoutTemplate } from "lucide-react";
 import { api, ApiError, Asset, Project, SequenceDoc } from "../api";
 import { useToast } from "../App";
 import { Brand, UserMenu } from "../components/Shell";
 import { useHistory } from "./useHistory";
-import { Timeline, Clip, duration, splitAllAt, splitAt, deleteClip, findClip, insertClip, insertTitle, updateClip, end, fits, freeSlot, addTrack, uid, DEFAULT_TRANSFORM } from "../timeline";
+import { Title, DEFAULT_TITLE, Timeline, Clip, duration, splitAllAt, splitAt, deleteClip, findClip, insertClip, insertTitle, updateClip, end, fits, freeSlot, addTrack, uid, DEFAULT_TRANSFORM } from "../timeline";
 import { EDIT_TYPES, EditType, insert, overwrite, replace, fitToFill, placeOnTop, append, rippleOverwrite } from "../editops";
 import { CaptionsModal, TTSModal, VoiceCatalog } from "./AiTools";
 import { HighlightsModal, ThumbnailModal, Moment } from "./Creator";
@@ -16,10 +16,12 @@ import { LOOKS, svgFilterBody, withLook, sanitizeGrade } from "../grade";
 import FindAI, { Suggestion } from "./FindAI";
 import { buildPlan, applyCuts, silenceCuts, applySceneSplits, sceneSplits, loudnessGain } from "../smart";
 import MediaBin, { BinTab } from "./MediaBin";
+import type { AssetCtx } from "./AssetLibrary";
 import FocusMusic from "./FocusMusic";
 import { Workspace, LayoutMenu, WorkspaceBar, useLayout, PanelDef, PanelId } from "./Workspace";
 import { Bot, Mic2, Palette as PaletteI, BarChart3, Network, Zap, SlidersHorizontal, Rocket as RocketI, Film as FilmI, Lightbulb } from "lucide-react";
-import { loadCatalogue } from "../ai/core";
+import { loadCatalogue, Generation, Tool } from "../ai/core";
+const EmbeddedTool = lazy(() => import("../pages/AiTool").then((m) => ({ default: m.EmbeddedTool })));
 import { insertTemplate, TitleTemplate } from "../templates";
 import Viewer, { Sampler } from "./Viewer";
 import TimelinePanel from "./TimelinePanel";
@@ -101,8 +103,11 @@ export default function Editor() {
   const [selected, setSelected] = useState<string | null>(null);
   // Features that depend on a server key/model are hidden until it is set up (see docs/HIDDEN_FEATURES.md)
   const [hide, setHide] = useState<Set<string>>(new Set(["obj", "lipsync", "stock"]));
+  const [aiTools, setAiTools] = useState<Tool[]>([]);
+  const [toolOpen, setToolOpen] = useState<{ id: string; media?: string } | null>(null);
   useEffect(() => {
     Promise.all([loadCatalogue().catch(() => null), api<{ pexels: boolean; pixabay: boolean }>("/stock/status").catch(() => null)]).then(([cat, st]) => {
+      setAiTools(cat?.tools ?? []);
       const ready = new Set((cat?.tools ?? []).map((t) => t.id));
       const h = new Set<string>();
       if (!ready.has("033")) h.add("lipsync");
@@ -243,11 +248,11 @@ export default function Editor() {
     return a.id;
   }
 
-  function addTitle() {
+  function addTitle(style?: Partial<Title>) {
     if (!tl) return;
     const track = tl.tracks.find((t) => t.id === "v2" && !t.locked) ?? tl.tracks.find((t) => t.kind === "video" && !t.locked);
     if (!track) { toast("Unlock a video track first"); return; }
-    const r = insertTitle(tl, track.id, playhead, 3 * fps);
+    const r = insertTitle(tl, track.id, playhead, 3 * fps, style ? { ...DEFAULT_TITLE, ...style } : undefined);
     if (r && edit(r.tl)) {
       const at = r.tl.tracks.find((t) => t.id === track.id)!.clips.find((c) => c.id === r.id)!.start;
       setSelected(r.id); setInspTab("text"); setPlaying(false); setPlayhead(at);
@@ -412,13 +417,43 @@ export default function Editor() {
     } catch { toast("Snapshot needs cross-origin access to media storage"); }
   }
 
+  /** Open an AI tool in the drawer, with the selected clip's file filled in. */
+  function openTool(id: string) {
+    const a = sel?.clip.asset_id ? assetMap.get(sel.clip.asset_id) : undefined;
+    setToolOpen({ id, media: a && a.kind !== "lut" ? a.id : undefined });
+  }
+  /** A tool finished: new files go on the timeline (or wait until processed); a new edit opens as a sequence. */
+  async function toolDone(g: Generation) {
+    if (!project) return;
+    const seqIds: string[] = g.result?.sequence_ids ?? [];
+    if (seqIds.length && !g.outputs.length) {
+      await doSave(true);
+      try {
+        const p = await api<Project>(`/projects/${project.id}`);
+        setSequences(p.sequences ?? []);
+        const s = p.sequences?.find((x) => x.id === seqIds[0]);
+        if (s) { openSequence(s); toast(`Opened “${s.name}” — switch back with the Program menu`); }
+      } catch (e) { toast((e as Error).message); }
+      setToolOpen(null);
+      return;
+    }
+    await loadMedia();
+    let placed = 0;
+    for (const a of g.outputs.filter((x) => ["video", "image", "audio"].includes(x.kind))) {
+      if (a.status === "ready") { addAssetToTimeline(a); placed++; }
+      else setPending((m) => ({ ...m, [a.id]: { type: "place" } }));
+    }
+    toast(placed ? `Added ${g.tool_name} result to the timeline — Ctrl+Z to undo` : "The result is processing — it goes on the timeline when ready");
+    setToolOpen(null);
+  }
+
   function action(id: string) {
     if (!tl) return;
     /** Open an AI Generator tool with this project and the selected clip already filled in; its result has Edit in Timeline. */
     const toGenerator = (toolId: string) => {
       const a = sel?.clip.asset_id ? assetMap.get(sel.clip.asset_id) : undefined;
       if (!a || a.kind !== "video") { toast("Select a video clip on the timeline first"); return; }
-      navigate(`/ai-generator/tool/${toolId}?project=${projectId}&media=${a.id}`);
+      setToolOpen({ id: toolId, media: a.id });
     };
     const scroll = (sel: string) => document.querySelector(sel)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     switch (id) {
@@ -438,6 +473,8 @@ export default function Editor() {
       case "fusion": focus("nodes"); break;
       case "effects": setInspTab("effects"); break;
       case "motion": case "title": addTitle(); break;
+      case "autoedit": setAutoEdit(true); break;
+      case "assistant": focus("assistant"); break;
       case "templates": case "elements": openBin("templates"); break;
       case "stock": openBin("stock"); break;
       case "transitions": setInspTab("transition"); break;
@@ -491,8 +528,17 @@ export default function Editor() {
 
   const sel = selected ? findClip(tl, selected) : null;
   const selAsset = sel ? assetMap.get(sel.clip.asset_id) : undefined;
+  const placeTemplate = (t: TitleTemplate) => {
+    if (readOnly) return;
+    const r = insertTemplate(tl, t, playhead);
+    if (!r) { toast("No free space at the playhead for this title — move the playhead or add a track"); return; }
+    edit(r.tl); setSelected(r.id); setInspTab("text"); setPlaying(false); toast(`${t.name} added at the playhead`);
+  };
+  const assetCtx: AssetCtx = { tl, sel, selAsset, readOnly, fps, tools: aiTools, hide, action, openTool, addTitle, onTemplate: placeTemplate,
+    focus: (p) => focus(p),
+    setClip: (patch, key) => { if (sel) edit(updateClip(tl, sel.clip.id, patch), sel.clip.id + ":" + key); } };
   const inspector = (tab: typeof inspTab, showTabs = false) => <Inspector tab={tab} setTab={setInspTab} showTabs={showTabs} tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly}
-    onAddTitle={addTitle} onStabilize={(id) => derive(id, "stabilize", "Stabilizing")} toast={toast}
+    onAddTitle={() => addTitle()} onStabilize={(id) => derive(id, "stabilize", "Stabilizing")} toast={toast}
     playhead={playhead} setPlayhead={setPlayhead} />;
   /* Find AI suggestions: real checks on this timeline (silences, colour, levels, noise), then format and selection tips. */
   const findSuggestions: Suggestion[] = (() => {
@@ -529,7 +575,7 @@ export default function Editor() {
         <FindAI action={action} hasSel={!!sel} isVideoSel={selAsset?.kind === "video"} hide={hide}
           onLook={(i) => sel && edit(updateClip(tl, sel.clip.id, { color: withLook(LOOKS[i].grade) }))}
           onTransitions={() => { focus("inspector"); setInspTab("transition"); }}
-          onTool={(id) => navigate(`/ai-generator/tool/${id}?project=${projectId}${selAsset?.kind === "video" ? `&media=${selAsset.id}` : ""}`)}
+          onTool={(id) => openTool(id)}
           suggestions={findSuggestions} />
         <div className="grow" />
         <ProjectName project={project} onRename={(n) => setProject({ ...project, name: n })} readOnly={readOnly} />
@@ -555,17 +601,11 @@ export default function Editor() {
         <ToolSidebar caps={caps} onAction={action} readOnly={readOnly} hide={hide} onAsset={openBin} activeAsset={layout.media ? binTab : null} />
         <Workspace layout={layout} setLayout={setLayout}
           media={<MediaBin projectId={project.id} seqSize={{ w: tl.width, h: tl.height }} assets={assets} setAssets={setAssets} reload={loadMedia} readOnly={readOnly} onAdd={(a) => addAssetToTimeline(a)} fps={fps}
-              uploadRef={uploadRef} onRecord={() => setRecording(true)} canLook={!!sel && !sel.track.locked && sel.track.kind === "video" && !!selAsset?.has_video}
-              onLook={(i) => sel && edit(updateClip(tl, sel.clip.id, { color: withLook(LOOKS[i].grade) }))}
-              binTab={binTab} setBinTab={setBinTab}
-              clipControls={binTab === "effects" || binTab === "transitions" ? inspector(binTab === "effects" ? "effects" : "transition")
-                : binTab === "adjustments" ? <QuickAdjustments clip={sel?.clip} disabled={readOnly || sel?.track.kind !== "video" || sel.track.locked || !selAsset?.has_video}
-                    onChange={(color, key) => sel && edit(updateClip(tl, sel.clip.id, { color }), sel.clip.id + ":color:" + key)} /> : null} hideStock={hide.has("stock")} onTemplate={(t: TitleTemplate) => {
-                if (readOnly) return;
-                const r = insertTemplate(tl, t, playhead);
-                if (!r) { toast("No free space at the playhead for this title — move the playhead or add a track"); return; }
-                edit(r.tl); setSelected(r.id); setInspTab("text"); setPlaying(false); toast(`${t.name} added at the playhead`);
-              }} />}
+              uploadRef={uploadRef} onRecord={() => setRecording(true)} onTTS={() => setAiModal("tts")}
+              binTab={binTab} setBinTab={setBinTab} ctx={assetCtx}
+              adjustments={<QuickAdjustments clip={sel?.clip} disabled={readOnly || sel?.track.kind !== "video" || sel.track.locked || !selAsset?.has_video}
+                    onChange={(color, key) => sel && edit(updateClip(tl, sel.clip.id, { color }), sel.clip.id + ":color:" + key)} />}
+              hideStock={hide.has("stock")} onTemplate={placeTemplate} />}
           viewer={<Viewer tl={tl} assets={assetMap} playhead={playhead} setPlayhead={setPlayhead} playing={playing} setPlaying={setPlaying} total={total}
               samplerRef={samplerRef} sequences={sequences} currentSeqId={seq.id} onSwitchSeq={switchSequence} autoAdjust={autoAdjust} analysed={analysed}
               onNewSeq={() => createSequence({ name: `Sequence ${sequences.length + 1}`, format: tl.width >= tl.height ? "landscape" : "vertical" }, "New empty sequence created")}
@@ -629,6 +669,10 @@ export default function Editor() {
         onSave={(f) => { uploadRef.current?.([f]); setAiModal(null); toast("Thumbnail saved to your media bin"); }} />}
       {aiModal === "tts" && <TTSModal catalog={catalog} projectId={project.id} onClose={() => setAiModal(null)}
         onCreated={(a) => { setAssets((xs) => [a, ...xs]); setPending((m) => ({ ...m, [a.id]: { type: "tts", at: playhead } })); setAiModal(null); toast("Generating voice on the cloud worker…"); }} />}
+      {toolOpen && <div className="ed-tooldrawer" role="dialog" aria-label="AI tool">
+        <Suspense fallback={<div className="ws-loading"><span className="spinner" /></div>}>
+          <EmbeddedTool key={toolOpen.id} id={toolOpen.id} embed={{ pid: project.id, media: toolOpen.media, onClose: () => setToolOpen(null), onDone: toolDone }} />
+        </Suspense></div>}
       {recording && <RecordModal onClose={() => setRecording(false)} onDone={(f) => { setRecording(false); uploadRef.current?.([f]); toast("Recording is uploading to your media bin"); }} />}
     </div>
   );

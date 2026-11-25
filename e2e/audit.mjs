@@ -187,11 +187,22 @@ await step("Fusion node: ColorCorrect bypass toggle", async () => {
 await step("Creative assets rail opens each category in the left panel", async () => {
   for (const category of ["Audio", "Text", "Stickers", "Effects", "Transitions", "Filters", "Adjustments", "Media"]) {
     await page.getByRole("button", { name: category, exact: true }).and(page.locator(".rail-btn")).click();
-    if (await page.locator(".asset-category").inputValue() !== category.toLowerCase()) throw new Error(category + " did not open");
+    const on = await page.locator(".ac-cat.on span").innerText();
+    if (on !== (category === "Adjustments" ? "Adjust" : category)) throw new Error(category + " did not open (" + on + ")");
   }
 });
-await step("Media bin Effects tab applies a look", async () => {
-  await page.selectOption(".asset-category", "filters"); await page.click(".ed-bin .look:has-text('B&W')"); await page.selectOption(".asset-category", "media");
+await step("Assets panel: every category shows cards or a working panel", async () => {
+  const cats = await page.locator(".ac-cat span").allInnerTexts();
+  if (cats.length < 18) throw new Error("only " + cats.length + " categories");
+  for (const c of cats) {
+    await page.click(`.ac-cat:has-text("${c}")`); await w(80);
+    const n = await page.locator(".ed-bin .ac-card, .ed-bin .bin-item, .ed-bin .el-tile, .ed-bin .fr-tile, .ed-bin .tpl-card, .ed-bin input[type=range], .ed-bin .gen-tile, .ed-bin .empty, .ed-bin .dim").count();
+    if (!n) throw new Error(c + " is empty");
+  }
+  await page.click('.ac-cat:has-text("Media")');
+});
+await step("Media bin Filters category applies a look", async () => {
+  await page.click('.ac-cat:has-text("Filters")'); await page.click(".ed-bin .ac-card:has-text('B&W')"); await page.click('.ac-cat:has-text("Media")');
 });
 await step("Autosave reaches Cloud Saved", saved);
 await step("AI Magic: plan dialog, untick one, apply", async () => {
@@ -287,12 +298,12 @@ await step("Elements: sticker rendered to PNG, uploaded, placed on timeline", as
   await page.waitForFunction((n) => document.querySelectorAll(".clip").length > n, n, { timeout: 40000 });
 });
 await step("Stock tab hidden until a free stock key is set", async () => {
-  if (await page.locator(".asset-category option[value=stock]").count()) throw new Error("Stock tab shown without a key");
+  if (await page.locator(".ed-bin .ac-subs button:has-text('Stock')").count()) throw new Error("Stock tab shown without a key");
 });
 await step("AI Assets tab lists generator outputs or explains", async () => {
-  await page.selectOption(".asset-category", "ai"); await w(200);
+  await page.click(".ed-bin .ac-subs button:has-text('AI files')"); await w(200);
   if (!(await page.locator(".ed-bin .bin-list").count())) throw new Error("AI tab empty");
-  await page.selectOption(".asset-category", "media");
+  await page.click(".ed-bin .ac-subs button:has-text('My media')");
 });
 await step("Speed & Time: 2× preset changes clip length", async () => {
   await page.locator(".tl-scroll").evaluate((e) => (e.scrollLeft = 0));

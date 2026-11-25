@@ -8,6 +8,8 @@ import { TITLE_TEMPLATES, TitleTemplate } from "../templates";
 const ICONS = [["Arrow", ArrowRight], ["Arrow down", ArrowDown], ["Arrow up-right", ArrowUpRight], ["Circle", Circle], ["Box", Square], ["Tick", Check], ["Cross", X],
   ["Heart", Heart], ["Star", Star], ["Thumbs up", ThumbsUp], ["Bell", Bell], ["Location", MapPin], ["Speech", MessageCircle], ["Sparkle", Sparkles], ["Fire", Flame],
   ["Lightning", Zap], ["Smile", Smile], ["Play", Play], ["Camera", Camera], ["Music", Music]] as const;
+/** Shapes and pointers go in Elements; the rest are stickers. */
+const SHAPES = new Set(["Arrow", "Arrow down", "Arrow up-right", "Circle", "Box", "Tick", "Cross", "Highlight ring", "Frame", "Underline"]);
 const SPECIAL: { name: string; svg: (c: string) => string }[] = [
   { name: "Subscribe pill", svg: () => `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="320" viewBox="0 0 1024 320"><rect x="8" y="8" width="1008" height="304" rx="152" fill="#dc2626"/><text x="512" y="200" font-family="Arial, Helvetica, sans-serif" font-size="150" font-weight="800" fill="#fff" text-anchor="middle" letter-spacing="6">SUBSCRIBE</text></svg>` },
   { name: "Highlight ring", svg: (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="640" viewBox="0 0 1024 640"><ellipse cx="512" cy="320" rx="470" ry="270" fill="none" stroke="${c}" stroke-width="34"/></svg>` },
@@ -50,7 +52,7 @@ async function svgToPng(svg: string, name: string): Promise<File> {
 }
 
 export default function TemplatesTab({ section, projectId, readOnly, onTemplate, onElement, reload }: {
-  section: "templates" | "text" | "stickers"; projectId: string; readOnly: boolean; onTemplate: (t: TitleTemplate) => void; onElement: (a: Asset) => void; reload: () => void;
+  section: "templates" | "text" | "stickers" | "elements" | "overlays"; projectId: string; readOnly: boolean; onTemplate: (t: TitleTemplate) => void; onElement: (a: Asset) => void; reload: () => void;
 }) {
   const [colour, setColour] = useState("#fde047"), [filled, setFilled] = useState(false), [busy, setBusy] = useState<string | null>(null), [err, setErr] = useState<string | null>(null);
   async function addElement(name: string, svg: string) {
@@ -69,27 +71,27 @@ export default function TemplatesTab({ section, projectId, readOnly, onTemplate,
   }
   return (
     <div className="bin-list tpl-tab">
-      {section !== "stickers" && <><div className="label">Animated titles</div>
+      {(section === "templates" || section === "text") && <><div className="label">Animated titles</div>
       <div className="tpl-grid">
         {TITLE_TEMPLATES.map((t) => <button key={t.id} className="tpl-card" disabled={readOnly} onClick={() => onTemplate(t)} title={`${t.desc} · ${t.seconds}s · added at the playhead`}>
           <span className={`tpl-prev ${t.id}`}><b>{t.sample}</b></span><span className="ellipsis">{t.name}</span></button>)}
       </div>
       </>}
-      {section !== "text" && <><div className="label" style={{ marginTop: 10 }}>Frames</div>
+      {(section === "templates" || section === "overlays") && <><div className="label" style={{ marginTop: 10 }}>Frames</div>
       <div className="fr-grid">
         {FRAMES.map((f) => <button key={f.name} className="fr-tile" disabled={readOnly || !!busy} title={`Add the ${f.name} frame over your video at the playhead`} onClick={() => addElement(`Frame ${f.name}`, f.svg(colour))}>
           {busy === `Frame ${f.name}` ? <span className="spinner" /> : <span className="fr-prev" dangerouslySetInnerHTML={{ __html: f.svg(colour) }} />}<span>{f.name}</span></button>)}
-      </div>
-      <div className="label" style={{ marginTop: 10 }}>Elements &amp; stickers</div>
+      </div></>}
+      {section !== "text" && section !== "overlays" && <><div className="label" style={{ marginTop: 10 }}>{section === "stickers" ? "Stickers" : section === "elements" ? "Shapes, arrows & graphics" : "Elements & stickers"}</div>
       <div className="row" style={{ gap: 4, flexWrap: "wrap", marginBottom: 6 }} role="radiogroup" aria-label="Element colour">
         {COLOURS.map((c) => <button key={c} role="radio" aria-checked={colour === c} aria-label={`Colour ${c}`} className={`swatch ${colour === c ? "on" : ""}`} style={{ background: c }} onClick={() => setColour(c)} />)}
         <label className="check" style={{ fontSize: 11, marginLeft: 4 }}><input type="checkbox" checked={filled} onChange={(e) => setFilled(e.target.checked)} />Filled</label>
       </div>
       <div className="el-grid">
-        {ICONS.map(([name, I]) => <button key={name} className="el-tile" disabled={readOnly || !!busy} title={`Add ${name} at the playhead`}
+        {ICONS.filter(([name]) => section === "templates" || (section === "elements") === SHAPES.has(name)).map(([name, I]) => <button key={name} className="el-tile" disabled={readOnly || !!busy} title={`Add ${name} at the playhead`}
           onClick={() => addElement(name, renderToStaticMarkup(<I size={1024} color={colour} strokeWidth={2.2} fill={filled ? colour : "none"} xmlns="http://www.w3.org/2000/svg" />))}>
           {busy === name ? <span className="spinner" /> : <I size={22} color={colour} fill={filled ? colour : "none"} />}<span>{name}</span></button>)}
-        {SPECIAL.map((s) => <button key={s.name} className="el-tile" disabled={readOnly || !!busy} title={`Add ${s.name} at the playhead`} onClick={() => addElement(s.name, s.svg(colour))}>
+        {SPECIAL.filter((s) => section === "templates" || (section === "elements") === SHAPES.has(s.name)).map((s) => <button key={s.name} className="el-tile" disabled={readOnly || !!busy} title={`Add ${s.name} at the playhead`} onClick={() => addElement(s.name, s.svg(colour))}>
           {busy === s.name ? <span className="spinner" /> : <span className="el-svg" dangerouslySetInnerHTML={{ __html: s.svg(colour) }} />}<span>{s.name}</span></button>)}
       </div>
       {err && <div className="error-box" style={{ fontSize: 11.5, marginTop: 6 }}>{err}</div>}

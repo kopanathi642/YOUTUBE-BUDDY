@@ -997,3 +997,12 @@
   color: #64748b;
   font-size: 12px;
 }
+
+/* AI tool inside the Editor's drawer */
+.aiw.tool-embed { min-height: 0; height: 100%; overflow-y: auto; display: grid; align-content: start; gap: 10px; padding: 12px; background: #0b0a16; }
+.aiw.tool-embed .te-head { display: flex; gap: 8px; align-items: flex-start; }
+.aiw.tool-embed .te-head b { font-size: 16px; margin-right: 8px; }
+.aiw.tool-embed .te-head .small { margin-top: 4px; line-height: 1.4; }
+.aiw.tool-embed .guide-panel { padding: 12px; gap: 12px; border-radius: 12px; }
+.aiw.tool-embed .info-box { margin: 0; }
+.aiw.tool-embed h3 { font-size: 13px; margin: 4px 0 0; }

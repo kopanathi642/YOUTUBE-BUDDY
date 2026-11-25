@@ -1,7 +1,7 @@
 import { DragEvent, MutableRefObject, useEffect, useRef, useState } from "react";
-import { Upload, Search, Film, Music, ImageIcon, X, RotateCcw, Trash2, Plus, AlertCircle, Video, Sparkles } from "lucide-react";
+import { Upload, Search, Film, Music, ImageIcon, X, RotateCcw, Trash2, Plus, AlertCircle, Video, Sparkles, Mic, Type } from "lucide-react";
 import { Link } from "react-router-dom";
-import { LOOKS } from "../grade";
+import { AssetCat, AssetCtx, AssetCategoryView, AudioFx, CategoryBar, ToolCards } from "./AssetLibrary";
 import { api, Asset, fmtBytes, fmtDuration } from "../api";
 import { useToast } from "../App";
 import { fmtEta, fmtRate, localPreview, uploadFile, UploadState } from "../upload";
@@ -12,12 +12,15 @@ import { TitleTemplate } from "../templates";
 
 const ACCEPT = ".mp4,.m4v,.mov,.webm,.mkv,.mp3,.wav,.m4a,.aac,.ogg,.flac,.png,.jpg,.jpeg,.webp";
 
-export type BinTab = "media" | "audio" | "text" | "stickers" | "effects" | "transitions" | "filters" | "adjustments" | "templates" | "stock" | "ai";
-export default function MediaBin({ projectId, assets, setAssets, reload, readOnly, onAdd, uploadRef, onRecord, onLook, canLook, onTemplate, binTab, setBinTab, clipControls, hideStock, seqSize }: {
+/** Creative Assets Panel: category toolbar on top, then the category's subcategories and asset cards. */
+export type BinTab = AssetCat | "stock" | "ai";
+const AUDIO_SUBS = ["My audio", "Voice-over", "Audio effects", "AI audio"] as const;
+export default function MediaBin({ projectId, assets, setAssets, reload, readOnly, onAdd, uploadRef, onRecord, onTTS, onTemplate, binTab, setBinTab, ctx, adjustments, hideStock, seqSize }: {
   projectId: string; assets: Asset[]; setAssets: (f: (a: Asset[]) => Asset[]) => void; reload: () => void; readOnly: boolean;
-  onAdd: (a: Asset) => void; fps: number; uploadRef: MutableRefObject<((f: File[]) => void) | null>; onRecord: () => void;
-  onLook: (i: number) => void; canLook: boolean; onTemplate: (t: TitleTemplate) => void; binTab: BinTab; setBinTab: (tab: BinTab) => void; clipControls: React.ReactNode; hideStock?: boolean; seqSize?: { w: number; h: number };
+  onAdd: (a: Asset) => void; fps: number; uploadRef: MutableRefObject<((f: File[]) => void) | null>; onRecord: () => void; onTTS: () => void;
+  onTemplate: (t: TitleTemplate) => void; binTab: BinTab; setBinTab: (tab: BinTab) => void; ctx: AssetCtx; adjustments: React.ReactNode; hideStock?: boolean; seqSize?: { w: number; h: number };
 }) {
+  const [audioSub, setAudioSub] = useState<typeof AUDIO_SUBS[number]>("My audio");
   const [gen, setGen] = useState(false);
   const toast = useToast();
   const [uploads, setUploads] = useState<UploadState[]>([]);
@@ -75,24 +78,37 @@ export default function MediaBin({ projectId, assets, setAssets, reload, readOnl
     <section className={`ed-bin panel ${over ? "drop" : ""}`} aria-label="Media bin"
       onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setOver(true); } }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(false); }} onDrop={onDrop}>
-      <select className="input asset-category" aria-label="Creative assets category" value={binTab} onChange={(e) => setBinTab(e.target.value as BinTab)}>
-        {Object.entries({ media: "Media", audio: "Audio", text: "Text presets", stickers: "Stickers", effects: "Effects", transitions: "Transitions",
-          filters: "Filters", adjustments: "Adjustments", templates: "Templates & elements", ...(!hideStock && { stock: "Stock" }), ai: "AI Assets" })
-          .map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-      </select>
-      {clipControls ? clipControls : binTab === "templates" || binTab === "text" || binTab === "stickers" ? <TemplatesTab section={binTab} projectId={projectId} readOnly={readOnly} onTemplate={onTemplate} onElement={onAdd} reload={reload} />
-      : binTab === "stock" ? <StockTab projectId={projectId} readOnly={readOnly} onImported={onAdd} reload={reload} />
+      <CategoryBar value={binTab === "stock" || binTab === "ai" ? "media" : binTab} onChange={setBinTab} />
+      {(binTab === "media" || binTab === "stock" || binTab === "ai") && <div className="ac-subs" role="tablist" aria-label="Media sources">
+        {([["media", "My media"], ...(!hideStock ? [["stock", "Stock"]] : []), ["ai", "AI files"]] as [BinTab, string][]).map(([k, l]) =>
+          <button key={k} role="tab" aria-selected={binTab === k} className={binTab === k ? "on" : ""} onClick={() => setBinTab(k)}>{l}</button>)}
+      </div>}
+      {binTab === "audio" && <div className="ac-subs" role="tablist" aria-label="Audio">
+        {AUDIO_SUBS.map((k) => <button key={k} role="tab" aria-selected={audioSub === k} className={audioSub === k ? "on" : ""} onClick={() => setAudioSub(k)}>{k}</button>)}
+      </div>}
+      {binTab === "stock" ? <StockTab projectId={projectId} readOnly={readOnly} onImported={onAdd} reload={reload} />
+      : binTab === "audio" && audioSub === "Voice-over" ? <div className="bin-list ac-body"><div className="ac-grid">
+          <button className="ac-card" disabled={readOnly} onClick={onTTS}><span className="ac-prev"><Type size={22} /></span><span className="ac-name">Text to speech</span><span className="ac-kind">Free AI voices · many languages</span></button>
+          <button className="ac-card" disabled={readOnly} onClick={onRecord}><span className="ac-prev"><Mic size={22} /></span><span className="ac-name">Record voice</span><span className="ac-kind">Your microphone</span></button>
+        </div></div>
+      : binTab === "audio" && audioSub === "Audio effects" ? <div className="bin-list ac-body"><AudioFx c={ctx} /></div>
+      : binTab === "audio" && audioSub === "AI audio" ? <div className="bin-list ac-body"><ToolCards c={ctx} ids={["047", "048", "049", "050", "041", "042", "043", "044", "046", "045"]} /></div>
       : binTab === "ai" ? <div className="bin-list" style={{ paddingTop: 8 }}>
         {(() => { const gen = assets.filter((a) => a.kind !== "lut" && a.analysis?.generation); return gen.length === 0
-          ? <div className="dim" style={{ fontSize: 12 }}>Files you create in the AI Generator for this project appear here, ready to drop on the timeline. <Link to="/ai-generator" style={{ color: "#c4b5fd" }}>Open AI Generator</Link></div>
+          ? <div className="dim" style={{ fontSize: 12 }}>Files you make with AI tools for this project appear here, ready to drop on the timeline. Try <b>AI Tools</b> above, or the <Link to="/ai-generator" style={{ color: "#c4b5fd" }}>AI Generator</Link>.</div>
           : <div className="bin-grid">{gen.map((a) => <button key={a.id} className="bin-item" disabled={readOnly || a.status !== "ready"} onClick={() => onAdd(a)} title={`${a.analysis.generation.tool_name ?? "AI"} · ${a.analysis.generation.model ?? "built-in"} — click to add`}>
               <span className="bin-thumb">{a.thumbnail_url ? <img src={a.thumbnail_url} alt="" /> : <Sparkles size={20} />}<span className="badge info" style={{ position: "absolute", top: 3, left: 3, fontSize: 9 }}>AI</span></span>
               <span className="ellipsis" style={{ fontSize: 11 }}>{a.filename}</span></button>)}</div>; })()}
       </div>
-      : binTab === "filters" ? <div className="bin-list" style={{ paddingTop: 10 }}>
-        <div className="dim" style={{ fontSize: 12, marginBottom: 8 }}>{canLook ? "Click a look to apply it to the selected clip." : "Select a video clip on the timeline, then pick a look."}</div>
-        <div className="bin-grid">{LOOKS.map((l, i) => <button key={l.name} className="look" disabled={!canLook || readOnly} onClick={() => onLook(i)}><span className="look-ph" style={{ filter: `url(#look-${i})` }} /><span>{l.name}</span></button>)}</div>
-      </div> : <>
+      : binTab !== "media" && binTab !== "audio" ? <AssetCategoryView cat={binTab} c={ctx} adjustments={adjustments}
+          frames={<TemplatesTab section="overlays" projectId={projectId} readOnly={readOnly} onTemplate={onTemplate} onElement={onAdd} reload={reload} />}
+          stickers={<TemplatesTab section="stickers" projectId={projectId} readOnly={readOnly} onTemplate={onTemplate} onElement={onAdd} reload={reload} />}
+          elements={<TemplatesTab section="elements" projectId={projectId} readOnly={readOnly} onTemplate={onTemplate} onElement={onAdd} reload={reload} />}
+          templates={<TemplatesTab section="templates" projectId={projectId} readOnly={readOnly} onTemplate={onTemplate} onElement={onAdd} reload={reload} />}
+          backgrounds={<div style={{ padding: "4px 0" }}><div className="dim" style={{ fontSize: 12, marginBottom: 8 }}>Pick a background; it's added to your media, then click it to place it on the timeline.</div>
+            <Generators projectId={projectId} size={seqSize ?? { w: 1920, h: 1080 }} readOnly={readOnly}
+              onCreated={(a) => { setAssets((xs) => [a, ...xs.filter((x) => x.id !== a.id)]); setTimeout(reload, 1500); setBinTab("media"); }} /></div>} />
+      : <>
       <div style={{ padding: 10, display: "grid", gap: 8 }}>
         <div className="row bin-actions">
           <button className="btn primary grow" onClick={() => input.current?.click()} disabled={readOnly}><Upload size={15} />{audioOnly ? "Import audio" : "Import Media"}</button>
