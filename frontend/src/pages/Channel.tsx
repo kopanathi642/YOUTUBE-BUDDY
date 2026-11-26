@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Youtube, Link2, RefreshCw, TrendingUp, TrendingDown, Lightbulb, CalendarClock, Clock, Ruler, Type, Info } from "lucide-react";
+import { Youtube, ArrowRight, CirclePlay, Link2, RefreshCw, TrendingUp, TrendingDown, Lightbulb, CalendarClock, Clock, Ruler, Type, Info } from "lucide-react";
 import { api } from "../api";
 import { useAuth, useToast } from "../App";
 import UniverseShell from "../components/UniverseShell";
 import { ytStatus } from "../components/ChannelButton";
 import type { YtStatus } from "../components/YouTubeCard";
+
+import "./Channel.css";
 
 type Row = { label: string; videos: number; median_views: number; vs_channel: number | null };
 type Vid = { id: string; title: string; published_at: string; thumbnail: string | null; duration_s: number | null; views: number; likes: number; comments: number; engagement: number; format: string; age_days: number };
@@ -54,6 +56,7 @@ export default function Channel() {
   const [d, setD] = useState<Insights | null>(null), [err, setErr] = useState(""), [busy, setBusy] = useState(false);
   const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata"; } catch { return "Asia/Kolkata"; } })();
   const [connErr, setConnErr] = useState("");
+  const [connecting, setConnecting] = useState(false);
   const REF_KEY = "cu-channel-ref";
   const [ref, setRef] = useState(() => { try { return localStorage.getItem(REF_KEY) ?? ""; } catch { return ""; } });
   const [pub, setPub] = useState(false);
@@ -76,39 +79,57 @@ export default function Channel() {
     ytStatus(!!r).then((s) => { setSt(s); if (s?.connected) load(); else if (ref) loadPublic(ref); });
   }, [load]); // eslint-disable-line react-hooks/exhaustive-deps
   async function connect() {
-    setBusy(true);
+    setConnecting(true); setConnErr("");
     try { const { url } = await api<{ url: string }>("/youtube/connect?back=channel"); location.assign(url); }
-    catch (e) { toast((e as Error).message); setBusy(false); }
+    catch (e) { setConnErr((e as Error).message); setConnecting(false); }
   }
+
+  const choosing = st !== undefined && !st?.connected && !(pub && d);
+  const publishing = st?.configured && !st.connected && (
+    <section className="channel-publish">
+      <span className="channel-publish-icon"><Youtube aria-hidden="true" size={24} /></span>
+      <div><h2>Connect for publishing</h2><p>Choose the Google account that owns your channel to upload finished videos from the editor.</p></div>
+      <button className="btn" onClick={connect} disabled={busy || connecting}>
+        <Link2 size={16} />{connecting ? "Opening Google…" : "Connect with Google"}
+      </button>
+      {connErr && <p className="channel-error" role="alert">{connErr}</p>}
+    </section>
+  );
 
   return (
     <UniverseShell u={null}>
-      <div className="page-h"><div><h1 className="row" style={{ gap: 10 }}><Youtube size={26} color="#ff3b3b" />My channel</h1>
+      {!choosing && <div className="page-h"><div><h1 className="row" style={{ gap: 10 }}><Youtube size={26} color="#ff3b3b" />My channel</h1>
         <div className="muted">Understand what works on your channel and what to expect from your next video.</div></div>
         {(st?.connected || pub) && <button className="btn" onClick={() => st?.connected ? load(true) : loadPublic(ref, true)} disabled={busy}><RefreshCw size={14} className={busy ? "spin" : ""} />Refresh</button>}
-      </div>
+      </div>}
 
       {st === undefined && <div className="spinner" />}
       {st === null && <div className="card empty">Couldn't check your YouTube connection. Try again in a moment.</div>}
       {st && !st.configured && me?.is_platform_admin && <div className="card ch-card"><b>Google connect (for publishing) isn't set up on this server yet.</b>
         <div className="dim" style={{ marginTop: 6, fontSize: 13 }}>{me?.is_platform_admin ? <>Add {st.missing.join(", ")} to the server's environment (see docs/GO_LIVE_GOOGLE.md). Authorised redirect URI: <span className="mono">{st.redirect_uri}</span></> : "It will appear here as soon as it's available."}</div></div>}
-      {st !== undefined && !st?.connected && !(pub && d) && <div className="card ch-connect">
-        <Youtube size={44} color="#ff3b3b" />
-        <h2>Analyse your YouTube channel</h2>
-        <p className="dim">Paste your channel link or @handle. We read its public numbers (views, likes, upload times) to show what works and estimate your next video's views.
-          No Google sign-in needed.</p>
-        <form className="ch-linkform" onSubmit={(e) => { e.preventDefault(); loadPublic(ref); }}>
-          <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="youtube.com/@yourchannel" aria-label="Your channel link or @handle" maxLength={300} />
-          <button className="btn primary" disabled={busy || !ref.trim()}>{busy ? <RefreshCw size={15} className="spin" /> : <TrendingUp size={15} />}Analyse</button>
-        </form>
-        {st?.configured && <div className="ch-or">
-          <span className="dim">Want to publish videos to YouTube straight from your exports?</span>
-          {connErr && <p className="ch-connerr" role="alert">{connErr}</p>}
-          <button className="btn sm" onClick={connect} disabled={busy}><Link2 size={14} />Connect with Google</button>
-        </div>}
+      {choosing && <div className="channel-entry">
+        <section className="channel-intro" aria-labelledby="channel-heading">
+          <div className="channel-copy">
+            <h1 id="channel-heading">Explore your<br /><em>YouTube channel.</em></h1>
+            <p>See which uploads draw the most views and when your audience responds. Start with your public channel link.</p>
+            <form onSubmit={(e) => { e.preventDefault(); if (!busy && !connecting) loadPublic(ref); }}>
+              <label htmlFor="channel-reference">YouTube channel link or @handle</label>
+              <div className="channel-input-row"><div className="channel-input">
+                <Link2 size={17} aria-hidden="true" />
+                <input id="channel-reference" value={ref} onChange={(e) => setRef(e.target.value)} placeholder="@yourchannel" autoCapitalize="none" spellCheck={false} maxLength={300} />
+              </div>
+              <button disabled={busy || connecting || !ref.trim()}>{busy ? "Analysing…" : "Analyse channel"}<ArrowRight size={17} /></button></div>
+              <small>Uses public videos. No Google sign-in needed.</small>
+              {err && <p className="channel-error" role="alert">{err}</p>}
+            </form>
+          </div>
+          <div className="channel-art" aria-hidden="true"><div className="channel-disc"><CirclePlay strokeWidth={1.1} /></div></div>
+        </section>
+        {publishing}
       </div>}
 
-      {err && <div className="card empty" role="alert">{err}</div>}
+      {pub && d && publishing}
+      {!choosing && err && <div className="card empty" role="alert">{err}</div>}
       {st?.connected && !d && !err && <div className="proj-grid">{[0, 1, 2].map((i) => <div key={i} className="skeleton" style={{ height: 140 }} />)}</div>}
       {d && <>
         <section className="card ch-head">
