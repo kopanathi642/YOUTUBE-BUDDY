@@ -10,9 +10,9 @@ import { assetFrames } from "./Editor";
    lock · V1 · eye / M track headers, violet video and green audio clips with an fx badge, a zoom/scroll bar with
    handles underneath, and audio meters on the right (driven by the real waveform of whatever is under the playhead). */
 
-const HEAD_W = 196;
-const ROW_H = { video: 34, audio: 34 };
-const rowHeight = (t: Track, badge: string) => (badge === "V1" ? 64 : t.kind === "audio" && (badge === "A1" || badge === "A2") ? 48 : ROW_H[t.kind]);
+const HEAD_W = 150;
+const ROW_H = { video: 28, audio: 28 };
+const rowHeight = (t: Track, badge: string) => (badge === "V1" ? 46 : t.kind === "audio" && (badge === "A1" || badge === "A2") ? 34 : ROW_H[t.kind]);
 
 type Tool = "select" | "trim" | "razor" | "hand";
 type TrimKind = "roll" | "rippleL" | "rippleR" | "slip" | "slide";
@@ -426,7 +426,7 @@ function TrackRow({ badge, t, tl, view, ppf, contentW, assets, selected, readOnl
         <button className={`pr-tb ${t.locked ? "on lock" : ""}`} aria-pressed={t.locked} aria-label={`${t.locked ? "Unlock" : "Lock"} ${t.name}`} title="Toggle track lock" disabled={readOnly}
           onClick={() => edit(updateTrack(tl, t.id, { locked: !t.locked }))}>{t.locked ? <Lock size={12} /> : <Unlock size={12} />}</button>
         <span className="tl-badge" title={`${t.kind === "video" ? "Video" : "Audio"} ${badge.slice(1)}`}>{badge}</span>
-        <span className="tl-name ellipsis" title={t.name}>{h >= 44 ? t.name : ""}</span>
+        <span className="tl-name ellipsis" title={t.name}>{t.name}</span>
         {t.kind === "video" ? (
           <button className={`pr-tb ${t.hidden ? "on off" : ""}`} aria-pressed={t.hidden} aria-label={`${t.hidden ? "Show" : "Hide"} ${t.name}`} title="Toggle track output" disabled={readOnly}
             onClick={() => edit(updateTrack(tl, t.id, { hidden: !t.hidden }))}>{t.hidden ? <EyeOff size={13} /> : <Eye size={13} />}</button>
@@ -456,7 +456,7 @@ function TrackRow({ badge, t, tl, view, ppf, contentW, assets, selected, readOnl
                 <span className="clip-label">{c.title ? c.title.text : missing ? "⚠ Missing media" : a!.filename}{(c.speed ?? 1) !== 1 ? ` [${Math.round((c.speed ?? 1) * 100)}%]` : ""}</span>
                 {w > 96 && <span className="pr-cdur" title="Clip duration">{shortTc(len(c), view.fps)}</span>}
               </span>
-              {thumb && h >= 44 && <span className="pr-thumbs" style={{ backgroundImage: `url(${thumb})` }} aria-hidden />}
+              {thumb && h >= 40 && <span className="pr-thumbs" style={{ backgroundImage: `url(${thumb})` }} aria-hidden />}
               {a?.waveform_url && t.kind === "audio" && <Wave url={a.waveform_url} assetId={a.id} inS={c.in / view.fps} outS={c.out / view.fps} width={w} />}
               {(c.fade_in > 0 || c.fade_out > 0) && <>
                 {c.fade_in > 0 && <span className="fade in" style={{ width: c.fade_in * ppf }} />}

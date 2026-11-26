@@ -665,26 +665,33 @@ body.ws-dragging iframe, body.ws-dragging video { pointer-events: none; }
 .ed-timeline.pr-tl .tl-scroll.tool-hand .clip:active, .ed-timeline.pr-tl .tl-scroll.tool-hand .tl-lane:active { cursor: grabbing; }
 .ed-timeline.pr-tl .pr-razor { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px dashed #fff; z-index: 8; pointer-events: none; opacity: .8; }
 /* header: big blue timecode over the track headers, ruler beside it */
-.ed-timeline.pr-tl .tl-ruler-row, .ed2 .ed-timeline.pr-tl .tl-ruler-row { height: 50px; background: var(--pr-bg); border-bottom: 1px solid #111; }
-.ed-timeline.pr-tl .tl-corner { overflow: visible; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; padding: 0 10px; background: var(--pr-bg); border-right: 1px solid #111; }
-.ed-timeline.pr-tl .pr-tc { font-size: 19px; font-weight: 500; color: var(--pr-blue); letter-spacing: .3px; line-height: 1.25; }
+.ed-timeline.pr-tl .tl-ruler-row, .ed2 .ed-timeline.pr-tl .tl-ruler-row { height: 40px; background: var(--pr-bg); border-bottom: 1px solid #111; }
+.ed-timeline.pr-tl .tl-corner { overflow: visible; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; padding: 0 6px; background: var(--pr-bg); border-right: 1px solid #111; }
+.ed-timeline.pr-tl .pr-tc { font-size: 16px; font-weight: 500; color: var(--pr-blue); letter-spacing: .3px; line-height: 1.25; }
 .ed-timeline.pr-tl .pr-hicons { display: flex; gap: 2px; }
 .ed-timeline.pr-tl .pr-hbtn { width: 22px; height: 18px; display: grid; place-items: center; border: 0; border-radius: 3px; background: transparent; color: #9a9a9a; cursor: pointer; }
 .ed-timeline.pr-tl .pr-hbtn:hover { background: #333; color: #fff; }
 .ed-timeline.pr-tl .pr-hbtn.on { color: var(--pr-blue); background: #2a3442; }
-.ed-timeline.pr-tl .tl-ruler, .ed2 .ed-timeline.pr-tl .tl-ruler { height: 50px; background-color: var(--pr-bg);
+.ed-timeline.pr-tl .tl-ruler, .ed2 .ed-timeline.pr-tl .tl-ruler { height: 40px; background-color: var(--pr-bg);
   background-image: repeating-linear-gradient(90deg, #5c5c5c 0 1px, transparent 1px var(--minor)); background-size: 100% 6px; background-position: 0 100%; background-repeat: no-repeat; }
 .ed-timeline.pr-tl .tick { top: auto; bottom: 0; height: 14px; border-left: 1px solid #8a8a8a; }
 .ed-timeline.pr-tl .tick span, .ed2 .ed-timeline.pr-tl .tick span { top: -16px; left: 3px; font-size: 10px; color: #a3a3a3; }
-.ed-timeline.pr-tl .pr-seqbar { position: absolute; left: 0; top: 6px; height: 4px; border-radius: 2px; background: #4a4a4a; pointer-events: none; }
-/* track headers: lock · V1 · name · eye / M */
+.ed-timeline.pr-tl .pr-seqbar { position: absolute; left: 0; top: 2px; height: 4px; border-radius: 2px; background: #4a4a4a; pointer-events: none; }
+/* track headers: lock · V1 · name · eye / M — compact rows */
+/* the zoom bar below already scrolls sideways, so hide the duplicate native horizontal bar (Chromium/Safari) */
+@supports selector(::-webkit-scrollbar) {
+  .ed-timeline.pr-tl .tl-scroll { scrollbar-width: auto; }
+  .ed-timeline.pr-tl .tl-scroll::-webkit-scrollbar { width: 8px; height: 0; }
+  .ed-timeline.pr-tl .tl-scroll::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+  .ed-timeline.pr-tl .tl-scroll::-webkit-scrollbar-track { background: transparent; }
+}
 .ed-timeline.pr-tl .tl-row { border-bottom: 1px solid #141414; }
 .ed-timeline.pr-tl .tl-row.pr-divider { border-top: 5px solid #111; }
-.ed-timeline.pr-tl .tl-head { flex-basis: 196px; width: 196px; justify-content: flex-start; gap: 4px; padding: 0 6px; background: var(--pr-head); border-right: 1px solid #111; }
-.ed-timeline.pr-tl .tl-head .tl-badge { min-width: 26px; height: 18px; border-radius: 3px; background: #1b3a5c; border: 1px solid var(--pr-blue); color: #d6e9ff; font: 600 10.5px var(--font); }
+.ed-timeline.pr-tl .tl-head { flex-basis: 150px; width: 150px; justify-content: flex-start; gap: 3px; padding: 0 4px; background: var(--pr-head); border-right: 1px solid #111; }
+.ed-timeline.pr-tl .tl-head .tl-badge { min-width: 24px; height: 17px; border-radius: 3px; background: #1b3a5c; border: 1px solid var(--pr-blue); color: #d6e9ff; font: 600 10.5px var(--font); }
 .ed-timeline.pr-tl .tl-head.audio .tl-badge { color: #d6e9ff; }
-.ed-timeline.pr-tl .tl-head .tl-name { margin: 0 2px; font-size: 11px; color: #a8a8a8 !important; font-weight: 400; }
-.ed-timeline.pr-tl .pr-tb { flex: none; width: 22px; height: 20px; display: grid; place-items: center; border: 1px solid #3a3a3a; border-radius: 3px; background: #2e2e2e; color: #9a9a9a; cursor: pointer; padding: 0; }
+.ed-timeline.pr-tl .tl-head .tl-name { min-width: 0; margin: 0 2px; font-size: 11px; color: #a8a8a8 !important; font-weight: 400; }
+.ed-timeline.pr-tl .pr-tb { flex: none; width: 20px; height: 18px; display: grid; place-items: center; border: 1px solid #3a3a3a; border-radius: 3px; background: #2e2e2e; color: #9a9a9a; cursor: pointer; padding: 0; }
 .ed-timeline.pr-tl .pr-tb:hover:not(:disabled) { color: #fff; border-color: #555; }
 .ed-timeline.pr-tl .pr-tb.letter { font: 700 10.5px var(--font); }
 .ed-timeline.pr-tl .pr-tb.on.lock { color: #e8e8e8; background: #4a4a4a; }
@@ -721,7 +728,7 @@ body.ws-dragging iframe, body.ws-dragging video { pointer-events: none; }
 .ed-timeline.pr-tl .tl-scroll.tool-trim .clip { cursor: ew-resize; }
 .pr-trimhint { position: fixed; z-index: 1000; pointer-events: none; padding: 2px 7px; border-radius: 3px; background: #f2c94c; color: #1d1600; font: 600 11px var(--font); box-shadow: 0 2px 6px rgba(0,0,0,.4); }
 /* zoom / scroll bar with round handles */
-.ed-timeline.pr-tl .pr-zbar { position: relative; flex: none; height: 16px; margin: 0 4px 3px; margin-left: 200px; background: #161616; border-radius: 8px; cursor: pointer; touch-action: none; }
+.ed-timeline.pr-tl .pr-zbar { position: relative; flex: none; height: 16px; margin: 0 4px 3px; margin-left: 154px; background: #161616; border-radius: 8px; cursor: pointer; touch-action: none; }
 .ed-timeline.pr-tl .pr-zthumb { position: absolute; top: 2px; bottom: 2px; min-width: 24px; border-radius: 6px; background: #4b4b4b; cursor: grab; }
 .ed-timeline.pr-tl .pr-zthumb:hover { background: #5a5a5a; }
 .ed-timeline.pr-tl .pr-zh { position: absolute; top: 0; width: 12px; height: 12px; border-radius: 50%; background: #9c9c9c; border: 2px solid #4b4b4b; cursor: ew-resize; }
