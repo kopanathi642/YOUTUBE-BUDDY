@@ -79,6 +79,7 @@ export default function MediaBin({ projectId, assets, setAssets, reload, readOnl
       onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setOver(true); } }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(false); }} onDrop={onDrop}>
       <CategoryBar value={binTab === "stock" || binTab === "ai" ? "media" : binTab} onChange={setBinTab} />
+      <div className={binTab === "media" || binTab === "stock" || binTab === "ai" || binTab === "audio" ? "ac-split" : "ac-flow"}>
       {(binTab === "media" || binTab === "stock" || binTab === "ai") && <div className="ac-subs" role="tablist" aria-label="Media sources">
         {([["media", "My media"], ...(!hideStock ? [["stock", "Stock"]] : []), ["ai", "AI files"]] as [BinTab, string][]).map(([k, l]) =>
           <button key={k} role="tab" aria-selected={binTab === k} className={binTab === k ? "on" : ""} onClick={() => setBinTab(k)}>{l}</button>)}
@@ -86,6 +87,7 @@ export default function MediaBin({ projectId, assets, setAssets, reload, readOnl
       {binTab === "audio" && <div className="ac-subs" role="tablist" aria-label="Audio">
         {AUDIO_SUBS.map((k) => <button key={k} role="tab" aria-selected={audioSub === k} className={audioSub === k ? "on" : ""} onClick={() => setAudioSub(k)}>{k}</button>)}
       </div>}
+      <div className="ac-main">
       {binTab === "stock" ? <StockTab projectId={projectId} readOnly={readOnly} onImported={onAdd} reload={reload} />
       : binTab === "audio" && audioSub === "Voice-over" ? <div className="bin-list ac-body"><div className="ac-grid">
           <button className="ac-card" disabled={readOnly} onClick={onTTS}><span className="ac-prev"><Type size={22} /></span><span className="ac-name">Text to speech</span><span className="ac-kind">Free AI voices · many languages</span></button>
@@ -171,6 +173,8 @@ export default function MediaBin({ projectId, assets, setAssets, reload, readOnl
         </div>
       </div>
       </>}
+      </div>
+      </div>
     </section>
   );
 }

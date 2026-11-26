@@ -63,13 +63,13 @@ await step("Landing page loads, nav anchors work, live tool count, real prices",
 });
 await step("Sign-up validation shows errors", async () => {
   await page.goto(B + "/signup"); await page.fill("#n", "A"); await page.fill("#e", "bad"); await page.fill("#p", "short");
-  await page.click("button:has-text('Create account')", { noWaitAfter: true });
+  await page.click("form button.auth-submit-btn", { noWaitAfter: true });
   await page.waitForSelector(".error-box");
 });
 const email = `audit${Date.now()}@example.com`;
 await step("Sign up", async () => {
   await page.fill("#n", "Audit Bot"); await page.fill("#e", email); await page.fill("#p", "audit-password-123");
-  await page.click("button:has-text('Create account')"); await page.waitForURL("**/universes"); await page.waitForSelector(".cu-unis");
+  await page.click("form button.auth-submit-btn"); await page.waitForURL("**/universes"); await page.waitForSelector(".cu-unis");
   await page.goto(B + "/editor"); await page.waitForSelector(".dash-stats b");
 });
 await step("Sign out and sign in again", async () => {
@@ -101,6 +101,9 @@ await step("Workspace menu opens", async () => { await page.click(".topbar .btn.
 await step("Create project and open editor", async () => {
   await page.goto(B + "/home"); await page.click("button:has-text('New project')"); await page.fill("#np-name", "Audit Project");
   await page.click("button:has-text('Create & open editor')"); await page.waitForURL("**/edit/**"); await page.waitForSelector(".ed2");
+  if (!(await page.locator(".ws-pages button.on:has-text('Edit')").count())) throw new Error("studio layout (Edit page) is not the default");
+  if (await page.locator(".ed-side.rail").count()) throw new Error("tool rail shown in the studio layout");
+  await page.click(".ws-pages button:has-text('Classic')"); await page.waitForSelector(".ed-side.rail");   // the steps below use the rail
 });
 await step("Upload 5 files and wait for analysis", async () => {
   await page.setInputFiles("input[type=file]", ["Vlog_Intro.mp4", "Talk_With_Pause.mp4", "Drone_Shot.mp4", "Music_BGM.wav", "Subscribe_Badge.png"].map((f) => `${M}/${f}`));

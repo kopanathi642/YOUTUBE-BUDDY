@@ -534,7 +534,7 @@ export default function Editor() {
     if (!r) { toast("No free space at the playhead for this title — move the playhead or add a track"); return; }
     edit(r.tl); setSelected(r.id); setInspTab("text"); setPlaying(false); toast(`${t.name} added at the playhead`);
   };
-  const assetCtx: AssetCtx = { tl, sel, selAsset, readOnly, fps, tools: aiTools, hide, action, openTool, addTitle, onTemplate: placeTemplate,
+  const assetCtx: AssetCtx = { tl, sel, selAsset, readOnly, fps, tools: aiTools, hide, caps, action, openTool, addTitle, onTemplate: placeTemplate,
     focus: (p) => focus(p),
     setClip: (patch, key) => { if (sel) edit(updateClip(tl, sel.clip.id, patch), sel.clip.id + ":" + key); } };
   const inspector = (tab: typeof inspTab, showTabs = false) => <Inspector tab={tab} setTab={setInspTab} showTabs={showTabs} tl={tl} sel={sel} asset={selAsset} edit={edit} readOnly={readOnly}
@@ -584,7 +584,6 @@ export default function Editor() {
           <button className="btn icon ghost" onClick={hist.redo} disabled={!hist.canRedo || readOnly} title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><Redo2 size={16} /></button>
         </div>
         <button className="btn icon ghost" onClick={() => setShowHistory(true)} title="Version history" aria-label="Version history"><HistoryIcon size={17} /></button>
-        <WorkspaceBar layout={layout} setLayout={setLayout} />
         <FocusMusic assets={assets} editorPlaying={playing} />
         <LayoutMenu layout={layout} setLayout={setLayout} />
         <button className="btn sm" disabled={readOnly} onClick={() => setAutoEdit(true)}><Sparkles size={15} />Auto-edit</button>
@@ -597,8 +596,8 @@ export default function Editor() {
           <button className="btn sm" onClick={() => resolveConflict(false)}>Load their version</button>
           <button className="btn sm" onClick={() => resolveConflict(true)}>Keep mine (overwrite)</button></div>
       )}
-      <div className="ed2-body">
-        <ToolSidebar caps={caps} onAction={action} readOnly={readOnly} hide={hide} onAsset={openBin} activeAsset={layout.media ? binTab : null} />
+      <div className={`ed2-body ${layout.side ? "" : "norail"}`}>
+        {layout.side && <ToolSidebar caps={caps} onAction={action} readOnly={readOnly} hide={hide} onAsset={openBin} activeAsset={layout.media ? binTab : null} />}
         <Workspace layout={layout} setLayout={setLayout}
           media={<MediaBin projectId={project.id} seqSize={{ w: tl.width, h: tl.height }} assets={assets} setAssets={setAssets} reload={loadMedia} readOnly={readOnly} onAdd={(a) => addAssetToTimeline(a)} fps={fps}
               uploadRef={uploadRef} onRecord={() => setRecording(true)} onTTS={() => setAiModal("tts")}
@@ -630,6 +629,7 @@ export default function Editor() {
             suggest: { id: "suggest", label: "Suggestions", icon: Lightbulb, node: <Recommendations tl={tl} assets={assetMap} edit={edit} readOnly={readOnly} /> },
           } as Record<PanelId, PanelDef>} />
       </div>
+      <WorkspaceBar layout={layout} setLayout={setLayout} icons={{ edit: Scissors, color: PaletteI, ai: Bot, audio: AudioLines, deliver: RocketI, classic: Workflow }} />
       {autoEdit && <AutoEdit key={project.id} projectId={project.id} assets={assets} readOnly={readOnly} timelineIds={tl.tracks.flatMap(t => t.clips).sort((a, b) => a.start - b.start).flatMap(c => c.asset_id ? [c.asset_id] : [])} onClose={() => setAutoEdit(false)} onOpen={async id => {
         if (!await doSave(true)) throw new Error("Save the current timeline before opening your cut.");
         const next = await api<SequenceDoc>(`/sequences/${id}`);

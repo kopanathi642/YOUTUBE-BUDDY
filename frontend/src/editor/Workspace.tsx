@@ -13,7 +13,7 @@ export type DockId = "a" | "b";
 export type PanelDef = { id: PanelId; label: string; icon: any; node: ReactNode };
 
 export type Layout = {
-  v: 2;
+  v: 3;
   side: boolean;          // tool sidebar expanded
   media: boolean;         // media bin open
   mediaW: number; dockAW: number; dockBW: number; topH: number;
@@ -23,35 +23,42 @@ export type Layout = {
 };
 
 const ALL: PanelId[] = ["assistant", "voice", "color", "scopes", "nodes", "quick", "inspector", "export", "story", "suggest"];
+/** Studio layout (like CapCut / DaVinci Resolve's Edit page): assets panel | player | inspector on top, the timeline across
+ *  the full width below. Dock B is empty, so the timeline gets the whole bottom row. */
 export const DEFAULT_LAYOUT: Layout = {
-  v: 2, side: true, media: true, mediaW: 300, dockAW: 360, dockBW: 380, topH: 0.52,
+  v: 3, side: false, media: true, mediaW: 400, dockAW: 360, dockBW: 380, topH: 0.56,
   collapsed: { a: false, b: false },
-  docks: { a: ["assistant", "voice", "color", "scopes", "nodes", "quick"], b: ["inspector", "export", "story", "suggest"] },
-  active: { a: "assistant", b: "inspector" },
+  docks: { a: ["inspector", "assistant", "voice", "color", "scopes", "nodes", "quick", "export", "story", "suggest"], b: [] },
+  active: { a: "inspector", b: "inspector" },
 };
+const page = (l: Layout, a: PanelId, extra: Partial<Layout> = {}): Layout => ({ ...DEFAULT_LAYOUT, side: l.side, mediaW: l.mediaW, ...extra, active: { a, b: a } });
+/** Pages, like the page bar at the bottom of DaVinci Resolve. */
 export const PRESETS: { id: string; label: string; hint: string; apply: (l: Layout) => Layout }[] = [
-  { id: "edit", label: "Editing", hint: "Monitor, timeline and inspector", apply: (l) => ({ ...DEFAULT_LAYOUT, side: l.side }) },
-  { id: "color", label: "Color", hint: "Big monitor, grading + scopes", apply: (l) => ({ ...DEFAULT_LAYOUT, side: false, media: false, topH: 0.6, dockAW: 420,
-    docks: { a: ["color", "nodes", "assistant", "voice", "quick"], b: ["scopes", "inspector", "export", "story", "suggest"] }, active: { a: "color", b: "scopes" } }) },
-  { id: "ai", label: "AI & Voice", hint: "Dubbing, captions and AI suggestions", apply: (l) => ({ ...DEFAULT_LAYOUT, side: l.side, active: { a: "voice", b: "suggest" } }) },
-  { id: "deliver", label: "Export", hint: "Export settings and queue", apply: (l) => ({ ...DEFAULT_LAYOUT, side: l.side, active: { a: "assistant", b: "export" } }) },
+  { id: "edit", label: "Edit", hint: "Assets, player, inspector and a full-width timeline", apply: (l) => page(l, "inspector") },
+  { id: "color", label: "Color", hint: "Big player with colour wheels and curves", apply: (l) => page(l, "color", { media: false, topH: 0.62, dockAW: 440 }) },
+  { id: "ai", label: "AI & Voice", hint: "AI assistant, dubbing and captions", apply: (l) => page(l, "assistant") },
+  { id: "audio", label: "Audio", hint: "Voice, dubbing and audio tools", apply: (l) => page(l, "voice") },
+  { id: "deliver", label: "Deliver", hint: "Export settings and queue", apply: (l) => page(l, "export") },
+  { id: "classic", label: "Classic", hint: "Old layout: tool rail on the left, inspector under the player", apply: () => ({ ...DEFAULT_LAYOUT, side: true, mediaW: 300, topH: 0.52,
+    docks: { a: ["assistant", "voice", "color", "scopes", "nodes", "quick"], b: ["inspector", "export", "story", "suggest"] }, active: { a: "assistant", b: "inspector" } }) },
 ];
 
-const KEY = "cu.editor.layout.v2";
+const KEY = "cu.editor.layout.v3";
 function load(): Layout {
   try {
     const l = JSON.parse(localStorage.getItem(KEY) || "null") as Layout | null;
-    if (l && l.v === 2) {
+    if (l && l.v === 3) {
       // keep it valid if panels were added/removed since it was saved
       const seen = new Set([...l.docks.a, ...l.docks.b]);
       const missing = ALL.filter((p) => !seen.has(p));
       const docks = { a: l.docks.a.filter((p) => ALL.includes(p)), b: [...l.docks.b.filter((p) => ALL.includes(p)), ...missing] };
-      const fix = (d: DockId) => (docks[d].includes(l.active[d]) ? l.active[d] : docks[d][0]);
+      if (!l.docks.b.length) { docks.a.push(...docks.b); docks.b = []; }      // studio layout keeps dock B empty
+      const fix = (d: DockId) => (docks[d].includes(l.active[d]) ? l.active[d] : docks[d][0] ?? "inspector");
       return { ...DEFAULT_LAYOUT, ...l, docks, active: { a: fix("a"), b: fix("b") } };
     }
   } catch { /* storage blocked or bad JSON: use the default */ }
-  // first visit on a laptop screen: start with the slim tools sidebar so the monitor and timeline get the room
-  return typeof window !== "undefined" && window.innerWidth < 1440 ? { ...DEFAULT_LAYOUT, mediaW: 270, dockAW: 330, dockBW: 340 } : DEFAULT_LAYOUT;
+  // first visit on a laptop screen: slightly narrower side panels so the player and timeline get the room
+  return typeof window !== "undefined" && window.innerWidth < 1440 ? { ...DEFAULT_LAYOUT, mediaW: 340, dockAW: 320 } : DEFAULT_LAYOUT;
 }
 
 export function useLayout() {
@@ -59,7 +66,7 @@ export function useLayout() {
   useEffect(() => { try { localStorage.setItem(KEY, JSON.stringify(layout)); } catch { /* ignore */ } }, [layout]);
   /** Bring a panel to the front (opens its dock if collapsed). Used by the sidebar and top menu. */
   const focus = useCallback((p: PanelId) => setLayout((l) => {
-    const d: DockId = l.docks.a.includes(p) ? "a" : "b";
+    const d: DockId = l.docks.a.includes(p) || !l.docks.b.length ? "a" : "b";
     return { ...l, active: { ...l.active, [d]: p }, collapsed: { ...l.collapsed, [d]: false } };
   }), []);
   return { layout, setLayout, focus };
@@ -90,6 +97,7 @@ function Dock({ id, layout, setLayout, panels, side }: { id: DockId; layout: Lay
   const move = (p: PanelId, to: number) => setLayout((l) => {
     const from: DockId = l.docks.a.includes(p) ? "a" : "b";
     const src = l.docks[from].filter((x) => x !== p);
+    if (from === "a" && id !== "a" && src.length === 0) return l;
     if (from !== id && src.length === 0) return l;                      // never empty a dock completely
     const dst = from === id ? src : [...l.docks[id]];
     const at = Math.max(0, Math.min(to - (from === id && l.docks[id].indexOf(p) < to ? 1 : 0), dst.length));
@@ -133,14 +141,14 @@ function Dock({ id, layout, setLayout, panels, side }: { id: DockId; layout: Lay
   );
 }
 
-/** Premiere-style workspace switcher: one click re-arranges every pane for the job at hand. */
-export function WorkspaceBar({ layout, setLayout }: { layout: Layout; setLayout: (f: (l: Layout) => Layout) => void }) {
-  const cur = PRESETS.find((p) => { const x = p.apply(layout); return x.active.a === layout.active.a && x.active.b === layout.active.b && x.media === layout.media; })?.id;
+/** Page bar along the bottom (like DaVinci Resolve): one click re-arranges every pane for the job at hand. */
+export function WorkspaceBar({ layout, setLayout, icons }: { layout: Layout; setLayout: (f: (l: Layout) => Layout) => void; icons?: Record<string, any> }) {
+  const cur = PRESETS.find((p) => { const x = p.apply(layout); return x.active.a === layout.active.a && x.active.b === layout.active.b && x.media === layout.media && x.side === layout.side; })?.id;
   return (
-    <div className="ws-bar" role="tablist" aria-label="Workspaces">
-      {PRESETS.map((p) => <button key={p.id} role="tab" aria-selected={cur === p.id} className={cur === p.id ? "on" : ""} title={p.hint}
-        onClick={() => setLayout(p.apply)}>{p.label}</button>)}
-    </div>
+    <nav className="ws-pages" role="tablist" aria-label="Pages">
+      {PRESETS.map((p) => { const I = icons?.[p.id]; return <button key={p.id} role="tab" aria-selected={cur === p.id} className={cur === p.id ? "on" : ""} title={p.hint}
+        onClick={() => setLayout(p.apply)}>{I && <I size={16} aria-hidden />}<span>{p.label}</span></button>; })}
+    </nav>
   );
 }
 
@@ -199,12 +207,13 @@ export function Workspace({ layout, setLayout, panels, media, viewer, timeline }
       </div>
       <Splitter dir="y" label="Monitor / timeline height" onReset={() => setLayout((l) => ({ ...l, topH: DEFAULT_LAYOUT.topH }))}
         onDelta={(d) => setLayout((l) => ({ ...l, topH: clamp(l.topH + d / H(), 0.25, 0.8) }))} />
-      <div className="ws-row" style={{ gridTemplateColumns: `minmax(0, 1fr) ${B ? "0px 42px" : `6px ${layout.dockBW}px`}` }}>
+      {!layout.docks.b.length ? <div className="ws-row" style={{ gridTemplateColumns: "minmax(0, 1fr)" }}><div className="ws-cell">{timeline}</div></div>
+      : <div className="ws-row" style={{ gridTemplateColumns: `minmax(0, 1fr) ${B ? "0px 42px" : `6px ${layout.dockBW}px`}` }}>
         <div className="ws-cell">{timeline}</div>
         {B ? <span /> : <Splitter dir="x" label="Inspector width" onReset={() => setLayout((l) => ({ ...l, dockBW: DEFAULT_LAYOUT.dockBW }))}
           onDelta={(d) => setLayout((l) => ({ ...l, dockBW: clamp(l.dockBW - d, 280, W() * 0.5) }))} />}
         <Dock id="b" layout={layout} setLayout={setLayout} panels={panels} side="bottom" />
-      </div>
+      </div>}
     </div>
   );
 }

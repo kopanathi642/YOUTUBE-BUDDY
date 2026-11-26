@@ -11,11 +11,14 @@ import { LOOKS, withLook, sanitizeGrade } from "../grade";
 import { AUDIO_FX, AUDIO_GROUPS, VOICE_PRESETS, AudioFxType, audioMeta, clampAudio } from "../audiofx";
 import { TITLE_TEMPLATES, TitleTemplate } from "../templates";
 import type { Tool } from "../ai/core";
+import type { Caps } from "./AiPanels";
+import { SHORTS, VIDEO_TOOLS, AUDIO_TOOLS, MORE, Item } from "./ToolSidebar";
+import { Film, Wrench, Rocket } from "lucide-react";
 
 /** Categories of the Creative Assets Panel. Only categories with real, working content are listed (3D assets and a
  *  brand kit are not built yet, so they are not shown). */
 export type AssetCat = "media" | "audio" | "text" | "stickers" | "effects" | "transitions" | "filters" | "adjustments" | "overlays" | "elements"
-  | "templates" | "captions" | "motion" | "color" | "vfx" | "backgrounds" | "aitools" | "brain";
+  | "templates" | "captions" | "motion" | "color" | "vfx" | "backgrounds" | "aitools" | "brain" | "shorts" | "tools";
 export const CATEGORIES: { id: AssetCat; label: string; icon: any; hint: string }[] = [
   { id: "media", label: "Media", icon: ImageIcon, hint: "Your videos, images, stock footage and AI files" },
   { id: "audio", label: "Audio", icon: AudioLines, hint: "Music, voice-over, audio effects and voice presets" },
@@ -33,6 +36,8 @@ export const CATEGORIES: { id: AssetCat; label: string; icon: any; hint: string 
   { id: "color", label: "Colour", icon: Droplets, hint: "Colour wheels, curves, LUTs and scopes" },
   { id: "vfx", label: "VFX", icon: Scan, hint: "Green screen, keys, background removal, compositing" },
   { id: "backgrounds", label: "Backgrounds", icon: PaintBucket, hint: "Solid colours, gradients and patterns" },
+  { id: "shorts", label: "Shorts", icon: Film, hint: "Turn long videos into vertical Shorts and Reels" },
+  { id: "tools", label: "Tools", icon: Wrench, hint: "Quick fixes: silence, scenes, stabilize, levels, captions, voice, export" },
   { id: "aitools", label: "AI Tools", icon: Sparkles, hint: "AI tools that work on your clips" },
   { id: "brain", label: "AI Brain", icon: Brain, hint: "Automatic editing, story and shot selection" },
 ];
@@ -47,6 +52,7 @@ export type AssetCtx = {
   focus: (panel: "color" | "scopes" | "nodes" | "inspector") => void;
   tools: Tool[];
   hide: Set<string>;
+  caps: Caps;
 };
 
 /* ------------------------------------------------------------------ shared pieces */
@@ -338,6 +344,28 @@ function Brain_({ c }: { c: AssetCtx }) {
   </>;
 }
 
+/** The editor's built-in one-click tools (what used to be the left tool rail). Unavailable ones are hidden. */
+function QuickTools({ c, groups }: { c: AssetCtx; groups: [string, Item[]][] }) {
+  const usable = (it: Item) => { const cp = it.cap ? c.caps.get(it.cap) : null; return !(c.hide.has(it.id) || it.soon || (cp && !cp.ready)); };
+  const live = groups.map(([g, items]) => [g, items.filter(usable)] as [string, Item[]]).filter(([, items]) => items.length);
+  const [pick, setSub] = useState("");
+  const sub = live.some(([g]) => g === pick) ? pick : live[0]?.[0] ?? "";
+  const items = live.find(([g]) => g === sub)?.[1] ?? [];
+  if (!live.length) return <div className="dim ac-empty">These tools aren't available on this server yet.</div>;
+  return <>
+    <Subs subs={live.map(([g]) => g)} value={sub} onChange={setSub} />
+    <div className="ac-grid">{items.map((it) => <Card key={it.id} name={it.label} kind={sub} preview={<it.icon size={22} />}
+      disabled={c.readOnly && !["color", "fusion", "export", "effects", "transitions"].includes(it.id)} onClick={() => c.action(it.id)} />)}</div>
+  </>;
+}
+const TOOL_GROUPS: [string, Item[]][] = [
+  ["Video", VIDEO_TOOLS],
+  ["Audio", AUDIO_TOOLS],
+  ["Text & voice", MORE.filter((i) => ["subtitle", "voice", "tts", "lipsync", "transcribe"].includes(i.id))],
+  ["Design", MORE.filter((i) => ["design", "stock"].includes(i.id))],
+  ["Finish & export", [...MORE.filter((i) => ["color", "fusion", "export"].includes(i.id)), { id: "magic", label: "AI Magic (fix my edit)", icon: Sparkles }, { id: "export", label: "Export & Share", icon: Rocket }].filter((x, i, a) => a.findIndex((y) => y.id === x.id) === i)],
+];
+
 /** Content for the categories that aren't plain media lists. */
 export function AssetCategoryView({ cat, c, frames, stickers, elements, templates, adjustments, backgrounds }: {
   cat: AssetCat; c: AssetCtx; frames: ReactNode; stickers: ReactNode; elements: ReactNode; templates: ReactNode; adjustments: ReactNode; backgrounds: ReactNode;
@@ -358,6 +386,8 @@ export function AssetCategoryView({ cat, c, frames, stickers, elements, template
       case "color": return <ColorCat c={c} />;
       case "vfx": return <Vfx c={c} />;
       case "backgrounds": return backgrounds;
+      case "shorts": return <QuickTools c={c} groups={[["Shorts", SHORTS]]} />;
+      case "tools": return <QuickTools c={c} groups={TOOL_GROUPS} />;
       case "aitools": return <AiToolsCat c={c} />;
       case "brain": return <Brain_ c={c} />;
       default: return null;

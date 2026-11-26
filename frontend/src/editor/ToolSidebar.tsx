@@ -14,9 +14,9 @@ const ASSETS = [
   ["effects", "Effects", Wand], ["transitions", "Transitions", ArrowLeftRight], ["filters", "Filters", Palette], ["adjustments", "Adjustments", SlidersHorizontal],
 ] as const;
 
-type Item = { id: string; label: string; icon: any; cap?: string; soon?: boolean };
+export type Item = { id: string; label: string; icon: any; cap?: string; soon?: boolean };
 
-const SHORTS: Item[] = [
+export const SHORTS: Item[] = [
   { id: "studio", label: "Shorts Creative Studio (layouts, stacks, blur, text)", icon: LayoutGrid },
   { id: "short916", label: "Video to Shorts (Auto)", icon: Zap, cap: "smart_reframe" },
   { id: "clips", label: "Auto Clips & Highlights", icon: LayoutGrid, cap: "scene_detect" },
@@ -25,7 +25,7 @@ const SHORTS: Item[] = [
   { id: "reels45", label: "Reels / Shorts Formatter", icon: Smartphone, cap: "smart_reframe" },
   { id: "reframe", label: "Smart Reframe (9:16)", icon: Crop, cap: "smart_reframe" },
 ];
-const VIDEO_TOOLS: Item[] = [
+export const VIDEO_TOOLS: Item[] = [
   { id: "scenes", label: "Scene Detection", icon: LayoutGrid, cap: "scene_detect" },
   { id: "silence", label: "Silence Removal", icon: AudioLines, cap: "silence_remove" },
   { id: "autocolor", label: "Auto Color", icon: Palette, cap: "auto_color" },
@@ -33,11 +33,11 @@ const VIDEO_TOOLS: Item[] = [
   { id: "bg", label: "Remove Background", icon: Wand, cap: "background_remove" },
   { id: "obj", label: "Remove Object (marked area)", icon: Eraser, cap: "object_remove" },
 ];
-const AUDIO_TOOLS: Item[] = [
+export const AUDIO_TOOLS: Item[] = [
   { id: "loudness", label: "Balance Levels", icon: AudioLines, cap: "loudness" },
   { id: "denoise", label: "Noise Reduction", icon: Wand, cap: "loudness" },
 ];
-const MORE: Item[] = [
+export const MORE: Item[] = [
   { id: "subtitle", label: "Subtitle & Translate", icon: Languages, cap: "translate" },
   { id: "voice", label: "Voice & Dubbing", icon: Mic, cap: "dubbing" },
   { id: "tts", label: "Text to Speech (TTS)", icon: Type, cap: "tts" },
