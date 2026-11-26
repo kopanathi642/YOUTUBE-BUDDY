@@ -131,7 +131,8 @@ def sha256_file(path: str) -> str:
 
 def make_thumbnail(src: str, dst: str, meta: dict) -> None:
     t = min(1.0, (meta.get("duration_s") or 0) / 3) if meta["kind"] == "video" else 0
-    r = run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-ss", f"{t:.3f}", "-i", src, "-frames:v", "1",
+    seek = ["-ss", f"{t:.3f}"] if meta["kind"] == "video" else []   # seeking inside a still JPEG writes no frame on FFmpeg 6
+    r = run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", *seek, "-i", src, "-frames:v", "1", "-update", "1",
              "-vf", "scale=480:270:force_original_aspect_ratio=decrease", "-q:v", "4", dst], timeout=120)
     if r.returncode != 0 or not os.path.exists(dst):
         raise RuntimeError(f"thumbnail failed: {r.stderr[-400:]}")

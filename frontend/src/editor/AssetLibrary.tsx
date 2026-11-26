@@ -321,6 +321,8 @@ function Vfx({ c }: { c: AssetCtx }) {
     {sub === "Keying" && <>{!visualSel(c) && <Need>Select the clip with the green or blue background. Put your new background on the track below it.</Need>}
       <EffectCards c={c} kind="Key" types={["greenkey", "bluekey", "lumakey"]} /></>}
     {sub === "Compositing" && <div className="ac-grid">
+      <Card name="Magic Edit (photo)" kind="Remove · move · replace objects" preview={<Sparkles size={22} />} disabled={c.readOnly} onClick={() => c.action("magicedit")}
+        title="Tap an object in a photo to remove it, move or resize it, or replace it with something new" />
       <Card name="Remove background" kind="People cut-out" preview={<Scan size={22} />} disabled={c.readOnly} onClick={() => c.action("bg")} title="Select a video clip first. Runs on our worker." />
       {!c.hide.has("obj") && <Card name="Remove object" kind="Mark and erase" preview={<Scan size={22} />} disabled={c.readOnly} onClick={() => c.action("obj")} />}
       <Card name="Stabilize" kind="Smooth shaky video" preview={<Scan size={22} />} disabled={c.readOnly} onClick={() => c.action("stabilize")} />
@@ -362,7 +364,7 @@ const TOOL_GROUPS: [string, Item[]][] = [
   ["Video", VIDEO_TOOLS],
   ["Audio", AUDIO_TOOLS],
   ["Text & voice", MORE.filter((i) => ["subtitle", "voice", "tts", "lipsync", "transcribe"].includes(i.id))],
-  ["Design", MORE.filter((i) => ["design", "stock"].includes(i.id))],
+  ["Design", [{ id: "magicedit", label: "Magic Edit (photo): remove / move / replace", icon: Sparkles }, ...MORE.filter((i) => ["design", "stock"].includes(i.id))]],
   ["Finish & export", [...MORE.filter((i) => ["color", "fusion", "export"].includes(i.id)), { id: "magic", label: "AI Magic (fix my edit)", icon: Sparkles }, { id: "export", label: "Export & Share", icon: Rocket }].filter((x, i, a) => a.findIndex((y) => y.id === x.id) === i)],
 ];
 

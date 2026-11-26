@@ -21,6 +21,7 @@ import FocusMusic from "./FocusMusic";
 import { Workspace, LayoutMenu, WorkspaceBar, useLayout, PanelDef, PanelId } from "./Workspace";
 import { Bot, Mic2, Palette as PaletteI, BarChart3, Network, Zap, SlidersHorizontal, Rocket as RocketI, Film as FilmI, Lightbulb } from "lucide-react";
 import { loadCatalogue, Generation, Tool } from "../ai/core";
+const MagicEdit = lazy(() => import("./MagicEdit"));
 const EmbeddedTool = lazy(() => import("../pages/AiTool").then((m) => ({ default: m.EmbeddedTool })));
 import { insertTemplate, TitleTemplate } from "../templates";
 import Viewer, { Sampler } from "./Viewer";
@@ -105,6 +106,7 @@ export default function Editor() {
   const [hide, setHide] = useState<Set<string>>(new Set(["obj", "lipsync", "stock"]));
   const [aiTools, setAiTools] = useState<Tool[]>([]);
   const [toolOpen, setToolOpen] = useState<{ id: string; media?: string } | null>(null);
+  const [magicOpen, setMagicOpen] = useState<{ asset?: string; clip?: string } | null>(null);
   useEffect(() => {
     Promise.all([loadCatalogue().catch(() => null), api<{ pexels: boolean; pixabay: boolean }>("/stock/status").catch(() => null)]).then(([cat, st]) => {
       setAiTools(cat?.tools ?? []);
@@ -474,6 +476,11 @@ export default function Editor() {
       case "effects": setInspTab("effects"); break;
       case "motion": case "title": addTitle(); break;
       case "autoedit": setAutoEdit(true); break;
+      case "magicedit": {
+        const a = sel?.clip.asset_id ? assetMap.get(sel.clip.asset_id) : undefined;
+        setMagicOpen(a?.kind === "image" ? { asset: a.id, clip: sel!.clip.id } : {});
+        break;
+      }
       case "assistant": focus("assistant"); break;
       case "templates": case "elements": openBin("templates"); break;
       case "stock": openBin("stock"); break;
@@ -669,6 +676,14 @@ export default function Editor() {
         onSave={(f) => { uploadRef.current?.([f]); setAiModal(null); toast("Thumbnail saved to your media bin"); }} />}
       {aiModal === "tts" && <TTSModal catalog={catalog} projectId={project.id} onClose={() => setAiModal(null)}
         onCreated={(a) => { setAssets((xs) => [a, ...xs]); setPending((m) => ({ ...m, [a.id]: { type: "tts", at: playhead } })); setAiModal(null); toast("Generating voice on the cloud worker…"); }} />}
+      {magicOpen && <Suspense fallback={null}><MagicEdit projectId={project.id} readOnly={readOnly} initial={magicOpen.asset}
+        images={assets.filter((a) => a.kind === "image" && a.status === "ready")} onClose={() => setMagicOpen(null)}
+        onSaved={(a, swap) => {
+          loadMedia();
+          if (swap && magicOpen.clip) { edit(updateClip(tl, magicOpen.clip, { asset_id: a.id }), magicOpen.clip + ":magic"); toast("Edited photo is now on the timeline — Ctrl+Z to undo"); }
+          else toast(`Saved “${a.filename}” to Media`);
+          setMagicOpen(null);
+        }} /></Suspense>}
       {toolOpen && <div className="ed-tooldrawer" role="dialog" aria-label="AI tool">
         <Suspense fallback={<div className="ws-loading"><span className="spinner" /></div>}>
           <EmbeddedTool key={toolOpen.id} id={toolOpen.id} embed={{ pid: project.id, media: toolOpen.media, onClose: () => setToolOpen(null), onDone: toolDone }} />

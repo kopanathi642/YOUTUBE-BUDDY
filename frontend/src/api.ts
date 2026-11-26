@@ -1,5 +1,5 @@
 // Thin API client. Cookies carry the session; the custom header is our CSRF defence.
-const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
+export const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public detail?: unknown) {

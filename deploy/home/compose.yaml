@@ -65,6 +65,7 @@ services:
       python -c 'from app import storage; storage.ensure_bucket([\"https://youtubebuddy.com\", \"https://www.youtubebuddy.com\"])' &&
       exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"
     ports: ["127.0.0.1:8000:8000"]        # only this PC; the world comes in through the tunnel
+    volumes: [models:/var/models]          # Magic Edit's eraser/selector models (~320 MB, downloaded once, SHA-256 checked)
     depends_on: { db: { condition: service_healthy }, storage: { condition: service_started } }
 
   worker:

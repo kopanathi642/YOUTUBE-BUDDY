@@ -11,7 +11,7 @@ from sqlalchemy import text
 from . import storage
 from .config import get_settings
 from .db import get_engine
-from .routers import tools, ai, auth, billing, compose, dubbing, exports, growth, growth_studio, media, projects, stock, workspaces, youtube, gpu_workers, public_tools, stats
+from .routers import tools, ai, auth, billing, compose, dubbing, exports, growth, growth_studio, media, projects, stock, workspaces, youtube, gpu_workers, public_tools, stats, magic
 from .security import csrf_guard
 from .shield import shield
 
@@ -63,7 +63,7 @@ def create_app() -> FastAPI:
         return response
 
     deps = [Depends(csrf_guard)]
-    for r in (ai.router, auth.router, workspaces.router, projects.router, media.router, exports.router, tools.router, stock.router, billing.router, youtube.router, growth.router, dubbing.router, growth_studio.router, compose.router, gpu_workers.admin_router, public_tools.router, stats.router):
+    for r in (ai.router, auth.router, workspaces.router, projects.router, media.router, exports.router, tools.router, stock.router, billing.router, youtube.router, growth.router, dubbing.router, growth_studio.router, compose.router, gpu_workers.admin_router, public_tools.router, stats.router, magic.router):
         app.include_router(r, prefix="/api/v1", dependencies=deps)
     app.include_router(gpu_workers.router, prefix="/api/v1")   # GPU worker API: bearer token, no cookies, so no CSRF header
 
