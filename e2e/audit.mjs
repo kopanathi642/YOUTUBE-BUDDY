@@ -6,6 +6,8 @@
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT ?? "playwright");
+/** Inspector number box by its visible label (ids are generated). */
+const fld = (label) => `.insp-field:has(> label:text-is("${label}")) .insp-num input, .insp-field:has(> label:has-text("${label}")) .insp-num input >> nth=0`;
 
 const B = process.env.BASE ?? "http://localhost:8000", M = process.env.MEDIA, OUT = process.env.OUT ?? "/tmp";
 const results = [], problems = [];
@@ -99,7 +101,7 @@ await step("Workspace menu opens", async () => { await page.click(".topbar .btn.
 
 // ---------------- editor
 await step("Create project and open editor", async () => {
-  await page.goto(B + "/home"); await page.click("button:has-text('New project')"); await page.fill("#np-name", "Audit Project");
+  await page.goto(B + "/projects"); await page.click("button:has-text('New project')"); await page.fill("#np-name", "Audit Project");
   await page.click("button:has-text('Create & open editor')"); await page.waitForURL("**/edit/**"); await page.waitForSelector(".ed2");
   if (!(await page.locator(".ws-pages button.on:has-text('Edit')").count())) throw new Error("studio layout (Edit page) is not the default");
   if (await page.locator(".ed-side.rail").count()) throw new Error("tool rail shown in the studio layout");
@@ -129,8 +131,8 @@ await step("Drag image from bin onto V2 at 9s", async () => {
 });
 await step("Inspector: type transform values (Enter applies)", async () => {
   await page.click('[data-track="v2"] .clip');
-  for (const [id, v] of [["#f-Scale", "30"], ["#f-PositionX", "640"], ["#f-PositionY", "-360"], ["#f-Rotation", "5"], ["#f-Opacity", "90"]]) { await page.click(id); await page.keyboard.press("Control+A"); await page.keyboard.type(v); await page.keyboard.press("Enter"); }
-  const v = await page.inputValue("#f-Scale"); if (v !== "30") throw new Error("scale=" + v);
+  for (const [id, v] of [[fld("Scale"), "30"], [fld("Position X"), "640"], [fld("Position Y"), "-360"], [fld("Rotation"), "5"], [fld("Opacity"), "90"]]) { await page.click(id); await page.keyboard.press("Control+A"); await page.keyboard.type(v); await page.keyboard.press("Enter"); }
+  const v = await page.inputValue(fld("Scale")); if (v !== "30") throw new Error("scale=" + v);
 });
 await step("Inspector tabs: Effects / Transition / Text / Metadata", async () => {
   for (const t of ["Effects", "Transition", "Text", "Metadata", "Inspector"]) await page.click(`.ed-insp [role=tab]:has-text("${t}")`);
@@ -282,9 +284,9 @@ await step("Shorts Maker creates 9:16 sequence", async () => {
 await step("Titles: add title, edit text (Hindi), style, size, colour; renders in preview", async () => {
   await page.locator(".tl-scroll").evaluate((e) => (e.scrollLeft = 0));
   await scrubTo(1); await tool("Motion Graphics"); await page.waitForSelector(".clip.title");
-  await page.fill("#title-text", "नमस्ते दोस्तों"); await page.click("#f-Size");   // blur commits text
+  await page.fill("#title-text", "नमस्ते दोस्तों"); await page.click(fld("Size"));   // blur commits text
   await page.click(".ed-insp .look-list button:has-text('Yellow pop')");
-  await page.click("#f-Size"); await page.keyboard.press("Control+A"); await page.keyboard.type("90"); await page.keyboard.press("Enter");
+  await page.click(fld("Size")); await page.keyboard.press("Control+A"); await page.keyboard.type("90"); await page.keyboard.press("Enter");
   await page.waitForSelector(".title-layer:has-text('नमस्ते')");
 });
 await step("Templates: animated title card added at the playhead (keyframed)", async () => {
@@ -304,7 +306,7 @@ await step("Stock tab hidden until a free stock key is set", async () => {
   if (await page.locator(".ed-bin .ac-subs button:has-text('Stock')").count()) throw new Error("Stock tab shown without a key");
 });
 await step("AI Assets tab lists generator outputs or explains", async () => {
-  await page.click(".ed-bin .ac-subs button:has-text('AI files')"); await w(200);
+  await page.click('.ac-cat:has-text("Media")'); await page.click(".ed-bin .ac-subs button:has-text('AI files')"); await w(200);
   if (!(await page.locator(".ed-bin .bin-list").count())) throw new Error("AI tab empty");
   await page.click(".ed-bin .ac-subs button:has-text('My media')");
 });
@@ -320,7 +322,7 @@ await step("Speed & Time: 2× preset changes clip length", async () => {
 });
 await step("Cropping sliders", async () => {
   await page.click(".ed-insp summary:has-text('Cropping')").catch(() => {});
-  await page.click("#f-Left"); await page.keyboard.press("Control+A"); await page.keyboard.type("10"); await page.keyboard.press("Enter");
+  await page.click(fld("Left")); await page.keyboard.press("Control+A"); await page.keyboard.type("10"); await page.keyboard.press("Enter");
   await page.click(".ed-insp button:has-text('Reset crop')");
 });
 await step("Version history: open, restore an earlier version", async () => {
